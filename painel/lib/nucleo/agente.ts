@@ -14,13 +14,13 @@
 import type { ClienteCrm, CondicoesCrm, NegocioCrm, PacoteCrm } from "./crm.ts";
 import { DEFINICOES, executarFerramenta, type ContextoFerramentas, type Modo } from "./ferramentas.ts";
 import { mensagemTransferencia } from "./horario.ts";
-import { chamarModelo, custoUsd, ErroIA, type MensagemIA } from "./openai.ts";
+import { motorOpenAI, type MotorIA, type UsoIA } from "./motor-ia.ts";
+import { chamarModelo, custoUsd, ErroIA } from "./openai.ts";
 import { parteAtual, parteFixa } from "./prompt.ts";
 import type { ConfigAgente, EstadoConversa, ItemConhecimento, MensagemConversa, PassoRastro, ResultadoTurno, UsoModelo } from "./tipos.ts";
 import { contemAlguma, dataISO, pediuParaParar, removerRepeticao, valoresSemBase } from "./util.ts";
 
 const MAX_RODADAS = 6;
-const MAX_HISTORICO = 30;
 
 export type EntradaTurno = {
   cfg: ConfigAgente;
@@ -38,8 +38,10 @@ export type EntradaTurno = {
   agora?: Date;
   telefone?: string | null;
   tituloNovoPedido?: string;
-  /** Para testes: troca a chamada à OpenAI. */
+  /** Para testes: troca a chamada à OpenAI (só vale para o motor próprio). */
   chamar?: typeof chamarModelo;
+  /** Qual laço de IA usar. Padrão: o laço próprio com a OpenAI (motorOpenAI). */
+  ia?: MotorIA;
 };
 
 /** Lê do CRM o que o agente precisa saber antes de responder. */
@@ -88,7 +90,7 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
   const rastro: PassoRastro[] = [];
   const modelo = e.modelo ?? e.cfg.modelo;
   const uso: UsoModelo = { modelo, entrada: 0, cache: 0, saida: 0, custo_usd: 0, chamadas: 0 };
-  const chamar = e.chamar ?? chamarModelo;
+  const ia = e.ia ?? motorOpenAI({ chave: e.chaveIA, modelo, chamar: e.chamar });
   const texto = e.novas.join("\n").trim();
   const sair = (silencio: string): ResultadoTurno => ({ respostas: [], estado, rastro, uso, silencio });
 
@@ -138,35 +140,27 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
 
     // 5. IA com ferramentas
     if (!transferir) {
-      const mensagens: MensagemIA[] = [
-        { role: "system", content: parteFixa(e.cfg, e.conhecimento) },
-        { role: "system", content: parteAtual({ cfg: e.cfg, estado, pacotes, condicoes, agora, etapa }) },
-        ...e.historico
-          .filter((m) => m.papel !== "sistema")
-          .slice(-MAX_HISTORICO)
-          .map((m): MensagemIA => (m.papel === "cliente" ? { role: "user", content: m.texto } : { role: "assistant", content: m.texto })),
-      ];
-      let final = "";
+      const sistemaFixo = parteFixa(e.cfg, e.conhecimento);
+      const sistemaAtual = parteAtual({ cfg: e.cfg, estado, pacotes, condicoes, agora, etapa });
       let parar = false;
-      for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
-        const ultima = rodada === MAX_RODADAS - 1;
-        const r = await chamar({ chave: e.chaveIA, modelo, mensagens, ferramentas: ultima ? undefined : DEFINICOES });
-        somar(uso, r.uso, modelo);
-        const chamadas = r.mensagem.tool_calls ?? [];
-        if (!chamadas.length) {
-          final = removerRepeticao(r.mensagem.content ?? "");
-          break;
-        }
-        mensagens.push({ role: "assistant", content: r.mensagem.content ?? null, tool_calls: chamadas });
-        for (const c of chamadas) {
-          const { saida, efeito } = await executarFerramenta(c.function.name, c.function.arguments, ctx);
+      const contexto = ctx;
+      const r = await ia.responder({
+        sistemaFixo,
+        sistemaAtual,
+        historico: e.historico,
+        novas: e.novas,
+        maxRodadas: MAX_RODADAS,
+        deveParar: () => Boolean(transferir) || parar,
+        executar: async (nome, argumentos) => {
+          const { saida, efeito } = await executarFerramenta(nome, argumentos, contexto);
           if (efeito.avancou) estado.msgs_sem_avanco = 0;
           if (efeito.transferir) transferir = efeito.transferir;
           if (efeito.parar) parar = true;
-          mensagens.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify(saida).slice(0, 12000) });
-        }
-        if (transferir || parar) break;
-      }
+          return saida;
+        },
+      });
+      somar(uso, r.uso, modelo);
+      let final = transferir || parar ? "" : removerRepeticao(r.texto);
 
       if (parar) {
         estado.optout = true;
@@ -178,11 +172,15 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
         let semBase = valoresSemBase(final, estado.valores_do_crm);
         if (semBase.length) {
           rastro.push({ tipo: "filtro", nome: "Valor sem base no CRM", detalhe: `A resposta citava ${semBase.map((v) => `R$ ${v.toFixed(2)}`).join(", ")}, que não veio do sistema. Pedido para reescrever.`, resultado: final });
-          mensagens.push({ role: "assistant", content: final });
-          mensagens.push({ role: "system", content: "ATENÇÃO: sua resposta citou valores em reais que NÃO vieram do sistema. Reescreva a mesma resposta SEM citar nenhum valor em dinheiro." });
-          const r2 = await chamar({ chave: e.chaveIA, modelo, mensagens });
+          const r2 = await ia.reescrever({
+            sistemaFixo,
+            sistemaAtual,
+            historico: e.historico,
+            rascunho: final,
+            instrucao: "ATENÇÃO: sua resposta citou valores em reais que NÃO vieram do sistema. Reescreva a mesma resposta SEM citar nenhum valor em dinheiro.",
+          });
           somar(uso, r2.uso, modelo);
-          final = (r2.mensagem.content ?? "").trim();
+          final = r2.texto.trim();
           semBase = valoresSemBase(final, estado.valores_do_crm);
           if (semBase.length) {
             rastro.push({ tipo: "filtro", nome: "Valor sem base no CRM (de novo)", detalhe: "A IA insistiu em citar valor. A resposta foi bloqueada e a conversa passou para a equipe." });
@@ -240,11 +238,11 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
   return { respostas, estado, rastro, uso };
 }
 
-function somar(uso: UsoModelo, u: { entrada: number; cache: number; saida: number }, modelo: string) {
+function somar(uso: UsoModelo, u: UsoIA, modelo: string) {
   uso.entrada += u.entrada;
   uso.cache += u.cache;
   uso.saida += u.saida;
-  uso.chamadas += 1;
+  uso.chamadas += u.chamadas;
   const c = custoUsd(modelo, uso);
   uso.custo_usd = c;
 }

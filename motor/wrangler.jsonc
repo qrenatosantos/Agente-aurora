@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aurora-motor",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "Conversa", "class_name": "Conversa" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversa"] }],
+  "observability": { "enabled": true }
+}

@@ -10,6 +10,11 @@
  * - Cada situação é conferida por regras objetivas (sem "achismo"). O relatório sai em
  *   avaliacao/RESULTADO.md.
  * - Precisa de um CRM com a data 2027-06-12 bloqueada na agenda (situação "data lotada").
+ *
+ * Com o MOTOR (Cloudflare Worker + Think), as mesmas situações passam pelo motor de verdade:
+ *   MOTOR_SEGREDO=... CRM_URL=... CRM_CHAVE=... OPENAI_CHAVE=... \
+ *   node avaliacao/avaliar.ts gpt-6-luna --rodadas 3 --motor http://localhost:8787 [--laco proprio]
+ * O relatório sai em avaliacao/RESULTADO-MOTOR.md.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -167,7 +172,22 @@ const SITUACOES: Situacao[] = [
 ];
 
 // ------------------------------------------------------------ execução
-async function conversar(s: Situacao, modelo: string, base: { cfg: ConfigAgente; conhecimento: ItemConhecimento[]; crm: ClienteCrm; chave: string }): Promise<Conversa> {
+type Base = { cfg: ConfigAgente; conhecimento: ItemConhecimento[]; crm: ClienteCrm; chave: string; motor?: { url: string; segredo: string; laco: string }; crmUrl: string; crmChave: string };
+
+/** Um turno no motor (Worker + Think), pela rota interna. */
+async function turnoNoMotor(base: Base, conversa: string, corpo: Record<string, unknown>, rota = "turno") {
+  const m = base.motor!;
+  const r = await fetch(`${m.url}/interno/${rota}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${m.segredo}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ conversa, ...corpo }),
+  });
+  if (!r.ok) throw new Error(`motor respondeu ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+
+async function conversar(s: Situacao, modelo: string, base: Base): Promise<Conversa> {
+  if (base.motor) return conversarNoMotor(s, modelo, base);
   let estado = estadoInicial();
   const historico: MensagemConversa[] = [];
   const conversa: Conversa = { respostas: [], estado, rastros: [], custo: 0, ms: 0 };
@@ -187,24 +207,67 @@ async function conversar(s: Situacao, modelo: string, base: { cfg: ConfigAgente;
   return conversa;
 }
 
+async function conversarNoMotor(s: Situacao, modelo: string, base: Base): Promise<Conversa> {
+  const id = `bateria:${s.id}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const conversa: Conversa = { respostas: [], estado: estadoInicial(), rastros: [], custo: 0, ms: 0 };
+  try {
+    for (const fala of s.falas) {
+      const t0 = Date.now();
+      const r = (await turnoNoMotor(base, id, {
+        novas: [fala],
+        modo: "simulacao",
+        cfg: base.cfg,
+        conhecimento: base.conhecimento,
+        crm: { endereco: base.crmUrl, chave: base.crmChave },
+        chaveIA: base.chave,
+        modelo,
+        laco: base.motor!.laco,
+      })) as Awaited<ReturnType<typeof processarTurno>>;
+      conversa.ms += Date.now() - t0;
+      conversa.estado = r.estado;
+      conversa.respostas.push(r.respostas);
+      conversa.custo += r.uso.custo_usd ?? 0;
+      conversa.rastros.push(r.rastro.map((p) => p.nome).join(", "));
+      if (!r.respostas.length || r.estado.atendimento === "humano" || r.estado.optout) break;
+    }
+  } finally {
+    await turnoNoMotor(base, id, {}, "apagar").catch(() => undefined);
+  }
+  return conversa;
+}
+
 async function principal() {
   const args = process.argv.slice(2);
   const iRod = args.indexOf("--rodadas");
   const rodadas = iRod >= 0 ? Number(args[iRod + 1]) : 2;
-  const modelos = args.filter((a, i) => !a.startsWith("--") && (iRod < 0 || i !== iRod + 1));
+  const opcao = (nome: string) => (args.indexOf(nome) >= 0 ? args[args.indexOf(nome) + 1] : undefined);
+  const valoresDeOpcao = new Set(["--rodadas", "--motor", "--laco", "--so"].map((o) => args.indexOf(o) + 1).filter((i) => i > 0));
+  const modelos = args.filter((a, i) => !a.startsWith("--") && !valoresDeOpcao.has(i));
+  const urlMotor = opcao("--motor");
+  const laco = opcao("--laco") ?? "think";
   if (!modelos.length || !process.env.CRM_URL || !process.env.CRM_CHAVE) {
     console.error("Uso: CRM_URL=... CRM_CHAVE=aur_... OPENAI_CHAVE=sk-... node avaliacao/avaliar.ts <modelo> [<modelo>...] [--rodadas N]");
     process.exit(2);
   }
   const { cfg, conhecimento } = await configInicial();
-  const base = { cfg, conhecimento, crm: new ClienteCrm(process.env.CRM_URL, process.env.CRM_CHAVE), chave: process.env.OPENAI_CHAVE ?? "sk-sem-chave" };
+  const base: Base = {
+    cfg,
+    conhecimento,
+    crm: new ClienteCrm(process.env.CRM_URL, process.env.CRM_CHAVE),
+    crmUrl: process.env.CRM_URL,
+    crmChave: process.env.CRM_CHAVE,
+    chave: process.env.OPENAI_CHAVE ?? "sk-sem-chave",
+    motor: urlMotor ? { url: urlMotor.replace(/\/+$/, ""), segredo: process.env.MOTOR_SEGREDO ?? "", laco } : undefined,
+  };
+  const onde = base.motor ? `MOTOR (Cloudflare Worker, laço ${laco === "proprio" ? "próprio" : "do Think"})` : "núcleo direto (laço próprio)";
 
   const linhas: string[] = [];
   const detalhes: string[] = [];
   const placar: Record<string, { ok: number; total: number; custo: number; ms: number; turnos: number }> = {};
   for (const m of modelos) placar[m] = { ok: 0, total: 0, custo: 0, ms: 0, turnos: 0 };
 
-  for (const s of SITUACOES) {
+  const so = opcao("--so")?.split(",");
+  for (const s of SITUACOES.filter((x) => !so || so.includes(x.id))) {
     const celulas: string[] = [];
     for (const m of modelos) {
       const res: string[] = [];
@@ -241,7 +304,7 @@ async function principal() {
     .join("\n");
   const relatorio = `# Bateria de regras com a IA de verdade
 
-Gerado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} por \`node avaliacao/avaliar.ts\`.
+Gerado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} por \`node avaliacao/avaliar.ts\`. Onde rodou: **${onde}**.
 Instruções e conhecimento: os iniciais (supabase/dados-iniciais.sql). CRM: cópia local, sem regra de preço aprovada,
 com 12/06/2027 bloqueado. Modo simulação (lê o CRM, não grava). ${rodadas} rodada(s) por situação.
 
@@ -260,8 +323,9 @@ ${linhas.join("\n")}
 ## Conversas
 
 ${detalhes.join("\n")}`;
-  writeFileSync(join(raiz, "avaliacao/RESULTADO.md"), relatorio);
-  console.log("\n" + resumo + "\n\nRelatório: avaliacao/RESULTADO.md");
+  const arquivo = base.motor ? "avaliacao/RESULTADO-MOTOR.md" : "avaliacao/RESULTADO.md";
+  writeFileSync(join(raiz, arquivo), relatorio);
+  console.log("\n" + resumo + `\n\nRelatório: ${arquivo}`);
 }
 
 principal().catch((e) => {

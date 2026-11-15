@@ -1,0 +1,25 @@
+{
+  "name": "aurora-motor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Motor do agente (Cloudflare Worker + Think): recebe as mensagens, aplica as regras do núcleo e responde.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "tamanho": "wrangler deploy --dry-run --outdir dist",
+    "tipos": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.118",
+    "@cloudflare/think": "0.23.0",
+    "agents": "0.33.0",
+    "ai": "7.0.173",
+    "just-bash": "3.6.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261115.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.162.0"
+  }
+}
