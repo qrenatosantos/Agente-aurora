@@ -51,6 +51,15 @@ Quero que seja **fácil de configurar, manter e replicar para outros clientes**,
    5. piloto.
 3. Commit e push a cada etapa.
 
+## Plugins da Cloudflare instalados
+- **Skills e documentação da Cloudflare:** consulte antes de codar, principalmente `agents-sdk`, `durable-objects`,
+  `workers-best-practices`, `wrangler`/`cf-cli` e `workers-development`. Para o painel em Next.js, consulte
+  `nextjs-on-cloudflare` (ela compara vinext × OpenNext; hoje o painel usa OpenNext).
+- **Conexão com a minha conta Cloudflare:** use para consultar, publicar e ver logs.
+  - **Antes de criar, apagar ou alterar qualquer recurso da conta** (Worker, banco, domínio, segredo), me diga o
+    que vai fazer e espere eu confirmar.
+  - Nada pago sem me dizer o custo antes.
+
 ## Regras
 - **Nada inventado:** preço, data, disponibilidade e condição só do CRM.
 - Não contrate serviços pagos sem me dizer o custo antes.
