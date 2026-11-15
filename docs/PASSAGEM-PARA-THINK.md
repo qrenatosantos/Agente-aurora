@@ -83,7 +83,7 @@ Leia junto: [`PLANO.md`](PLANO.md) (decisões aprovadas), [`TESTES.md`](TESTES.m
 
 | Fase | Entrega | Observação com o Think |
 |---|---|---|
-| 3 | WhatsApp com o número de teste | **O Think não tem "messenger" de WhatsApp** (só Telegram até onde a documentação mostra): escrever o adaptador. Ver a seção 5. |
+| 3 | WhatsApp com o número de teste | Os exemplos usam o **Chat SDK** com Telegram, mas existe o adaptador **`@chat-adapter/whatsapp`** (Cloud API, botões e modelos; v4.45.0, de 13/11/2026). Avaliar usar no lugar do Telegram. Ver a seção 5. |
 | 4 | Caixa de entrada, assumir e responder pelo painel, transferências, **avisos do CRM** (webhook HMAC + fila `GET /eventos`), proposta aprovada → enviar link (modelo da Meta fora da janela de 24 h) | Os avisos do CRM podem chegar num endpoint do Worker, que acorda a conversa certa. |
 | 5 | Retomadas (proposta não aberta em 3 dias; parado 2 dias, 1 vez), modelos da Meta, correções, métricas, custo, apagar dados (LGPD) | Retomadas = tarefas agendadas do Think (confirmar). |
 | 6 | Piloto acompanhado com o número real; guias de publicação e de uso | — |
@@ -98,8 +98,10 @@ reproduzido na cópia local), **C3** ("não contatar" no contato), C4 (foto dos 
 1. **Ele é experimental (prévia).** A própria Cloudflare diz que partes da API podem mudar. Para o primeiro cliente:
    fixar a versão do pacote e ter testes.
 2. **WhatsApp:**
-   - não há messenger pronto: implementar a entrada (webhook da Meta com verificação `X-Hub-Signature-256` e
-     resposta rápida) e o envio (Graph API `/{phone_number_id}/messages`);
+   - os exemplos do Think usam o **Chat SDK** (`@chat-adapter/telegram`), e existe o **`@chat-adapter/whatsapp`**:
+     avaliar trocar um pelo outro (modelo: `examples/chat-sdk-messenger` do repositório `cloudflare/agents`);
+   - conferir se o adaptador verifica `X-Hub-Signature-256`, responde rápido à Meta e envia modelos;
+   - se não servir, escrever a entrada (webhook) e o envio (Graph API `/{phone_number_id}/messages`) à mão;
    - incluir "digitando" e o agrupamento de mensagens seguidas (~8 s, configurável no painel);
    - não processar a mesma mensagem duas vezes (pelo id da mensagem);
    - áudio: baixar a mídia e transcrever (`gpt-transcribe`).
@@ -150,3 +152,38 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
 2. Ter uma **conta na Cloudflare** e uma chave da API (ou o plugin) na nova sessão.
 3. Levar os **pedidos ao CRM** para a sessão do CRM.
 4. Verificação da empresa na Meta e CNAE (contador), em paralelo.
+
+---
+
+## 8. Modelos prontos da Cloudflare que encaixam (repositório `cloudflare/agents`, pasta `examples/`)
+
+| Exemplo | Por que interessa |
+|---|---|
+| `chat-sdk-messenger` | Separa a entrada do mensageiro (webhook), o estado (filas, travas) e a IA (`ConversationAgent extends Think`, um por conversa). Trocar o Telegram pelo `@chat-adapter/whatsapp`. |
+| `think-chat-sdk` | O jeito "nativo" do Think: `getMessengers()` e um painelzinho para inspecionar a conversa. |
+| `think-workflows` | Passo de IA durável + **espera aprovação humana** + efeito garantido por código. Combina com "a proposta só sai depois que o André aprova". |
+| `github-webhook` | Avisos assinados com HMAC, um agente por entidade e eventos guardados. Modelo para os **avisos do CRM** (`X-Aurora-Assinatura`). |
+| `guides/human-in-the-loop` | Ferramentas que pedem aprovação antes de executar (`needsApproval`). |
+
+## 9. Meta do Renato: fácil de configurar, manter e replicar para outros clientes
+
+Direção combinada: **um código-molde, uma instalação por cliente**.
+
+1. **Nada do cliente no código.** Nome, marca (cores, logo), instruções, conhecimento, endereço e chave do CRM, número de
+   WhatsApp e modelo de IA ficam na configuração (banco e segredos).
+   - Hoje ainda estão fixos "Aurora": a marca do painel (`painel/lib/marca-servidor.ts`, `public/aurora/`) e os
+     dados iniciais (`supabase/dados-iniciais.sql`). Separar em "dados de exemplo" e "dados do cliente".
+2. **Cada cliente com sua instalação isolada** (Worker, banco e segredos próprios): LGPD, segurança e custo por cliente.
+3. **Cliente novo em um comando ou botão:**
+   - um script ou assistente cria o Worker e o banco, aplica o schema e pede os segredos (pelo formulário seguro);
+   - o cliente termina no painel, em 4 passos: marca, CRM, WhatsApp (botão "Conectar" = Cadastro incorporado do app
+     de Provedor de Tecnologia do Renato) e IA.
+4. **Manutenção única:**
+   - corrigir no molde;
+   - uma automação (GitHub Actions) roda `test:banco`, `test:nucleo` e a bateria com IA;
+   - só se passar, publica em todos os clientes (lista de clientes num arquivo de configuração).
+5. **Conector de CRM separado**: o mesmo kit de CRM reaproveita tudo; um CRM diferente troca só essa peça.
+6. **Decidir no novo chat:**
+   - banco no **D1** (tudo na Cloudflare, uma conta) ou continuar no **Supabase** (já pronto e testado);
+   - a chave da OpenAI fica com o Renato (ele repassa o custo, e o painel já mede o gasto) ou com cada cliente;
+   - quando passar de ~15–20 clientes, avaliar uma instalação só para todos (multi-cliente).

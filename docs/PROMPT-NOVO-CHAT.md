@@ -27,11 +27,18 @@ Construir o "motor" do agente com o **Cloudflare Think** (Agents SDK), **reaprov
 - o painel (configuração, conhecimento, simulador, integrações, emergência).
 
 O Think substitui o laço da IA, a memória e a fila por conversa. As regras **não podem** passar a depender só da IA.
+A IA continua sendo a da OpenAI (`gpt-6-luna`), com a minha chave.
+
+Quero que seja **fácil de configurar, manter e replicar para outros clientes**, cada um em sua própria instalação
+(veja a seção 9 da passagem). Olhe os exemplos do repositório `cloudflare/agents` citados na seção 8, em especial o
+`chat-sdk-messenger` com o adaptador `@chat-adapter/whatsapp`.
 
 ## Ordem de trabalho
 1. **Primeiro, só diagnóstico e plano** (sem código):
    - como o Think vai receber as regras "antes" e "depois" da IA;
-   - como fazer o WhatsApp, que não tem messenger pronto no Think;
+   - como ligar o WhatsApp (avaliar o `@chat-adapter/whatsapp` do Chat SDK);
+   - como vai ficar o molde para replicar para outros clientes (instalação por cliente, assistente de novo cliente,
+     publicação automática com testes) e se o banco fica no D1 ou no Supabase;
    - como o painel e o simulador conversam com o agente Think;
    - tamanho do Worker e custos;
    - riscos de ele ser experimental.
