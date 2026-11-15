@@ -158,7 +158,13 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
   - Identificação da conta (WABA ID): `972377628902303`
 - A tela da Meta mostra a Graph API **v25.0**. O padrão do painel está em `v23.0` (`integracoes.whatsapp_graph_versao`):
   usar **v25.0**.
-- Segredos (token permanente do usuário do sistema e chave secreta do app): **só pelo formulário seguro**.
+- O envio do "Hello World" para o WhatsApp do Renato **funcionou** (16/11/2026).
+- Token permanente (usuário do sistema "Agente SDR", com controle total do app e da Test Messaging Account,
+  permissões `whatsapp_business_messaging`, `whatsapp_business_management` e `business_management`, validade "Nunca")
+  e chave secreta do app: o Renato guarda. A sessão nova pede **pelo formulário seguro** e grava como segredo da
+  Cloudflare (`wrangler secret put`). Nunca no chat.
+- No portfólio RQ Digital existe outra conta de WhatsApp, "unknown" (349979584854582), que **não** foi dada ao app.
+  Perguntar ao Renato o que é antes de usar.
 
 ## 8. O que o Renato ainda precisa fazer
 

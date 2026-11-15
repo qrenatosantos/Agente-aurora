@@ -1,5 +1,8 @@
 # Prompt para a nova sessão (agente com Cloudflare Think)
 
+**Abra a sessão no ambiente "Agente-aurora"**: a chave da OpenAI já está guardada nele (segredo de rede de
+`api.openai.com`).
+
 Cole tudo abaixo da linha numa sessão nova do Claude Code com o repositório `qrenatosantos/Agente-aurora`
 (ramo `claude/new-session-vdr8pz`, ou o `main` se ele já tiver sido juntado). Se a sessão tiver o plugin da
 Cloudflare, melhor. Se não, ela pede uma chave da API da Cloudflare pelo formulário seguro.
