@@ -12,6 +12,14 @@
   (fase 2: 2,57 MB). Prefira `fetch` a SDKs grandes.
 - O agente mora em `painel/lib/nucleo/` (TS puro, imports relativos com `.ts`, sem Next): o motor do WhatsApp usa o mesmo.
   Regra nova do agente = teste em `nucleo.test.ts`; mudança de comportamento = rodar `avaliacao/avaliar.ts`.
+- **Regras só em `processarTurno` (agente.ts).** O laço da IA é trocável (`MotorIA` em `motor-ia.ts`): `motorOpenAI`
+  (laço próprio, plano B) ou o Cloudflare Think (`motor/src/conversa.ts`). Nunca ponha regra dentro do laço.
+- `motor/` = Worker do agente (Think, experimental): versões **fixas** no `package.json`. Atualizar o Think só com
+  `npm run test:nucleo` + bateria no motor (`--motor`) dando 45/45. Tamanho: `cd motor && npm run tamanho` (1,32 MB).
+- O motor não expõe WebSocket nem `routeAgentRequest`: só as rotas `/interno/*` com `SEGREDO_INTERNO`.
+- Decisão do Renato (15/11/2026): **tudo na Cloudflare** (D1 + Cloudflare Access). Plano em `docs/PLANO-THINK.md`.
 - Nas sessões na nuvem, o Node só sai pela rede com `NODE_USE_ENV_PROXY=1` (no Cloudflare não precisa).
+  O `wrangler dev` não passa pelo proxy que injeta a chave da OpenAI: rode `scripts/repassar-openai.mjs` e use
+  `OPENAI_BASE_URL=http://127.0.0.1:8789` no `motor/.dev.vars` (só testes).
 - Antes de entregar: `npm run test:banco` e `npm run test:nucleo` (raiz), `npx tsc --noEmit`, `npm run lint`, `npm run build` (painel)
   e atualize `docs/TESTES.md`.

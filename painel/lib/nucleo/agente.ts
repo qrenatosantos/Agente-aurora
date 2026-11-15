@@ -12,7 +12,7 @@
  * Erro técnico (IA ou CRM fora do ar) → mensagem de erro e transferência.
  */
 import type { ClienteCrm, CondicoesCrm, NegocioCrm, PacoteCrm } from "./crm.ts";
-import { DEFINICOES, executarFerramenta, type ContextoFerramentas, type Modo } from "./ferramentas.ts";
+import { executarFerramenta, type ContextoFerramentas, type Modo } from "./ferramentas.ts";
 import { mensagemTransferencia } from "./horario.ts";
 import { motorOpenAI, type MotorIA, type UsoIA } from "./motor-ia.ts";
 import { chamarModelo, custoUsd, ErroIA } from "./openai.ts";

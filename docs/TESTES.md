@@ -75,6 +75,25 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 1 (Think): o motor na Cloudflare, com a mesma bateria (15/11/2026)
+
+Ambiente: o **motor** (`motor/`, Cloudflare Worker + Think 0.23.0) rodando localmente com `wrangler dev`; a cópia local
+do CRM (código do repositório do CRM, sem regra de preço aprovada e com 12/06/2027 bloqueado); a OpenAI de verdade.
+O CRM real não foi tocado.
+
+| Teste | Resultado |
+|---|---|
+| **Bateria com IA de verdade no motor** (`--motor`, laço do Think, `gpt-6-luna`, 15 situações × 3) | **45/45** (igual ao laço antigo). US$ 0,00098 por resposta, 2,0 s. Relatório: `avaliacao/RESULTADO-MOTOR.md` |
+| Núcleo sem IA (`npm run test:nucleo`), depois de separar o laço da IA (`MotorIA`) | 27/27 |
+| Banco do painel (`npm run test:banco`) | 32/32 |
+| Painel: `tsc`, `lint` e `build` | Passaram |
+| Tamanho do motor (`npm run tamanho`) | **1,32 MB** compactado (limite grátis: 3 MB) |
+| Memória da conversa no Durable Object | Conferida pela situação "atendimento completo" (4 mensagens seguidas) |
+| Plano B (laço próprio dentro do motor, `--laco proprio`) | Conferido com uma conversa de teste |
+
+Observação: o custo por resposta ficou cerca de 20% maior que no laço antigo (US$ 0,00081). Ainda é menos de
+US$ 1 a cada mil respostas.
+
 ## Fase 2: agente no Simulador, falando com o CRM (15/11/2026)
 
 Ambiente de teste: uma **cópia local do CRM** (código do zip, com os pacotes e drinks reais da Aurora, sem regra de preço aprovada e com o dia 12/06/2027 bloqueado na agenda) e a **OpenAI de verdade**, com a chave do Renato. O CRM real não foi tocado.
