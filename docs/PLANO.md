@@ -6,7 +6,7 @@ Versão 1, de 14/11/2026. **Aprovado pelo Renato em 15/11/2026 ("sim pra tudo").
 
 - **Número:** teste com o número grátis da Meta → **número novo** no piloto → decidir depois sobre a coexistência.
 - **Pedidos ao CRM:** C1, C2, C3 e S1 aprovados. C4 é opcional. Texto pronto em [`PEDIDOS-CRM.md`](PEDIDOS-CRM.md).
-- **Modelo:** GPT-6.1 Terra no início. O Luna será comparado na fase 2. Limite de **US$ 30/mês** no piloto.
+- **Modelo:** o Renato pediu modelos baratos (sugestão: gpt-4o-mini). Na bateria da fase 2, o **gpt-6-luna** acertou 45/45 e o gpt-4o-mini 40/45, então o padrão ficou o **gpt-6-luna**. Troca com um clique em Integrações. Limite de **US$ 30/mês** no piloto.
 - **Supabase:** 2º projeto grátis na conta da Aurora.
 - **Valores sugeridos que ficaram valendo** (o André pode mudar no painel):
   - **Uso do painel:** só o André como gestor por enquanto.

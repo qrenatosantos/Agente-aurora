@@ -40,6 +40,8 @@ Regra: DDD + 8 dígitos começando por 6, 7, 8 ou 9 é celular → comparar como
 
 **Por quê:** a API do WhatsApp entrega alguns números brasileiros antigos **sem o 9**. Sem isso, o mesmo cliente pode virar dois contatos e dois pedidos.
 
+**Confirmado num teste com a cópia do CRM:** `GET /negocios?telefone=3400001111` não acha o contato `34900001111`.
+
 **Enquanto não existir:** o agente busca as duas versões do número antes de criar qualquer coisa. Isso resolve no agente, mas o CRM continua sujeito ao problema em outros caminhos, como o cadastro manual.
 
 ## C3. "Não quer receber mensagens" no contato (prioridade baixa)

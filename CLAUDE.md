@@ -9,6 +9,9 @@
 - Regra importante mora no banco (`supabase/schema.sql`). Mudou uma regra? Ajuste `supabase/testes/regras.test.mjs`.
 - Sem `service_role` do Supabase. Chaves de integrações: só cifradas (`painel/lib/cripto.ts`).
 - Limite do Cloudflare grátis: 3 MB compactados. Confira com `npx opennextjs-cloudflare build && npx wrangler deploy --dry-run`
-  (fase 1: 2,49 MB). Prefira `fetch` a SDKs grandes.
-- Antes de entregar: `npm run test:banco` (raiz), `npx tsc --noEmit`, `npm run lint`, `npm run build` (painel)
+  (fase 2: 2,57 MB). Prefira `fetch` a SDKs grandes.
+- O agente mora em `painel/lib/nucleo/` (TS puro, imports relativos com `.ts`, sem Next): o motor do WhatsApp usa o mesmo.
+  Regra nova do agente = teste em `nucleo.test.ts`; mudança de comportamento = rodar `avaliacao/avaliar.ts`.
+- Nas sessões na nuvem, o Node só sai pela rede com `NODE_USE_ENV_PROXY=1` (no Cloudflare não precisa).
+- Antes de entregar: `npm run test:banco` e `npm run test:nucleo` (raiz), `npx tsc --noEmit`, `npm run lint`, `npm run build` (painel)
   e atualize `docs/TESTES.md`.
