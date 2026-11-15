@@ -565,7 +565,7 @@ create table if not exists public.integracoes (
   whatsapp_phone_number_id text check (whatsapp_phone_number_id is null or whatsapp_phone_number_id ~ '^\d{5,30}$'),
   whatsapp_waba_id         text check (whatsapp_waba_id is null or whatsapp_waba_id ~ '^\d{5,30}$'),
   whatsapp_numero          text check (whatsapp_numero is null or char_length(whatsapp_numero) <= 30),
-  whatsapp_graph_versao    text not null default 'v23.0' check (whatsapp_graph_versao ~ '^v\d{1,3}\.\d$'),
+  whatsapp_graph_versao    text not null default 'v25.0' check (whatsapp_graph_versao ~ '^v\d{1,3}\.\d$'),
   -- resultado do último "testar conexão" de cada serviço: {ok, em, mensagem, detalhes}
   teste_crm                jsonb,
   teste_openai             jsonb,

@@ -148,7 +148,19 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
 
 ---
 
-## 7. O que o Renato ainda precisa fazer
+## 7. Meta: o que já existe (16/11/2026)
+
+- Conta de desenvolvedor criada. App **"SDR Aurora"** com o caso de uso "Conectar-se com os clientes pelo WhatsApp",
+  no portfólio empresarial **"RQ Digital"** (do Renato). Renomear o app para a marca do Renato quando for atender
+  outros clientes.
+- **Número de teste:** +1 (555) 142-3124
+  - Phone Number ID: `1482095894980440`
+  - Identificação da conta (WABA ID): `972377628902303`
+- A tela da Meta mostra a Graph API **v25.0**. O padrão do painel está em `v23.0` (`integracoes.whatsapp_graph_versao`):
+  usar **v25.0**.
+- Segredos (token permanente do usuário do sistema e chave secreta do app): **só pelo formulário seguro**.
+
+## 8. O que o Renato ainda precisa fazer
 
 1. Criar o **app na Meta**, com a conta dele (guia na conversa anterior): pegar o *Phone number ID* e o *WABA ID*,
    cadastrar o próprio WhatsApp como destinatário de teste, gerar o **token permanente** (usuário do sistema) e a
@@ -159,7 +171,7 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
 
 ---
 
-## 8. Modelos prontos da Cloudflare que encaixam (repositório `cloudflare/agents`, pasta `examples/`)
+## 9. Modelos prontos da Cloudflare que encaixam (repositório `cloudflare/agents`, pasta `examples/`)
 
 | Exemplo | Por que interessa |
 |---|---|
@@ -169,7 +181,7 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
 | `github-webhook` | Avisos assinados com HMAC, um agente por entidade e eventos guardados. Modelo para os **avisos do CRM** (`X-Aurora-Assinatura`). |
 | `guides/human-in-the-loop` | Ferramentas que pedem aprovação antes de executar (`needsApproval`). |
 
-## 9. Meta do Renato: fácil de configurar, manter e replicar para outros clientes
+## 10. Meta do Renato: fácil de configurar, manter e replicar para outros clientes
 
 Direção combinada: **um código-molde, uma instalação por cliente**.
 

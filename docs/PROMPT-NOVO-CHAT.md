@@ -30,7 +30,7 @@ O Think substitui o laço da IA, a memória e a fila por conversa. As regras **n
 A IA continua sendo a da OpenAI (`gpt-6-luna`), com a minha chave.
 
 Quero que seja **fácil de configurar, manter e replicar para outros clientes**, cada um em sua própria instalação
-(veja a seção 9 da passagem). Olhe os exemplos do repositório `cloudflare/agents` citados na seção 8, em especial o
+(veja a seção 10 da passagem). Olhe os exemplos do repositório `cloudflare/agents` citados na seção 9, em especial o
 `chat-sdk-messenger` com o adaptador `@chat-adapter/whatsapp`.
 
 ## Ordem de trabalho
