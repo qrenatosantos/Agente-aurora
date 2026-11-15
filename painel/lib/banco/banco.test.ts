@@ -12,6 +12,7 @@ import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { guardarAvisoInterno, listarAvisos } from "./avisos.ts";
 import type { Ator } from "./base.ts";
 import { lerConfig, listarVersoes, restaurarVersao, salvarConfig } from "./config.ts";
 import { alertasTexto, alterarConhecimento, excluirConhecimento, incluirConhecimento, listarConhecimento } from "./conhecimento.ts";
@@ -340,5 +341,18 @@ describe("registro e visitante", () => {
     await recusa(lerConfig(db, visitante), /Sem permissão/);
     await recusa(listarRegistro(db, visitante), /Só o gestor/);
     assert.equal(await atorDaSessao(db, "codigo-inventado-que-nao-existe-123"), null);
+  });
+});
+
+describe("avisos do CRM", () => {
+  test("o mesmo aviso (mesmo id) entra uma vez só; só o gestor lê", async () => {
+    const aviso = { id: 42, tipo: "proposta.aprovada", negocio_id: "n1", proposta_id: "p1", dados: { numero: "PROP-1" } };
+    assert.equal(await guardarAvisoInterno(db, aviso), true);
+    assert.equal(await guardarAvisoInterno(db, aviso), false);
+    const lista = await listarAvisos(db, andre);
+    assert.equal(lista.filter((a) => a.id === 42).length, 1);
+    assert.equal(lista[0].dados.numero, "PROP-1");
+    await recusa(listarAvisos(db, bruna), /Só o gestor/);
+    await assert.rejects(guardarAvisoInterno(db, { id: 0, tipo: "" }), /sem id/);
   });
 });

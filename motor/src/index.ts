@@ -5,6 +5,10 @@
  *  GET  /whatsapp/webhook   verificação da Meta (hub.verify_token = o token gerado no painel)
  *  POST /whatsapp/webhook   mensagens recebidas; só aceita com a assinatura X-Hub-Signature-256 certa
  *
+ * Avisos do CRM (públicos mas conferidos):
+ *  POST /crm/avisos         só aceita com X-Aurora-Assinatura certa (segredo dos avisos, cadastrado no painel);
+ *                           guarda o aviso (sem duplicar) e responde 200 na hora. O processamento vem depois.
+ *
  * Rotas internas:
  *  POST /interno/turno   { conversa, ...EntradaConversa } → ResultadoTurno   (simulador do painel e bateria)
  *  POST /interno/apagar  { conversa }                     → apaga a conversa
@@ -15,7 +19,9 @@
  * (nada de WebSocket público). Só as rotas acima falam com elas.
  */
 import { getAgentByName } from "agents";
-import { segredosDoWebhook } from "./ambiente.ts";
+import { guardarAvisoInterno } from "../../painel/lib/banco/avisos.ts";
+import { segredoDosAvisos, segredosDoWebhook } from "./ambiente.ts";
+import { avisoVerdadeiro } from "./crm-avisos.ts";
 import { Conversa, type EntradaConversa } from "./conversa.ts";
 import type { Env } from "./env.ts";
 import { assinaturaValida, lerMensagens } from "./whatsapp.ts";
@@ -58,6 +64,22 @@ async function webhookWhatsApp(req: Request, env: Env): Promise<Response> {
   return new Response("ok");
 }
 
+/** Avisos do CRM: confere a assinatura, guarda e responde rápido (o CRM espera até 8 s). */
+async function avisoDoCrm(req: Request, env: Env): Promise<Response> {
+  if (req.method !== "POST") return new Response("Use POST", { status: 405 });
+  const corpo = await req.text();
+  if (!(await avisoVerdadeiro(corpo, req.headers.get("x-aurora-assinatura"), await segredoDosAvisos(env)))) return new Response("Assinatura inválida", { status: 401 });
+  let aviso: { id?: unknown; tipo?: unknown };
+  try {
+    aviso = JSON.parse(corpo);
+  } catch {
+    return new Response("JSON inválido", { status: 400 });
+  }
+  if (!Number.isInteger(aviso.id) || typeof aviso.tipo !== "string") return new Response("Aviso sem id ou tipo", { status: 400 });
+  await guardarAvisoInterno(env.DB, aviso as Parameters<typeof guardarAvisoInterno>[1]);
+  return new Response("ok");
+}
+
 async function iguaisSeguro(a: string, b: string) {
   const [x, y] = await Promise.all([a, b].map(async (t) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))));
   return crypto.subtle.timingSafeEqual(x, y);
@@ -68,6 +90,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === "/") return new Response("Motor do agente: ok");
     if (url.pathname === "/whatsapp/webhook") return webhookWhatsApp(req, env);
+    if (url.pathname === "/crm/avisos") return avisoDoCrm(req, env);
     if (!url.pathname.startsWith("/interno/")) return new Response("Não encontrado", { status: 404 });
     if (req.method !== "POST") return new Response("Use POST", { status: 405 });
     if (!(await autorizado(req, env))) return new Response("Não autorizado", { status: 401 });

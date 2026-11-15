@@ -35,6 +35,9 @@ export async function segredosDoWebhook(env: Env) {
   return { appSecret, verifyToken, phoneNumberId: integ.whatsapp_phone_number_id };
 }
 
+/** Segredo dos avisos do CRM (cadastrado no painel, em Integrações ▸ CRM). */
+export const segredoDosAvisos = (env: Env) => segredo(env, "crm_segredo_avisos");
+
 export async function carregarAmbiente(env: Env): Promise<Ambiente> {
   const db = env.DB;
   const [c, conhecimento, op, integ, gasto, chaveCrm, chaveIA, token, appSecret] = await Promise.all([
