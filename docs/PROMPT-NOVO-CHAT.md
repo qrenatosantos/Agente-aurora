@@ -1,0 +1,52 @@
+# Prompt para a nova sessão (agente com Cloudflare Think)
+
+Cole tudo abaixo da linha numa sessão nova do Claude Code com o repositório `qrenatosantos/Agente-aurora`
+(ramo `claude/new-session-vdr8pz`, ou o `main` se ele já tiver sido juntado). Se a sessão tiver o plugin da
+Cloudflare, melhor. Se não, ela pede uma chave da API da Cloudflare pelo formulário seguro.
+
+---
+
+Olá! Sou o Renato. **Não sou programador**: fale comigo em português, de forma simples, com resumos curtos.
+Quando precisar de uma decisão minha, explique as opções e diga qual recomenda.
+
+## Contexto
+Estou construindo o **agente SDR da Aurora Bartenders** (atendimento automático no WhatsApp, ligado ao CRM da Aurora).
+Uma sessão anterior já fez muita coisa neste repositório. **Leia antes de qualquer coisa**:
+1. `docs/PASSAGEM-PARA-THINK.md`: o resumo de tudo e o que reaproveitar;
+2. `docs/PLANO.md`: as decisões aprovadas;
+3. `docs/TESTES.md` e `avaliacao/RESULTADO.md`: o que já foi provado;
+4. `docs/PEDIDOS-CRM.md`: o que falta no CRM;
+5. `CLAUDE.md`: as regras do projeto.
+
+O CRM fica em `qrenatosantos/Aurora`. **Não altere.** Use só a API dele (`docs/API-DO-AGENTE.md` daquele repositório).
+
+## O que eu quero agora
+Construir o "motor" do agente com o **Cloudflare Think** (Agents SDK), **reaproveitando**:
+- o núcleo (`painel/lib/nucleo/`): ferramentas, instruções, regras fixas e regras por código antes e depois da IA;
+- os testes e a bateria com IA de verdade;
+- o painel (configuração, conhecimento, simulador, integrações, emergência).
+
+O Think substitui o laço da IA, a memória e a fila por conversa. As regras **não podem** passar a depender só da IA.
+
+## Ordem de trabalho
+1. **Primeiro, só diagnóstico e plano** (sem código):
+   - como o Think vai receber as regras "antes" e "depois" da IA;
+   - como fazer o WhatsApp, que não tem messenger pronto no Think;
+   - como o painel e o simulador conversam com o agente Think;
+   - tamanho do Worker e custos;
+   - riscos de ele ser experimental.
+   Consulte a documentação atual do Think e cite as fontes.
+2. Depois da minha aprovação, por fases testáveis:
+   1. agente Think rodando a **mesma bateria** de `avaliacao/avaliar.ts` (meta: o mesmo 45/45 do `gpt-6-luna`);
+   2. WhatsApp com o número de teste da Meta;
+   3. avisos do CRM, caixa de entrada e transferências;
+   4. retomadas, custos e LGPD;
+   5. piloto.
+3. Commit e push a cada etapa.
+
+## Regras
+- **Nada inventado:** preço, data, disponibilidade e condição só do CRM.
+- Não contrate serviços pagos sem me dizer o custo antes.
+- Segredos (tokens da Meta, chave da OpenAI, chave do CRM, chave da Cloudflare) só pelo formulário seguro. Nunca no chat
+  nem no código.
+- Na dúvida, pesquise na documentação oficial e cite a fonte.
