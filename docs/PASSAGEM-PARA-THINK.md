@@ -161,7 +161,8 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
 - O envio do "Hello World" para o WhatsApp do Renato **funcionou** (16/11/2026).
 - Token permanente (usuário do sistema "Agente SDR", com controle total do app e da Test Messaging Account,
   permissões `whatsapp_business_messaging`, `whatsapp_business_management` e `business_management`, validade "Nunca")
-  e chave secreta do app: o Renato guarda. A sessão nova pede **pelo formulário seguro** e grava como segredo da
+  e chave secreta do app: o Renato guarda. **O token permanente já foi criado (16/11/2026)**. O usuário do sistema
+  tem acesso total à Test Messaging Account e ao app. A sessão nova pede **pelo formulário seguro** e grava como segredo da
   Cloudflare (`wrangler secret put`). Nunca no chat.
 - No portfólio RQ Digital existe outra conta de WhatsApp, "unknown" (349979584854582), que **não** foi dada ao app.
   Perguntar ao Renato o que é antes de usar.
