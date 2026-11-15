@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertTriangle, BookOpen, FileText, Globe, MessageCircleQuestion, Pencil, Plus, Search, Trash2, Type } from "lucide-react";
+import { AlertTriangle, BookOpen, FileText, FlaskConical, Globe, MessageCircleQuestion, Pencil, Plus, Search, Trash2, Type } from "lucide-react";
+import Link from "next/link";
+import { classesBotao } from "@/components/ui/botao";
 import { useMemo, useState, useTransition } from "react";
 import { Botao } from "@/components/ui/botao";
 import { Entrada } from "@/components/ui/campo";
@@ -146,6 +148,11 @@ function ItemConhecimento({ item, podeEditar, aoEditar }: { item: Conhecimento; 
               aria-label={`${item.titulo}: em uso pelo agente`}
             />
             <div className="flex gap-1">
+              {item.pergunta && (
+                <Link href={`/simulador?nova=1&pergunta=${encodeURIComponent(item.pergunta)}`} className={classesBotao("fantasma", "min-h-10 px-3")}>
+                  <FlaskConical className="size-4" aria-hidden /> Testar
+                </Link>
+              )}
               <Botao variante="fantasma" onClick={aoEditar} className="min-h-10 px-3">
                 <Pencil className="size-4" aria-hidden /> Editar
               </Botao>

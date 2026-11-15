@@ -173,10 +173,12 @@ revoke all on function public.meu_perfil() from public, anon;
 grant execute on function public.meu_perfil() to authenticated;
 
 -- Nunca ficar sem gestor ativo; ninguém muda o próprio papel nem se desativa.
+-- Roda com o papel de quem chamou (sem "security definer"): assim sabe se foi uma alteração
+-- direta (papel authenticated) ou a função meu_perfil (que roda como dono do banco).
 create or replace function privado.perfis_proteger()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 begin
@@ -299,7 +301,7 @@ create table if not exists public.agente_config (
   espera_segundos        integer not null default 8 check (espera_segundos between 2 and 30),
   transcrever_audio      boolean not null default true,
   -- OpenAI: modelo e limite de gasto
-  modelo                 text not null default 'gpt-6.1-terra' check (modelo ~ '^[a-z0-9][a-z0-9._:-]{1,79}$'),
+  modelo                 text not null default 'gpt-6-luna' check (modelo ~ '^[a-z0-9][a-z0-9._:-]{1,79}$'),
   limite_mensal_usd      numeric(10,2) not null default 30 check (limite_mensal_usd between 1 and 10000),
   alerta_pct             integer not null default 80 check (alerta_pct between 10 and 100),
   parar_no_limite        boolean not null default true,
@@ -674,8 +676,9 @@ $$;
 revoke all on function public.situacao_segredos() from public, anon;
 grant execute on function public.situacao_segredos() to authenticated;
 
--- Texto cifrado de UMA chave, para o servidor do painel decifrar ao "testar conexão".
+-- Texto cifrado de UMA chave, para o servidor do painel decifrar ("testar conexão", simulador).
 -- Sem a chave-mestra (que não está no banco) o texto cifrado não serve para nada.
+-- Gestor: todas. Atendente: só as que o SIMULADOR usa (OpenAI e CRM), e só pelo servidor.
 create or replace function public.segredo_cifrado(p_nome text)
 returns text
 language sql
@@ -683,10 +686,25 @@ stable
 security definer
 set search_path = public
 as $$
-  select s.cifrado from public.segredos s where s.nome = p_nome and public.sou_gestor();
+  select s.cifrado from public.segredos s
+   where s.nome = p_nome
+     and (public.sou_gestor() or (public.sou_ativo() and p_nome in ('openai_chave', 'crm_chave')));
 $$;
 revoke all on function public.segredo_cifrado(text) from public, anon;
 grant execute on function public.segredo_cifrado(text) to authenticated;
+
+-- Endereço do CRM para quem usa o simulador (a tabela integracoes é só do gestor).
+create or replace function public.endereco_crm()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select i.crm_url from public.integracoes i where i.unica and public.sou_ativo();
+$$;
+revoke all on function public.endereco_crm() from public, anon;
+grant execute on function public.endereco_crm() to authenticated;
 
 -- Resultado do "testar conexão" (gravado pelo servidor do painel).
 create or replace function public.gravar_teste_integracao(p_servico text, p_resultado jsonb)
@@ -775,6 +793,128 @@ end;
 $$;
 revoke all on function public.retomar_agente() from public, anon;
 grant execute on function public.retomar_agente() to authenticated;
+
+-- =====================================================================
+-- 7. SIMULADOR: conversas de teste com o agente
+--    Por padrão o simulador NÃO grava nada no CRM (só lê). "Gravar no CRM" é só do gestor.
+-- =====================================================================
+create table if not exists public.simulacoes (
+  id               uuid primary key default gen_random_uuid(),
+  criado_por       uuid references public.perfis (id) on delete set null,
+  criado_por_nome  text not null default '',
+  titulo           text not null default 'Simulação' check (char_length(titulo) between 1 and 120),
+  modelo           text not null check (modelo ~ '^[a-z0-9][a-z0-9._:-]{1,79}$'),
+  gravar_crm       boolean not null default false,
+  mensagens        jsonb not null default '[]'::jsonb check (jsonb_typeof(mensagens) = 'array' and jsonb_array_length(mensagens) <= 400),
+  estado           jsonb not null default '{}'::jsonb check (jsonb_typeof(estado) = 'object'),
+  custo_usd        numeric(12,6) not null default 0 check (custo_usd >= 0),
+  tokens           integer not null default 0 check (tokens >= 0),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+create index if not exists simulacoes_data_idx on public.simulacoes (updated_at desc);
+drop trigger if exists trg_simulacoes_updated_at on public.simulacoes;
+create trigger trg_simulacoes_updated_at before update on public.simulacoes
+  for each row execute function public.set_updated_at();
+
+create or replace function privado.simulacoes_antes()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.criado_por := public.meu_perfil_id();
+    new.criado_por_nome := privado.nome_ator();
+  else
+    new.criado_por := old.criado_por;
+    new.criado_por_nome := old.criado_por_nome;
+    new.gravar_crm := old.gravar_crm; -- o modo é escolhido na criação e não muda
+  end if;
+  if new.gravar_crm and auth.uid() is not null and not public.sou_gestor() then
+    raise exception 'Só o gestor pode fazer simulações que gravam no CRM.';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists trg_simulacoes_antes on public.simulacoes;
+create trigger trg_simulacoes_antes before insert or update on public.simulacoes
+  for each row execute function privado.simulacoes_antes();
+
+alter table public.simulacoes enable row level security;
+drop policy if exists "simulacoes_select" on public.simulacoes;
+create policy "simulacoes_select" on public.simulacoes for select to authenticated using (public.sou_ativo());
+drop policy if exists "simulacoes_insert" on public.simulacoes;
+create policy "simulacoes_insert" on public.simulacoes for insert to authenticated with check (public.sou_ativo());
+drop policy if exists "simulacoes_update" on public.simulacoes;
+create policy "simulacoes_update" on public.simulacoes for update to authenticated
+  using (public.sou_ativo() and (criado_por = public.meu_perfil_id() or public.sou_gestor()))
+  with check (public.sou_ativo());
+drop policy if exists "simulacoes_delete" on public.simulacoes;
+create policy "simulacoes_delete" on public.simulacoes for delete to authenticated
+  using (public.sou_ativo() and (criado_por = public.meu_perfil_id() or public.sou_gestor()));
+
+-- =====================================================================
+-- 8. USO DA IA (tokens e custo estimado) — base do gasto do mês e do limite
+-- =====================================================================
+create table if not exists public.uso_ia (
+  id            bigint generated always as identity primary key,
+  created_at    timestamptz not null default now(),
+  origem        text not null check (origem in ('simulador', 'agente', 'teste')),
+  modelo        text not null,
+  entrada       integer not null default 0 check (entrada >= 0),
+  cache         integer not null default 0 check (cache >= 0),
+  saida         integer not null default 0 check (saida >= 0),
+  custo_usd     numeric(12,6) not null default 0 check (custo_usd >= 0),
+  simulacao_id  uuid references public.simulacoes (id) on delete set null,
+  ator_id       uuid
+);
+create index if not exists uso_ia_data_idx on public.uso_ia (created_at desc);
+alter table public.uso_ia enable row level security;
+drop policy if exists "uso_ia_select" on public.uso_ia;
+create policy "uso_ia_select" on public.uso_ia for select to authenticated using (public.sou_gestor());
+-- gravação só pela função abaixo
+
+create or replace function public.registrar_uso_ia(p_origem text, p_modelo text, p_entrada integer, p_cache integer, p_saida integer,
+                                                   p_custo numeric, p_simulacao uuid default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.sou_ativo() then
+    raise exception 'Sem permissão.';
+  end if;
+  if p_origem not in ('simulador', 'teste') then
+    raise exception 'Origem inválida.';
+  end if;
+  if least(p_entrada, p_cache, p_saida) < 0 or greatest(p_entrada, p_cache, p_saida) > 5000000 or coalesce(p_custo, 0) < 0 or coalesce(p_custo, 0) > 100 then
+    raise exception 'Uso fora do esperado.';
+  end if;
+  insert into public.uso_ia (origem, modelo, entrada, cache, saida, custo_usd, simulacao_id, ator_id)
+  values (p_origem, left(p_modelo, 80), p_entrada, p_cache, p_saida, coalesce(p_custo, 0), p_simulacao, auth.uid());
+end;
+$$;
+revoke all on function public.registrar_uso_ia(text, text, integer, integer, integer, numeric, uuid) from public, anon;
+grant execute on function public.registrar_uso_ia(text, text, integer, integer, integer, numeric, uuid) to authenticated;
+
+-- Gasto do mês corrente (horário de Brasília), para a Visão geral e o limite.
+create or replace function public.gasto_mes_usd()
+returns numeric
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(sum(u.custo_usd), 0)
+    from public.uso_ia u
+   where public.sou_ativo()
+     and u.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
+$$;
+revoke all on function public.gasto_mes_usd() from public, anon;
+grant execute on function public.gasto_mes_usd() to authenticated;
 
 -- =====================================================================
 -- Funções internas: ninguém de fora executa.

@@ -23,6 +23,10 @@ export default async function PaginaInicio() {
     supabase.from("integracoes").select("teste_crm, teste_openai, teste_whatsapp").eq("unica", true).maybeSingle(),
     supabase.from("perfis").select("id", { count: "exact", head: true }),
   ]);
+  const { data: gastoBruto } = await supabase.rpc("gasto_mes_usd");
+  const gasto = Number(gastoBruto ?? 0);
+  const limite = Number(config?.limite_mensal_usd ?? 0);
+  const pct = limite > 0 ? Math.min(100, (gasto / limite) * 100) : 0;
   const gestor = ehGestor(perfil);
   const itens = conhecimento.data ?? [];
   const ativos = itens.filter((i) => i.ativo).length;
@@ -126,14 +130,19 @@ export default async function PaginaInicio() {
           <div className="flex items-center gap-2 text-sm text-texto-2">
             <DollarSign className="size-4" aria-hidden /> Gasto com a OpenAI no mês
           </div>
-          <p className="mt-2 text-2xl font-bold text-texto">US$ 0,00</p>
-          <div className="mt-2 h-2 rounded-full bg-superficie-2" role="presentation" />
+          <p className="mt-2 text-2xl font-bold text-texto">US$ {gasto.toFixed(gasto > 0 && gasto < 1 ? 4 : 2).replace(".", ",")}</p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Gasto em relação ao limite">
+            <div className={`h-full ${pct >= (config?.alerta_pct ?? 80) ? "bg-perigo" : "bg-ok"}`} style={{ width: `${pct}%` }} />
+          </div>
           <p className="mt-1 text-xs text-texto-2">
             Limite: US$ {config ? formatarMoeda(config.limite_mensal_usd).replace("R$", "").trim() : "—"} · alerta em {config?.alerta_pct ?? "—"}%
           </p>
         </Cartao>
       </div>
-      <p className="mb-6 text-sm text-texto-2">Os números aparecem quando o agente começar a atender (fases 4 e 5).</p>
+      <p className="mb-6 text-sm text-texto-2">
+        Os números do atendimento aparecem quando o agente começar a atender no WhatsApp (fases 4 e 5). O gasto já inclui o uso do
+        Simulador.
+      </p>
 
       <h2 className="mb-3 text-lg font-semibold text-texto">Próximas telas</h2>
       <div className="grid gap-3 sm:grid-cols-2">

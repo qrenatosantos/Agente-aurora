@@ -105,6 +105,13 @@ describe("pessoas e papéis", () => {
     );
   });
 
+  test("ninguém troca o login ligado a um cadastro", async () => {
+    await assert.rejects(
+      gestor((tx) => tx.query("update public.perfis set user_id = $1 where email = 'bruna@aurora.test'", [ESTRANHO])),
+      /vínculo com o login/,
+    );
+  });
+
   test("com um 2º gestor, o 1º pode ser alterado por ele", async () => {
     await gestor((tx) => tx.query("insert into public.perfis (email, nome, papel) values ('renato@aurora.test', 'Renato', 'gestor')"));
     await como("authenticated", RENATO, (tx) => tx.query("select public.meu_perfil()"));
@@ -241,9 +248,13 @@ describe("segredos das integrações", () => {
     assert.equal(n, 0);
   });
 
-  test("o texto cifrado só sai para o gestor e nunca vai para o registro", async () => {
+  test("o texto cifrado só sai pelo servidor e nunca vai para o registro", async () => {
     assert.equal(await gestor((tx) => valor(tx, "select public.segredo_cifrado('openai_chave')")), CIFRADO);
-    assert.equal(await atendente((tx) => valor(tx, "select public.segredo_cifrado('openai_chave')")), null);
+    // atendente: só as chaves que o simulador usa (OpenAI e CRM)
+    assert.equal(await atendente((tx) => valor(tx, "select public.segredo_cifrado('openai_chave')")), CIFRADO);
+    await gestor((tx) => tx.query("select public.salvar_segredo('whatsapp_token', $1, 'zzzz')", [CIFRADO]));
+    assert.equal(await atendente((tx) => valor(tx, "select public.segredo_cifrado('whatsapp_token')")), null);
+    assert.equal(await visitante((tx) => valor(tx, "select public.segredo_cifrado('openai_chave')")).catch(() => null), null);
     const tudo = await gestor((tx) => valor(tx, "select string_agg(detalhes::text, ' ') from public.registro"));
     assert.ok(!tudo.includes(CIFRADO));
   });
@@ -258,10 +269,12 @@ describe("segredos das integrações", () => {
     const t = await gestor((tx) => valor(tx, "select teste_crm from public.integracoes"));
     assert.equal(t.ok, true);
     assert.ok(t.em);
+    assert.equal(await atendente((tx) => valor(tx, "select public.endereco_crm()")), null, "ainda sem endereço");
     const n = await atendente((tx) => valor(tx, "select count(*)::int from public.integracoes"));
     assert.equal(n, 0);
     await assert.rejects(gestor((tx) => tx.query("update public.integracoes set crm_url = 'ftp://x' where unica")));
     await gestor((tx) => tx.query("update public.integracoes set crm_url = 'https://crm.aurora.test' where unica"));
+    assert.equal(await atendente((tx) => valor(tx, "select public.endereco_crm()")), "https://crm.aurora.test");
   });
 });
 
@@ -282,6 +295,38 @@ describe("botão de emergência", () => {
   });
 });
 
+describe("simulador e gasto com a IA", () => {
+  test("atendente cria simulação (dona automática), mas não a que grava no CRM", async () => {
+    const s = await atendente((tx) => um(tx, "insert into public.simulacoes (modelo, criado_por_nome) values ('gpt-4o-mini', 'falso') returning criado_por_nome, criado_por"));
+    assert.equal(s.criado_por_nome, "Bruna");
+    await assert.rejects(atendente((tx) => tx.query("insert into public.simulacoes (modelo, gravar_crm) values ('gpt-4o-mini', true)")), /Só o gestor/);
+    const g = await gestor((tx) => valor(tx, "insert into public.simulacoes (modelo, gravar_crm) values ('gpt-4o-mini', true) returning gravar_crm"));
+    assert.equal(g, true);
+  });
+
+  test("atendente não altera nem apaga simulação do gestor; o modo não muda depois", async () => {
+    const id = await gestor((tx) => valor(tx, "select id from public.simulacoes where gravar_crm"));
+    const r = await atendente((tx) => tx.query("update public.simulacoes set titulo = 'x' where id = $1", [id]));
+    assert.equal(r.affectedRows, 0);
+    const d = await atendente((tx) => tx.query("delete from public.simulacoes where id = $1", [id]));
+    assert.equal(d.affectedRows, 0);
+    const minha = await atendente((tx) => valor(tx, "select id from public.simulacoes where criado_por_nome = 'Bruna'"));
+    await atendente((tx) => tx.query("update public.simulacoes set gravar_crm = true, titulo = 'Teste' where id = $1", [minha]));
+    assert.equal(await atendente((tx) => valor(tx, "select gravar_crm from public.simulacoes where id = $1", [minha])), false);
+  });
+
+  test("uso da IA soma no gasto do mês; origem 'agente' não pode ser gravada pelo painel", async () => {
+    await atendente((tx) => tx.query("select public.registrar_uso_ia('simulador', 'gpt-4o-mini', 1000, 0, 100, 0.00021)"));
+    await gestor((tx) => tx.query("select public.registrar_uso_ia('teste', 'gpt-6-luna', 1000, 0, 100, 0.00015)"));
+    const total = Number(await atendente((tx) => valor(tx, "select public.gasto_mes_usd()")));
+    assert.ok(Math.abs(total - 0.00036) < 1e-9);
+    await assert.rejects(gestor((tx) => tx.query("select public.registrar_uso_ia('agente', 'x', 1, 0, 1, 0)")), /Origem inválida/);
+    await assert.rejects(gestor((tx) => tx.query("select public.registrar_uso_ia('teste', 'x', -1, 0, 1, 0)")), /fora do esperado/);
+    assert.equal(await atendente((tx) => valor(tx, "select count(*)::int from public.uso_ia")), 0, "atendente não lê o detalhe");
+    await assert.rejects(gestor((tx) => tx.query("insert into public.uso_ia (origem, modelo) values ('teste', 'x')")));
+  });
+});
+
 describe("registro e visitante", () => {
   test("registro guarda quem fez; só o gestor lê", async () => {
     const acoes = await gestor((tx) => tx.query("select distinct acao from public.registro"));
@@ -294,7 +339,7 @@ describe("registro e visitante", () => {
   });
 
   test("visitante não lê nenhuma tabela", async () => {
-    for (const t of ["perfis", "agente_config", "config_versoes", "conhecimento", "integracoes", "operacao", "registro"]) {
+    for (const t of ["perfis", "agente_config", "config_versoes", "conhecimento", "integracoes", "operacao", "registro", "simulacoes", "uso_ia"]) {
       const n = await visitante((tx) => valor(tx, `select count(*)::int from public.${t}`));
       assert.equal(n, 0, `visitante leu ${t}`);
     }

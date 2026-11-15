@@ -8,6 +8,7 @@
 import {
   BookOpen,
   Bot,
+  FlaskConical,
   History,
   Home,
   MessagesSquare,
@@ -28,6 +29,7 @@ export type ItemNavegacao = {
 
 export const NAVEGACAO: ItemNavegacao[] = [
   { titulo: "Visão geral", href: "/", icone: Home, celular: true },
+  { titulo: "Simulador", href: "/simulador", icone: FlaskConical, celular: true },
   { titulo: "Agente", href: "/agente", icone: Bot, celular: true, grupo: "Configurar e treinar" },
   { titulo: "Conhecimento", href: "/conhecimento", icone: BookOpen, celular: true },
   { titulo: "Transferência e horários", href: "/transferencia", icone: PhoneForwarded },
@@ -38,7 +40,6 @@ export const NAVEGACAO: ItemNavegacao[] = [
 
 /** Telas das próximas fases (mostradas na Visão geral para o André saber o que vem). */
 export const PROXIMAS_TELAS: { titulo: string; icone: LucideIcon; fase: number; descricao: string }[] = [
-  { titulo: "Simulador", icone: MessagesSquare, fase: 2, descricao: "Conversar com o agente como se fosse um cliente, sem gravar nada no CRM." },
   { titulo: "Conversas", icone: MessagesSquare, fase: 4, descricao: "Caixa de entrada do WhatsApp: assumir, responder e pausar por conversa." },
   { titulo: "Correções", icone: BookOpen, fase: 5, descricao: "Marcar uma resposta ruim e ensinar a certa." },
   { titulo: "Retomadas e modelos", icone: PhoneForwarded, fase: 5, descricao: "Mensagens de retomada com modelos aprovados pela Meta." },

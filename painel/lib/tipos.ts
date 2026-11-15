@@ -132,6 +132,42 @@ export type RegistroLinha = {
   detalhes: Record<string, Json>;
 };
 
+export type MensagemSimulacao = {
+  papel: "cliente" | "agente" | "sistema";
+  texto: string;
+  em: string;
+  rastro?: import("./nucleo/tipos.ts").PassoRastro[];
+  uso?: import("./nucleo/tipos.ts").UsoModelo;
+};
+
+export type SimulacaoLinha = {
+  id: string;
+  criado_por: string | null;
+  criado_por_nome: string;
+  titulo: string;
+  modelo: string;
+  gravar_crm: boolean;
+  mensagens: MensagemSimulacao[];
+  estado: import("./nucleo/tipos.ts").EstadoConversa;
+  custo_usd: number;
+  tokens: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UsoIaLinha = {
+  id: number;
+  created_at: string;
+  origem: "simulador" | "agente" | "teste";
+  modelo: string;
+  entrada: number;
+  cache: number;
+  saida: number;
+  custo_usd: number;
+  simulacao_id: string | null;
+  ator_id: string | null;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -142,6 +178,8 @@ export type Database = {
       integracoes: Tabela<IntegracoesLinha>;
       operacao: Tabela<OperacaoLinha>;
       registro: Tabela<RegistroLinha>;
+      simulacoes: Tabela<SimulacaoLinha>;
+      uso_ia: Tabela<UsoIaLinha>;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -156,6 +194,12 @@ export type Database = {
       gravar_teste_integracao: { Args: { p_servico: "crm" | "openai" | "whatsapp"; p_resultado: Json }; Returns: undefined };
       pausar_agente: { Args: { p_motivo?: string | null }; Returns: undefined };
       retomar_agente: { Args: Record<string, never>; Returns: undefined };
+      registrar_uso_ia: {
+        Args: { p_origem: "simulador" | "teste"; p_modelo: string; p_entrada: number; p_cache: number; p_saida: number; p_custo: number; p_simulacao?: string | null };
+        Returns: undefined;
+      };
+      gasto_mes_usd: { Args: Record<string, never>; Returns: number };
+      endereco_crm: { Args: Record<string, never>; Returns: string | null };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
