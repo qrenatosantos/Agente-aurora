@@ -4,8 +4,9 @@
   "private": true,
   "description": "Agente SDR da Aurora Bartenders: painel (Next.js) e motor (Cloudflare Worker), que falam com o CRM só pela API.",
   "scripts": {
-    "test:banco": "node --test supabase/testes/*.test.mjs",
-    "test:nucleo": "node --test painel/lib/nucleo/*.test.ts"
+    "test:banco": "node --test painel/lib/banco/*.test.ts",
+    "test:nucleo": "node --test painel/lib/nucleo/*.test.ts",
+    "test:banco-antigo": "node --test supabase/testes/*.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16"
