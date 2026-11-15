@@ -75,6 +75,18 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Mensagens "bonitinhas": pacotes em balões separados (15/11/2026, pedido do Renato)
+
+- Cada parágrafo da resposta vira um **balão** no WhatsApp; os pacotes saem um por mensagem, nome em *negrito*,
+  um emoji cada (só na apresentação dos pacotes; no resto, emojis equilibrados). Configuração: versões 5 e 6.
+- Problemas que os testes acharam e foram corrigidos:
+  - com a linha "---" como separador, o modelo às vezes **recomeçava a lista** (e até escrevia letras sem sentido):
+    trocado por parágrafos, e o sistema **corta a repetição** linha a linha;
+  - a IA às vezes escrevia parte da resposta, consultava o sistema e continuava: agora o texto de todos os passos é aproveitado;
+  - "diálogo interno" vazado pela IA ("Assistent: …") é cortado; `**` vira o negrito do WhatsApp;
+  - sem o nome da empresa fixo no código, ela chegou a **resolver uma equação**: regra de "só assuntos da empresa" reforçada.
+- Núcleo: **30/30**. Bateria no motor (18 situações × 3, com "pacotes"): **54/54**.
+
 ## Ajuste de persona: "Cecília" (15/11/2026, pedido do Renato)
 
 - Nome **Cecília, agente de atendimento da Aurora Bartenders**; **não** oferece falar com uma pessoa por conta própria;

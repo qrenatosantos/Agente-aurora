@@ -109,3 +109,40 @@ export function removerRespostaDupla(texto: string) {
   }
   return t;
 }
+
+const MAX_MENSAGENS = 6;
+
+/**
+ * Divide a resposta em várias mensagens de WhatsApp: cada parágrafo (separado por linha em branco, ou por uma
+ * linha "---") vira um balão, como uma pessoa escreveria. Mais de 6 partes: as últimas são juntadas na 6ª.
+ * Antes, corta repetição: se um parágrafo já apareceu (a IA às vezes "recomeça" a resposta), tudo dali em diante sai.
+ */
+export function dividirMensagens(texto: string): string[] {
+  const chave = (t: string) => normalizar(t).replace(/[^a-z0-9]+/g, " ").trim();
+  const repete = (c: string, vistos: string[]) =>
+    c.length >= 12 && vistos.some((v) => v === c || (c.length >= 25 && v.length >= 25 && (v.startsWith(c.slice(0, 25)) || c.startsWith(v.slice(0, 25)))));
+  // 1) corta onde a IA "recomeçou": a primeira linha que repete uma linha anterior, e tudo depois dela
+  const linhas = texto.split("\n");
+  const vistas: string[] = [];
+  let fim = linhas.length;
+  for (let i = 0; i < linhas.length; i++) {
+    const c = chave(linhas[i]);
+    // a IA "se perdeu" e começou a escrever um diálogo interno (Assistant:, Usuário:…): corta dali em diante
+    const rotulo = /^\W*(assistant|assistent[ea]?|user|usu[aá]rio|system|sistema|cliente|voc[eê])\W*:/i.test(linhas[i].trim()) || /\*(assistant|assistent[ea]?)\*?:/i.test(linhas[i]);
+    if (rotulo || repete(c, vistas)) {
+      fim = i;
+      break;
+    }
+    if (c) vistas.push(c);
+  }
+  // 2) cada parágrafo (linha em branco ou "---") vira um balão
+  const partes = linhas
+    .slice(0, fim)
+    .join("\n")
+    .split(/\n[ \t]*(?:-{3,}[ \t]*)?\n|\n[ \t]*-{3,}[ \t]*(?:\n|$)/)
+    // negrito do WhatsApp é com UM asterisco: **x** vira *x*, e "**" solto some
+    .map((p) => p.replace(/\*\*(.+?)\*\*/g, "*$1*").replace(/\*\*/g, "").trim())
+    .filter(Boolean);
+  if (partes.length <= MAX_MENSAGENS) return partes;
+  return [...partes.slice(0, MAX_MENSAGENS - 1), partes.slice(MAX_MENSAGENS - 1).join("\n\n")];
+}

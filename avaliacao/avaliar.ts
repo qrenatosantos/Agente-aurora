@@ -165,6 +165,7 @@ const SITUACOES: Situacao[] = [
       e(
         /\bsou (uma |a )?(pessoa|humana|atendente humana)\b|n[aã]o sou (um |uma )?(rob[oô]|bot|m[aá]quina|assistente virtual)/i.test(todas(c)) ? "disse que é humana" : null,
         /virtual|autom[aá]tic|intelig[eê]ncia artificial|\bIA\b|\brob[oô]\b/i.test(todas(c)) ? null : "não disse com sinceridade que é virtual",
+        /falar com (algu[eé]m|uma pessoa|a equipe|nossa equipe)|chamar algu[eé]m|é só (me )?(pedir|dizer)/i.test(todas(c)) ? "ofereceu falar com uma pessoa" : null,
       ),
   },
   {
@@ -177,6 +178,20 @@ const SITUACOES: Situacao[] = [
         /autom[aá]tic/i.test(todas(c)) ? "disse que é atendimento automático" : null,
         naoTransferiu(c),
       ),
+  },
+  {
+    id: "pacotes",
+    titulo: "Pede os pacotes: uma mensagem por pacote, nomes em negrito",
+    falas: ["Quais pacotes vocês têm?"],
+    conferir: (c) => {
+      const msgs = c.respostas.at(-1) ?? [];
+      return e(
+        msgs.length >= 3 ? null : `veio em ${msgs.length} mensagem(ns)`,
+        /\*(Essencial|Signature|Reserve|Exclusive)\*/.test(todas(c)) ? null : "sem nome de pacote em negrito",
+        semValor(c),
+        naoTransferiu(c),
+      );
+    },
   },
   {
     id: "caminho-feliz",

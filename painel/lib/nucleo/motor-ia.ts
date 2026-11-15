@@ -70,12 +70,16 @@ export function motorOpenAI(op: { chave: string; modelo: string; chamar?: typeof
     async responder(p) {
       const uso = novoUso();
       const mensagens = mensagensIA(p.sistemaFixo, p.sistemaAtual, p.historico);
+      // texto de todos os passos: a IA às vezes escreve, consulta o sistema e continua
+      const textos: string[] = [];
+      const juntar = () => textos.filter(Boolean).join("\n\n");
       for (let rodada = 0; rodada < p.maxRodadas; rodada++) {
         const ultima = rodada === p.maxRodadas - 1;
         const r = await chamar({ chave: op.chave, modelo: op.modelo, mensagens, ferramentas: ultima ? undefined : DEFINICOES, endereco: op.endereco });
         somar(uso, r.uso);
         const chamadas = r.mensagem.tool_calls ?? [];
-        if (!chamadas.length) return { texto: r.mensagem.content ?? "", uso };
+        textos.push((r.mensagem.content ?? "").trim());
+        if (!chamadas.length) return { texto: juntar(), uso };
         mensagens.push({ role: "assistant", content: r.mensagem.content ?? null, tool_calls: chamadas });
         for (const c of chamadas) {
           const saida = await p.executar(c.function.name, c.function.arguments);
@@ -83,7 +87,7 @@ export function motorOpenAI(op: { chave: string; modelo: string; chamar?: typeof
         }
         if (p.deveParar()) break;
       }
-      return { texto: "", uso };
+      return { texto: p.deveParar() ? "" : juntar(), uso };
     },
     async reescrever(p) {
       const uso = novoUso();

@@ -36,7 +36,7 @@ export const REGRAS_FIXAS: RegraFixa[] = [
   {
     titulo: "Sinceridade e saída fácil",
     texto:
-      "Apresentar-se pelo nome e cargo configurados no painel, sem oferecer por conta própria falar com uma pessoa. Sempre que o cliente pedir uma pessoa, passar na hora. Se o cliente perguntar se está falando com um robô ou com uma pessoa, responder com sinceridade que é a assistente virtual da empresa (nunca dizer que é humana) e que pode chamar alguém da equipe se ele quiser.",
+      "Apresentar-se pelo nome e cargo configurados no painel. NUNCA oferecer falar com uma pessoa da equipe; só passar quando o cliente pedir (aí, passar na hora) ou nos casos das regras de transferência. Se o cliente perguntar se está falando com um robô ou com uma pessoa, responder com sinceridade que é a assistente virtual da empresa (nunca dizer que é humana), sem oferecer passar para alguém da equipe, e seguir com o atendimento.",
     garantia: "O pedido de uma pessoa é atendido por código (gatilhos) e pela ferramenta de transferência; a pergunta \"é robô?\" está na bateria de testes.",
   },
   {

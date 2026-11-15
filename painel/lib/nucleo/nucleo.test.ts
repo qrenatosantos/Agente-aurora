@@ -12,7 +12,7 @@ import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horari
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd } from "./openai.ts";
 import { estadoInicial, type ConfigAgente } from "./tipos.ts";
-import { contemAlguma, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
+import { contemAlguma, dividirMensagens, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
 
 // ------------------------------------------------------------------ utilitários
 describe("textos e valores", () => {
@@ -48,6 +48,24 @@ describe("textos e valores", () => {
     const ok = "Olá! O valor vem na proposta.\nOi, tudo bem por aí também?";
     assert.equal(removerRespostaDupla(ok), ok);
     assert.equal(removerRespostaDupla("Oi!\nOi!"), "Oi!\nOi!");
+  });
+  test("resposta em várias mensagens: cada parágrafo vira um balão", () => {
+    assert.deepEqual(dividirMensagens("🍸 *Essencial*: caipirinha\n\n🍹 *Signature*: + Aperol\n\nQual combina mais?"), ["🍸 *Essencial*: caipirinha", "🍹 *Signature*: + Aperol", "Qual combina mais?"]);
+    assert.deepEqual(dividirMensagens("Uma\n---\nDuas"), ["Uma", "Duas"]);
+    assert.deepEqual(dividirMensagens("O **Signature** é ótimo. Qual prefere?**"), ["O *Signature* é ótimo. Qual prefere?"]);
+    assert.deepEqual(dividirMensagens("Oi! Tudo bem?\nLinha seguida no mesmo balão."), ["Oi! Tudo bem?\nLinha seguida no mesmo balão."]);
+    const sete = Array.from({ length: 7 }, (_, i) => `mensagem número ${i}`).join("\n\n");
+    assert.equal(dividirMensagens(sete).length, 6);
+  });
+  test("a IA recomeçou a lista: a repetição é cortada", () => {
+    const lista = "*Essencial* 🥂 Caipirinha, caipiroska e gin tônica.\n\n*Signature* 🍸 Inclui os drinks do Essencial e acrescenta Aperol Spritz.\n\nQual combina mais com a sua festa?";
+    assert.deepEqual(dividirMensagens(`${lista}\n\n${lista}`), lista.split("\n\n"));
+    assert.equal(dividirMensagens(`${lista}\n\n*Essencial* 🥂 Caipirinha, caipiroska e gin tônica: simplicidade.`).length, 3);
+    // diálogo interno "vazado" pela IA
+    assert.deepEqual(dividirMensagens(`${lista}\n*Assistent:* \`quer_ajuda_pacote\` indica interesse...`), lista.split("\n\n"));
+    assert.deepEqual(dividirMensagens(`Qual prefere?\n\nAssistant: Você tem razão.`), ["Qual prefere?"]);
+    // recomeço na mesma linha seguinte (sem linha em branco)
+    assert.deepEqual(dividirMensagens(`${lista}\n*Essencial* 🥂 Caipirinha, caipiroska e gin tônica.`), lista.split("\n\n"));
   });
   test("resposta repetida duas vezes vira uma", () => {
     const r = "Olá! O valor vem na proposta. Para quando é a festa?";

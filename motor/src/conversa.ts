@@ -114,7 +114,7 @@ export class Conversa extends Think<Env> {
       model: this.openai(t.chave).chat(t.modelo),
       maxSteps: p.maxRodadas,
       stopWhen: () => p.deveParar(),
-      maxOutputTokens: 700,
+      maxOutputTokens: 500,
       ...(antigo ? { temperature: 0.4 } : {}),
       providerOptions: {
         openai: { store: false, parallelToolCalls: false, ...(antigo ? {} : { reasoningEffort: "none" }) },
@@ -133,8 +133,10 @@ export class Conversa extends Think<Env> {
     this.usoTurno.cache += s.usage?.inputTokenDetails?.cacheReadTokens ?? 0;
     this.usoTurno.saida += s.usage?.outputTokens ?? 0;
     this.usoTurno.chamadas += 1;
-    // a resposta é o texto do passo que NÃO chamou ferramenta (igual ao laço antigo)
-    if (!s.toolCalls?.length) this.textoFinal = s.text ?? "";
+    // a resposta é o texto de todos os passos: a IA às vezes escreve, consulta o sistema e continua
+    // (repetição entre os passos é cortada depois, em dividirMensagens)
+    const t = (s.text ?? "").trim();
+    if (t) this.textoFinal = this.textoFinal ? `${this.textoFinal}\n\n${t}` : t;
   }
 
   // ------------------------------------------------------------------ laço da IA pelo Think

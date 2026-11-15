@@ -60,7 +60,7 @@ export async function chamarModelo(opcoes: {
   const corpo: Record<string, unknown> = {
     model: opcoes.modelo,
     messages: opcoes.mensagens,
-    max_completion_tokens: opcoes.maxTokens ?? 700,
+    max_completion_tokens: opcoes.maxTokens ?? 500,
     store: false,
     ...(antigo ? { temperature: 0.4 } : { reasoning_effort: "none" }),
   };
