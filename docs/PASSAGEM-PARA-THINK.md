@@ -140,7 +140,11 @@ cd painel && npm install && npx tsc --noEmit && npm run lint && npm run build
   `CRM_URL=… CRM_CHAVE=aur_… OPENAI_CHAVE=sk-… NODE_USE_ENV_PROXY=1 node avaliacao/avaliar.ts gpt-6-luna --rodadas 3`
   (custa centavos).
 - **Ambiente Claude:** existe o ambiente "Agente-aurora" (rede: `api.openai.com`, site da Aurora). Para a Meta,
-  liberar `graph.facebook.com`. Para a Cloudflare, `api.cloudflare.com`, ou uma chave da API via formulário seguro.
+  liberar `graph.facebook.com`.
+- **Cloudflare:** nesta sessão, o plugin que conecta à conta **não conseguiu se conectar** ("Proxy refused to open a
+  tunnel: 403"), porque a rede do ambiente não libera o endereço dele. Na sessão nova, se acontecer o mesmo, liberar
+  na rede do ambiente `mcp.cloudflare.com` (e `api.cloudflare.com` para o wrangler) ou usar uma chave da API pelo
+  formulário seguro. As skills e a documentação do plugin funcionam sem isso.
 
 ---
 
