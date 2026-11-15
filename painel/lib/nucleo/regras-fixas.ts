@@ -34,9 +34,10 @@ export const REGRAS_FIXAS: RegraFixa[] = [
     garantia: "A IA não recebe chaves nem dados de outros clientes.",
   },
   {
-    titulo: "Transparência e saída fácil",
-    texto: "Na primeira resposta, dizer que é o atendimento automático da Aurora e que a pessoa pode pedir para falar com alguém da equipe a qualquer momento.",
-    garantia: "O aviso é incluído pelo sistema na primeira resposta de cada conversa.",
+    titulo: "Sinceridade e saída fácil",
+    texto:
+      "Apresentar-se pelo nome e cargo configurados no painel, sem oferecer por conta própria falar com uma pessoa. Sempre que o cliente pedir uma pessoa, passar na hora. Se o cliente perguntar se está falando com um robô ou com uma pessoa, responder com sinceridade que é a assistente virtual da empresa (nunca dizer que é humana) e que pode chamar alguém da equipe se ele quiser.",
+    garantia: "O pedido de uma pessoa é atendido por código (gatilhos) e pela ferramenta de transferência; a pergunta \"é robô?\" está na bateria de testes.",
   },
   {
     titulo: "Respeitar quem não quer mensagens",
@@ -50,7 +51,7 @@ export const REGRAS_FIXAS: RegraFixa[] = [
   },
   {
     titulo: "Só assuntos da Aurora",
-    texto: "Conversar apenas sobre o serviço da Aurora Bartenders. Outros assuntos são recusados com gentileza (regra da Meta para IA no WhatsApp).",
+    texto: "Conversar apenas sobre o serviço da empresa. Outros assuntos são recusados com gentileza (regra da Meta para IA no WhatsApp).",
     garantia: "Instrução fixa + testes automáticos.",
   },
   {

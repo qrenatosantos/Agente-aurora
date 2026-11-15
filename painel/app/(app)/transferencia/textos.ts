@@ -11,11 +11,12 @@ export const DIAS: { id: keyof HorarioEquipe; nome: string }[] = [
   { id: "0", nome: "Domingo" },
 ];
 
-export const MENSAGENS: { id: keyof MensagensPadrao; titulo: string; ajuda: string }[] = [
+export const MENSAGENS: { id: keyof MensagensPadrao; titulo: string; ajuda: string; opcional?: boolean }[] = [
   {
     id: "aviso_automatico",
-    titulo: "Aviso de atendimento automático",
-    ajuda: "Vai junto da primeira resposta de cada conversa (exigência da LGPD e da Meta).",
+    titulo: "Aviso na primeira resposta (opcional)",
+    ajuda: "Se preenchido, vai junto da primeira resposta de cada conversa. Deixe em branco para não enviar. Mesmo sem ele, o agente nunca diz que é humano e passa para uma pessoa sempre que o cliente pede.",
+    opcional: true,
   },
   { id: "transferencia", titulo: "Ao passar para uma pessoa", ajuda: "Enviada quando o agente transfere o atendimento." },
   {

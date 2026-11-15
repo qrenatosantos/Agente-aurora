@@ -54,8 +54,8 @@ export async function salvarTransferencia(_anterior: EstadoAcao, formData: FormD
   for (const m of MENSAGENS) {
     const v = String(formData.get(`msg-${m.id}`) ?? "").replace(/\r\n/g, "\n").trim();
     if (v.length > 1000) erros[`msg-${m.id}`] = "Máximo de 1.000 caracteres.";
-    else if (!v) erros[`msg-${m.id}`] = "Escreva a mensagem.";
-    else mensagens[m.id] = v;
+    else if (!v && !m.opcional) erros[`msg-${m.id}`] = "Escreva a mensagem.";
+    else if (v) mensagens[m.id] = v;
   }
   if (Object.keys(erros).length) return falha("Confira os campos destacados.", erros);
 

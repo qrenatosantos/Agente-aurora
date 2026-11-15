@@ -75,6 +75,15 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Ajuste de persona: "Cecília" (15/11/2026, pedido do Renato)
+
+- Nome **Cecília, agente de atendimento da Aurora Bartenders**; **não** oferece falar com uma pessoa por conta própria;
+  **sem** o aviso de "atendimento automático" na primeira resposta (o aviso virou opcional no painel).
+- Regra fixa nova, "Sinceridade e saída fácil": se o cliente **perguntar** se é robô, ela responde com sinceridade
+  que é a assistente virtual (nunca diz que é humana); pedir uma pessoa continua funcionando sempre.
+- Configuração da Aurora em produção: **versão 3** (Registro e versões). Dados de exemplo (`clientes/aurora/`) atualizados.
+- Bateria no motor com 2 situações novas ("é robô?" e "não oferece pessoa"): **51/51** (US$ 0,00102 por resposta).
+
 ## Fase 2: WhatsApp no atendente (motor) (15/11/2026)
 
 Ambiente: motor e painel com `wrangler dev`, compartilhando o mesmo banco D1 local; uma "Meta de mentira" que manda
