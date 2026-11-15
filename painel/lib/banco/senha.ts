@@ -8,10 +8,10 @@ const ITERACOES = 100_000;
 const enc = new TextEncoder();
 
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
-const deB64 = (t: string) => Uint8Array.from(atob(t), (c) => c.charCodeAt(0));
+const deB64 = (t: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(t), (c) => c.charCodeAt(0));
 const b64url = (bytes: Uint8Array) => b64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-async function derivar(senha: string, sal: Uint8Array, iteracoes: number) {
+async function derivar(senha: string, sal: Uint8Array<ArrayBuffer>, iteracoes: number) {
   const chave = await crypto.subtle.importKey("raw", enc.encode(senha), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: sal, iterations: iteracoes }, chave, 256);
   return new Uint8Array(bits);

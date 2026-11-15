@@ -4,7 +4,8 @@ import { CabecalhoPagina, Cartao } from "@/components/ui/cartao";
 import { chaveMestraConfigurada } from "@/lib/cripto";
 import { obterConfigAgente } from "@/lib/dados";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { lerIntegracoes, situacaoSegredos } from "@/lib/banco/integracoes.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 import type { NomeSegredo, SituacaoSegredo } from "@/lib/tipos";
 import { CartaoCrm, CartaoOpenAI, CartaoWhatsApp } from "./cartoes";
 
@@ -14,12 +15,14 @@ export default async function PaginaIntegracoes() {
   const { perfil } = await obterPerfil();
   if (!ehGestor(perfil)) redirect("/");
 
-  const supabase = await createClient();
-  const [{ data: integ, error }, { data: segredos }, { config }] = await Promise.all([
-    supabase.from("integracoes").select("*").eq("unica", true).maybeSingle(),
-    supabase.rpc("situacao_segredos"),
+  const db = await banco();
+  const ator = await atorAtual();
+  const [integ, segredos, { config }] = await Promise.all([
+    lerIntegracoes(db, ator).catch(() => null),
+    situacaoSegredos(db, ator).catch(() => []),
     obterConfigAgente(),
   ]);
+  const error = !integ;
   const chaves = Object.fromEntries(((segredos ?? []) as SituacaoSegredo[]).map((s) => [s.nome, s])) as Partial<Record<NomeSegredo, SituacaoSegredo>>;
 
   return (
@@ -36,7 +39,7 @@ export default async function PaginaIntegracoes() {
       )}
       {error || !integ || !config ? (
         <Cartao role="alert" className="text-sm text-perigo">
-          Não foi possível ler as integrações. Confira se o arquivo <code>supabase/schema.sql</code> foi executado.
+          Não foi possível ler as integrações. Confira se o banco do painel foi criado (veja o README).
         </Cartao>
       ) : (
         <div className="space-y-6">

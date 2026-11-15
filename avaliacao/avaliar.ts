@@ -4,8 +4,8 @@
  *   CRM_URL=http://localhost:3200 CRM_CHAVE=aur_... OPENAI_CHAVE=sk-... \
  *   node avaliacao/avaliar.ts gpt-4o-mini gpt-6-luna [--rodadas 2]
  *
- * - Usa as instruções e o conhecimento INICIAIS (supabase/dados-iniciais.sql, carregados num
- *   Postgres embutido) e o núcleo do agente (painel/lib/nucleo) no modo SIMULAÇÃO:
+ * - Usa as instruções e o conhecimento INICIAIS (clientes/aurora/dados-iniciais.sql, carregados no
+ *   mesmo banco do painel, D1/SQLite, em memória) e o núcleo do agente (painel/lib/nucleo) no modo SIMULAÇÃO:
  *   lê o CRM de verdade, mas não grava nada.
  * - Cada situação é conferida por regras objetivas (sem "achismo"). O relatório sai em
  *   avaliacao/RESULTADO.md.
@@ -16,11 +16,12 @@
  *   node avaliacao/avaliar.ts gpt-6-luna --rodadas 3 --motor http://localhost:8787 [--laco proprio]
  * O relatório sai em avaliacao/RESULTADO-MOTOR.md.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PGlite } from "@electric-sql/pglite";
-import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { lerConfigInterno } from "../painel/lib/banco/config.ts";
+import { conhecimentoDoAgente } from "../painel/lib/banco/conhecimento.ts";
+import { bancoDeTeste } from "../painel/lib/banco/sqlite-teste.ts";
 import { processarTurno } from "../painel/lib/nucleo/agente.ts";
 import { ClienteCrm } from "../painel/lib/nucleo/crm.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa } from "../painel/lib/nucleo/tipos.ts";
@@ -30,16 +31,25 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // ------------------------------------------------------------ configuração inicial do agente
 async function configInicial(): Promise<{ cfg: ConfigAgente; conhecimento: ItemConhecimento[] }> {
-  const db = new PGlite({ extensions: { pgcrypto } });
-  await db.exec(`create schema auth; create table auth.users(id uuid primary key, email text);
-    create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
-    create role anon; create role authenticated; create role service_role;`);
-  await db.exec(readFileSync(join(raiz, "supabase/schema.sql"), "utf8"));
-  await db.exec(readFileSync(join(raiz, "supabase/dados-iniciais.sql"), "utf8"));
-  const cfg = (await db.query<ConfigAgente>("select * from public.agente_config")).rows[0];
-  const conhecimento = (await db.query<ItemConhecimento>("select titulo, pergunta, conteudo from public.conhecimento where ativo order by tipo, titulo")).rows;
-  await db.close();
-  return { cfg, conhecimento };
+  const pasta = join(raiz, "painel/banco/migracoes");
+  const db = bancoDeTeste([...readdirSync(pasta).filter((f) => f.endsWith(".sql")).sort().map((f) => join(pasta, f)), join(raiz, "clientes/aurora/dados-iniciais.sql")]);
+  const c = await lerConfigInterno(db);
+  const cfg: ConfigAgente = {
+    nome_agente: c.nome_agente,
+    apresentacao: c.apresentacao,
+    tom: c.tom,
+    saudacao: c.saudacao,
+    instrucoes: c.instrucoes,
+    exemplos: c.exemplos,
+    gatilhos_palavras: c.gatilhos_palavras,
+    gatilhos_temas: c.gatilhos_temas,
+    max_msgs_sem_avanco: c.max_msgs_sem_avanco,
+    horario_equipe: c.horario_equipe,
+    agente_24h: c.agente_24h,
+    mensagens: c.mensagens,
+    modelo: c.modelo,
+  };
+  return { cfg, conhecimento: await conhecimentoDoAgente(db) };
 }
 
 // ------------------------------------------------------------ situações e conferências
@@ -305,7 +315,7 @@ async function principal() {
   const relatorio = `# Bateria de regras com a IA de verdade
 
 Gerado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} por \`node avaliacao/avaliar.ts\`. Onde rodou: **${onde}**.
-Instruções e conhecimento: os iniciais (supabase/dados-iniciais.sql). CRM: cópia local, sem regra de preço aprovada,
+Instruções e conhecimento: os iniciais (clientes/aurora/dados-iniciais.sql). CRM: cópia local, sem regra de preço aprovada,
 com 12/06/2027 bloqueado. Modo simulação (lê o CRM, não grava). ${rodadas} rodada(s) por situação.
 
 ## Resumo

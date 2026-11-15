@@ -1,6 +1,6 @@
 {
 	// Configuração do Cloudflare Workers (hospedagem do PAINEL do agente).
-	// O guia de publicação chega na fase 6 (docs/PUBLICAR.md).
+	// Cada cliente tem a sua cópia (nome, banco e segredos próprios): veja clientes/ e scripts/novo-cliente.
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "aurora-agente-painel",
 	"main": ".open-next/worker.js",
@@ -11,7 +11,16 @@
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
 	},
-	// Mantém as variáveis e segredos cadastrados no painel do Cloudflare a cada publicação.
+	// Banco do painel (Cloudflare D1). O id é preenchido pelo assistente de novo cliente.
+	"d1_databases": [
+		{ "binding": "DB", "database_name": "aurora-agente", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "banco/migracoes" }
+	],
+	// Ligação interna com o motor do agente (simulador), sem passar pela internet.
+	"services": [{ "binding": "MOTOR", "service": "aurora-motor" }],
+	// Segredos (cadastrados com `wrangler secret put`, nunca aqui):
+	//   CHAVE_MESTRA       cifra as chaves das integrações (openssl rand -base64 32)
+	//   CODIGO_INSTALACAO  cria o 1º gestor em /instalar
+	//   SEGREDO_INTERNO    o mesmo do motor (rotas /interno/*)
 	"keep_vars": true,
 	"observability": { "enabled": true }
 }

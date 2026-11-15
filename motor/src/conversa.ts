@@ -36,6 +36,8 @@ export type EntradaConversa = {
   tituloNovoPedido?: string;
   /** "think" (padrão) ou "proprio" (o laço antigo, plano B). */
   laco?: "think" | "proprio";
+  /** Estado de partida, usado só se a conversa ainda não existir (ex.: simulação de um pedido do CRM). */
+  estadoInicial?: Partial<EstadoConversa>;
 };
 
 const novoUso = (): UsoIA => ({ entrada: 0, cache: 0, saida: 0, chamadas: 0 });
@@ -159,10 +161,10 @@ export class Conversa extends Think<Env> {
   }
 
   // ------------------------------------------------------------------ estado da conversa
-  private lerEstado(): EstadoConversa {
+  private lerEstado(partida?: Partial<EstadoConversa>): EstadoConversa {
     this.sql`create table if not exists aurora_estado (id integer primary key, json text not null)`;
     const linha = this.sql<{ json: string }>`select json from aurora_estado where id = 1`[0];
-    return linha ? (JSON.parse(linha.json) as EstadoConversa) : estadoInicial();
+    return linha ? (JSON.parse(linha.json) as EstadoConversa) : estadoInicial(partida ?? {});
   }
 
   private gravarEstado(e: EstadoConversa) {
@@ -190,7 +192,7 @@ export class Conversa extends Think<Env> {
   }
 
   private async turnoAgora(e: EntradaConversa): Promise<ResultadoTurno> {
-    const estado = this.lerEstado();
+    const estado = this.lerEstado(e.estadoInicial);
     const antes = this.messages.map((m) => m.id);
     const historico = [...this.historico(), ...e.novas.map((t) => ({ papel: "cliente" as const, texto: t, em: new Date().toISOString() }))];
     const modelo = e.modelo ?? e.cfg.modelo;

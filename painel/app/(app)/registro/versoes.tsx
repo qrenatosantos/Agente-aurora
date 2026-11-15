@@ -38,7 +38,7 @@ export function ListaVersoes({ versoes, atual }: { versoes: ConfigVersaoLinha[];
     <>
       <ul className="space-y-3">
         {versoes.map((v) => (
-          <li key={v.id}>
+          <li key={v.numero}>
             <Cartao className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-texto">

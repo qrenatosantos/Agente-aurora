@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { classesFontes } from "./fontes";
-import { ConfigurarAmbiente } from "@/components/configurar-ambiente";
 import { ProvedorConfirmacao } from "@/components/ui/confirmar";
 import { ProvedorToast } from "@/components/ui/toast";
 import { cssMarca, scriptTema, SUBTITULO_PADRAO_LOGIN } from "@/lib/marca";
 import { obterMarca } from "@/lib/marca-servidor";
-import { supabaseConfigurado } from "@/lib/supabase/env";
 
 /**
  * LAYOUT RAIZ — vale para TODAS as páginas (logadas e públicas).
@@ -51,13 +49,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <style id="marca-css" dangerouslySetInnerHTML={{ __html: cssMarca(marca) }} />
       </head>
       <body className="min-h-full">
-        {supabaseConfigurado ? (
-          <ProvedorToast>
-            <ProvedorConfirmacao>{children}</ProvedorConfirmacao>
-          </ProvedorToast>
-        ) : (
-          <ConfigurarAmbiente />
-        )}
+        <ProvedorToast>
+          <ProvedorConfirmacao>{children}</ProvedorConfirmacao>
+        </ProvedorToast>
       </body>
     </html>
   );

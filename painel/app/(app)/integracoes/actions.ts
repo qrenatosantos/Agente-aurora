@@ -6,22 +6,38 @@
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { type EstadoAcao, errosDoZod, falha, mensagemErroBanco, sucesso } from "@/lib/acoes";
+import { type EstadoAcao, errosDoZod, falha, sucesso } from "@/lib/acoes";
 import { chaveMestraConfigurada, cifrar, finalDaChave } from "@/lib/cripto";
 import { lerSegredo, testarCrm, testarOpenAI, testarWhatsApp } from "@/lib/integracoes";
 import { exigirGestor } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
-import type { Json, NomeSegredo, ResultadoTeste } from "@/lib/tipos";
-
-type Supa = Awaited<ReturnType<typeof createClient>>;
+import type { Banco } from "@/lib/banco/base.ts";
+import { lerConfig, salvarConfig } from "@/lib/banco/config.ts";
+import * as integ from "@/lib/banco/integracoes.ts";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
+import type { NomeSegredo, ResultadoTeste } from "@/lib/tipos";
 
 const SEM_CHAVE_MESTRA = "O servidor está sem a CHAVE_MESTRA (variável secreta). Sem ela não dá para guardar chaves com segurança. Veja o README.";
 
-async function guardar(supabase: Supa, nome: NomeSegredo, valor: string) {
+/** Cifra e guarda uma chave. Valor vazio = manter a que já está salva. Devolve a mensagem de erro, se houver. */
+async function guardar(db: Banco, nome: NomeSegredo, valor: string) {
   const limpo = valor.trim();
   if (!limpo) return null;
-  const { error } = await supabase.rpc("salvar_segredo", { p_nome: nome, p_cifrado: await cifrar(limpo, nome), p_final: finalDaChave(limpo) });
-  return error ? mensagemErroBanco(error) : null;
+  try {
+    await integ.salvarSegredo(db, await atorAtual(), nome, await cifrar(limpo, nome), finalDaChave(limpo));
+    return null;
+  } catch (e) {
+    return mensagemDeErro(e);
+  }
+}
+
+/** Roda uma gravação; erro de regra vira a mensagem da tela. */
+async function tentar(fn: () => Promise<unknown>) {
+  try {
+    await fn();
+    return null;
+  } catch (e) {
+    return mensagemDeErro(e);
+  }
 }
 
 function revalidar() {
@@ -47,11 +63,11 @@ export async function salvarCrm(_a: EstadoAcao, formData: FormData): Promise<Est
   if (!d.success) return falha("Confira os campos destacados.", errosDoZod(d.error));
   if ((d.data.crm_chave.trim() || d.data.crm_segredo_avisos.trim()) && !chaveMestraConfigurada()) return falha(SEM_CHAVE_MESTRA);
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("integracoes").update({ crm_url: d.data.crm_url }).eq("unica", true);
-  if (error) return falha(mensagemErroBanco(error));
+  const db = await banco();
+  const e1 = await tentar(async () => integ.salvarIntegracoes(db, await atorAtual(), { crm_url: d.data.crm_url }));
+  if (e1) return falha(e1);
   for (const [nome, valor] of [["crm_chave", d.data.crm_chave], ["crm_segredo_avisos", d.data.crm_segredo_avisos]] as const) {
-    const erro = await guardar(supabase, nome, valor);
+    const erro = await guardar(db, nome, valor);
     if (erro) return falha(erro);
   }
   revalidar();
@@ -74,11 +90,11 @@ export async function salvarOpenAI(_a: EstadoAcao, formData: FormData): Promise<
   if (!d.success) return falha("Confira os campos destacados.", errosDoZod(d.error));
   if (d.data.openai_chave.trim() && !chaveMestraConfigurada()) return falha(SEM_CHAVE_MESTRA);
 
-  const supabase = await createClient();
+  const db = await banco();
   const { openai_chave, ...config } = d.data;
-  const { error } = await supabase.from("agente_config").update(config).eq("unica", true);
-  if (error) return falha(mensagemErroBanco(error));
-  const erro = await guardar(supabase, "openai_chave", openai_chave);
+  const e1 = await tentar(async () => salvarConfig(db, await atorAtual(), config));
+  if (e1) return falha(e1);
+  const erro = await guardar(db, "openai_chave", openai_chave);
   if (erro) return falha(erro);
   revalidar();
   revalidatePath("/registro");
@@ -110,11 +126,11 @@ export async function salvarWhatsApp(_a: EstadoAcao, formData: FormData): Promis
   const { whatsapp_token, whatsapp_app_secret, ...dados } = d.data;
   if ((whatsapp_token.trim() || whatsapp_app_secret.trim()) && !chaveMestraConfigurada()) return falha(SEM_CHAVE_MESTRA);
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("integracoes").update(dados).eq("unica", true);
-  if (error) return falha(mensagemErroBanco(error));
+  const db = await banco();
+  const e1 = await tentar(async () => integ.salvarIntegracoes(db, await atorAtual(), dados));
+  if (e1) return falha(e1);
   for (const [nome, valor] of [["whatsapp_token", whatsapp_token], ["whatsapp_app_secret", whatsapp_app_secret]] as const) {
-    const erro = await guardar(supabase, nome, valor);
+    const erro = await guardar(db, nome, valor);
     if (erro) return falha(erro);
   }
   revalidar();
@@ -128,8 +144,7 @@ export async function gerarTokenVerificacao(): Promise<{ ok: true; token: string
   if (!chaveMestraConfigurada()) return { ok: false, mensagem: SEM_CHAVE_MESTRA };
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const token = "aurora_" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  const supabase = await createClient();
-  const erro = await guardar(supabase, "whatsapp_verify_token", token);
+  const erro = await guardar(await banco(), "whatsapp_verify_token", token);
   if (erro) return { ok: false, mensagem: erro };
   revalidar();
   return { ok: true, token };
@@ -138,9 +153,8 @@ export async function gerarTokenVerificacao(): Promise<{ ok: true; token: string
 export async function apagarChave(nome: NomeSegredo): Promise<EstadoAcao> {
   const g = await exigirGestor();
   if ("erro" in g) return falha(g.erro);
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("apagar_segredo", { p_nome: nome });
-  if (error) return falha(mensagemErroBanco(error));
+  const erro = await tentar(async () => integ.apagarSegredo(await banco(), await atorAtual(), nome));
+  if (erro) return falha(erro);
   revalidar();
   return sucesso("Chave apagada.");
 }
@@ -150,33 +164,31 @@ export async function testarConexao(servico: "crm" | "openai" | "whatsapp"): Pro
   const g = await exigirGestor();
   if ("erro" in g) return falha(g.erro);
   if (!chaveMestraConfigurada()) return falha(SEM_CHAVE_MESTRA);
-  const supabase = await createClient();
-  const [{ data: integ }, { data: config }] = await Promise.all([
-    supabase.from("integracoes").select("*").eq("unica", true).maybeSingle(),
-    supabase.from("agente_config").select("modelo").eq("unica", true).maybeSingle(),
-  ]);
-  if (!integ) return falha("Sem permissão.");
+  const db = await banco();
+  const ator = await atorAtual();
+  const [dadosInteg, config] = await Promise.all([integ.lerIntegracoes(db, ator).catch(() => null), lerConfig(db, ator).catch(() => null)]);
+  if (!dadosInteg) return falha("Sem permissão.");
 
   let resultado: ResultadoTeste;
   try {
     if (servico === "crm") {
       const chave = await lerSegredo("crm_chave");
-      resultado = !integ.crm_url || !chave ? { ok: false, mensagem: "Preencha o endereço e a chave do CRM antes de testar." } : await testarCrm(integ.crm_url, chave);
+      resultado = !dadosInteg.crm_url || !chave ? { ok: false, mensagem: "Preencha o endereço e a chave do CRM antes de testar." } : await testarCrm(dadosInteg.crm_url, chave);
     } else if (servico === "openai") {
       const chave = await lerSegredo("openai_chave");
       resultado = !chave ? { ok: false, mensagem: "Cadastre a chave da OpenAI antes de testar." } : await testarOpenAI(chave, config?.modelo ?? "gpt-6.1-terra");
     } else {
       const token = await lerSegredo("whatsapp_token");
       resultado =
-        !token || !integ.whatsapp_phone_number_id
+        !token || !dadosInteg.whatsapp_phone_number_id
           ? { ok: false, mensagem: "Preencha a identificação do número e o token antes de testar." }
-          : await testarWhatsApp(integ.whatsapp_graph_versao, integ.whatsapp_phone_number_id, token);
+          : await testarWhatsApp(dadosInteg.whatsapp_graph_versao, dadosInteg.whatsapp_phone_number_id, token);
     }
   } catch {
     resultado = { ok: false, mensagem: "Não foi possível abrir a chave guardada. A CHAVE_MESTRA do servidor mudou? Digite a chave de novo." };
   }
 
-  await supabase.rpc("gravar_teste_integracao", { p_servico: servico, p_resultado: resultado as unknown as Json });
+  await integ.gravarTesteIntegracao(db, ator, servico, resultado).catch((e) => console.error("[teste]", e));
   revalidar();
   return resultado.ok ? sucesso(resultado.mensagem) : falha(resultado.mensagem ?? "Falhou.");
 }

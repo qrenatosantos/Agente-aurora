@@ -1,0 +1,5 @@
+# Segredos do motor (no computador). No Cloudflare: npx wrangler secret put NOME
+# SEGREDO_INTERNO: o MESMO do painel. Gere com: openssl rand -hex 24
+SEGREDO_INTERNO=
+# Só para testes nas sessões na nuvem (veja scripts/repassar-openai.mjs). Em produção, deixe sem.
+# OPENAI_BASE_URL=http://127.0.0.1:8789

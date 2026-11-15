@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { AvisoSoGestor } from "@/components/aviso-so-gestor";
 import { CabecalhoPagina, Cartao } from "@/components/ui/cartao";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { listarConhecimento } from "@/lib/banco/conhecimento.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 import { ListaConhecimento } from "./lista";
 
 export const metadata: Metadata = { title: "Conhecimento" };
 
 export default async function PaginaConhecimento() {
-  const { perfil } = await obterPerfil(); // antes das leituras (1º acesso liga o cadastro)
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("conhecimento").select("*").order("tipo").order("titulo").limit(1000);
+  const { perfil } = await obterPerfil();
+  const data = await listarConhecimento(await banco(), await atorAtual()).catch(() => null);
+  const error = data === null;
   const gestor = ehGestor(perfil);
   return (
     <>
@@ -25,7 +26,7 @@ export default async function PaginaConhecimento() {
       </div>
       {error ? (
         <Cartao role="alert" className="text-sm text-perigo">
-          Não foi possível ler o conhecimento. Confira se o arquivo <code>supabase/schema.sql</code> foi executado.
+          Não foi possível ler o conhecimento. Confira se o banco do painel foi criado (veja o README).
         </Cartao>
       ) : (
         <ListaConhecimento itens={data ?? []} podeEditar={gestor} />

@@ -1,8 +1,8 @@
 /**
  * Funções de texto puras (servidor e navegador).
  *
- * `alertasTexto` é a MESMA regra da função alertas_texto() do banco (supabase/schema.sql),
- * usada aqui só para mostrar o aviso enquanto o gestor digita. Quem vale é o banco.
+ * `alertasTexto`: sinais de preço, condição, desconto e disponibilidade num texto. A mesma função
+ * mostra o aviso enquanto o gestor digita (navegador) e grava os alertas (lib/banco/conhecimento.ts).
  */
 
 /** Minúsculas e sem acento. */

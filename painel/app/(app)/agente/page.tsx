@@ -24,7 +24,7 @@ export default async function PaginaAgente() {
       {!gestor && <AvisoSoGestor />}
       {erro || !config ? (
         <Cartao role="alert" className="text-sm text-perigo">
-          Não foi possível ler a configuração do agente. Confira se o arquivo <code>supabase/schema.sql</code> foi executado.
+          Não foi possível ler a configuração do agente. Confira se o banco do painel foi criado (veja o README).
         </Cartao>
       ) : (
         <>

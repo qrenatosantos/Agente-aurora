@@ -6,7 +6,9 @@ import { EstadoVazio } from "@/components/ui/estado-vazio";
 import { formatarDataHora } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
 import { ACOES_REGISTRO, NOMES_SEGREDOS, nomesCampos } from "@/lib/rotulos";
-import { createClient } from "@/lib/supabase/server";
+import { lerConfig, listarVersoes } from "@/lib/banco/config.ts";
+import { listarRegistro } from "@/lib/banco/operacao.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 import type { RegistroLinha } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 import { ListaVersoes } from "./versoes";
@@ -32,7 +34,6 @@ export default async function PaginaRegistro({ searchParams }: { searchParams: P
   if (!ehGestor(perfil)) redirect("/");
   const { aba: abaBruta } = await searchParams;
   const aba = abaBruta === "atividades" ? "atividades" : "versoes";
-  const supabase = await createClient();
 
   return (
     <>
@@ -52,27 +53,24 @@ export default async function PaginaRegistro({ searchParams }: { searchParams: P
           </Link>
         ))}
       </nav>
-      {aba === "versoes" ? <Versoes supabase={supabase} /> : <Atividades supabase={supabase} />}
+      {aba === "versoes" ? <Versoes /> : <Atividades />}
     </>
   );
 }
 
-type Supa = Awaited<ReturnType<typeof createClient>>;
-
-async function Versoes({ supabase }: { supabase: Supa }) {
-  const [{ data, error }, { data: atual }] = await Promise.all([
-    supabase.from("config_versoes").select("*").order("numero", { ascending: false }).limit(200),
-    supabase.from("agente_config").select("versao").eq("unica", true).maybeSingle(),
-  ]);
-  if (error) return <Cartao className="text-sm text-perigo">Não foi possível ler as versões.</Cartao>;
-  if (!data?.length) return <EstadoVazio titulo="Nenhuma versão ainda" />;
+async function Versoes() {
+  const db = await banco();
+  const ator = await atorAtual();
+  const [data, atual] = await Promise.all([listarVersoes(db, ator, 200).catch(() => null), lerConfig(db, ator).catch(() => null)]);
+  if (!data) return <Cartao className="text-sm text-perigo">Não foi possível ler as versões.</Cartao>;
+  if (!data.length) return <EstadoVazio titulo="Nenhuma versão ainda" />;
   return <ListaVersoes versoes={data} atual={atual?.versao ?? 0} />;
 }
 
-async function Atividades({ supabase }: { supabase: Supa }) {
-  const { data, error } = await supabase.from("registro").select("*").order("id", { ascending: false }).limit(300);
-  if (error) return <Cartao className="text-sm text-perigo">Não foi possível ler o registro.</Cartao>;
-  if (!data?.length) return <EstadoVazio titulo="Nada registrado ainda" />;
+async function Atividades() {
+  const data = await listarRegistro(await banco(), await atorAtual(), { limite: 300 }).catch(() => null);
+  if (!data) return <Cartao className="text-sm text-perigo">Não foi possível ler o registro.</Cartao>;
+  if (!data.length) return <EstadoVazio titulo="Nada registrado ainda" />;
   return (
     <Cartao className="p-0 sm:p-0">
       <ul className="divide-y divide-borda">

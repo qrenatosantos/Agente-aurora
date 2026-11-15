@@ -4,18 +4,23 @@
  * SIMULADOR: conversar com o agente como se fosse um cliente.
  * Padrão: LÊ o CRM de verdade (agenda, catálogo, preço) e NÃO grava nada.
  * Com "gravar no CRM" (só gestor): cria um pedido de teste e grava tudo, como o agente real faria.
+ *
+ * Quem responde é o MOTOR (o mesmo Worker que atende no WhatsApp), numa conversa só desta simulação
+ * ("sim-<id>"). Se o motor não estiver ligado a este painel (ex.: no computador sem o motor rodando),
+ * o núcleo roda aqui mesmo, com as mesmas regras, e a tela avisa.
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { falha, mensagemErroBanco, sucesso, type EstadoAcao } from "@/lib/acoes";
-import { carregarAmbienteAgente } from "@/lib/agente-servidor";
+import { falha, sucesso, type EstadoAcao } from "@/lib/acoes";
+import { carregarAmbienteAgente, chamarMotor } from "@/lib/agente-servidor";
+import * as op from "@/lib/banco/operacao.ts";
 import { processarTurno } from "@/lib/nucleo/agente.ts";
 import type { NegocioCrm } from "@/lib/nucleo/crm.ts";
-import { estadoInicial, type EstadoConversa } from "@/lib/nucleo/tipos.ts";
+import { estadoInicial, type EstadoConversa, type ResultadoTurno } from "@/lib/nucleo/tipos.ts";
 import { exigirGestor, exigirPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
-import type { MensagemSimulacao } from "@/lib/tipos";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
+import type { MensagemSimulacao, SimulacaoLinha } from "@/lib/tipos";
 import { ehUuid } from "@/lib/validacao";
 
 const esquemaNova = z.object({
@@ -60,20 +65,17 @@ export async function novaSimulacao(_a: EstadoAcao, formData: FormData): Promise
     estado.telefone = `3490000${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("simulacoes")
-    .insert({
-      titulo: (d.data.gravar_crm ? "[grava no CRM] " : "") + titulo,
-      modelo: d.data.modelo || amb.cfg.modelo,
-      gravar_crm: d.data.gravar_crm,
-      estado,
-    })
-    .select("id")
-    .single();
-  if (error) return falha(mensagemErroBanco(error));
+  let id: string;
+  try {
+    const db = await banco();
+    const ator = await atorAtual();
+    id = await op.criarSimulacao(db, ator, { titulo: (d.data.gravar_crm ? "[grava no CRM] " : "") + titulo, modelo: d.data.modelo || amb.cfg.modelo, gravar_crm: d.data.gravar_crm });
+    await op.atualizarSimulacao(db, ator, id, { estado: estado as unknown as Record<string, unknown> });
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
   revalidatePath("/simulador");
-  redirect(`/simulador?id=${data.id}${d.data.pergunta ? `&pergunta=${encodeURIComponent(d.data.pergunta)}` : ""}`);
+  redirect(`/simulador?id=${id}${d.data.pergunta ? `&pergunta=${encodeURIComponent(d.data.pergunta)}` : ""}`);
 }
 
 export type ResultadoEnvio = { ok: boolean; mensagem?: string };
@@ -85,8 +87,9 @@ export async function enviarMensagem(simulacaoId: string, texto: string): Promis
   const limpo = texto.replace(/\r\n/g, "\n").trim().slice(0, 2000);
   if (!limpo) return { ok: false, mensagem: "Escreva uma mensagem." };
 
-  const supabase = await createClient();
-  const { data: sim } = await supabase.from("simulacoes").select("*").eq("id", simulacaoId).maybeSingle();
+  const db = await banco();
+  const ator = await atorAtual();
+  const sim = (await op.lerSimulacao(db, ator, simulacaoId).catch(() => null)) as SimulacaoLinha | null;
   if (!sim) return { ok: false, mensagem: "Simulação não encontrada." };
   if (sim.mensagens.length >= 380) return { ok: false, mensagem: "Esta simulação ficou longa demais. Comece uma nova." };
 
@@ -101,21 +104,36 @@ export async function enviarMensagem(simulacaoId: string, texto: string): Promis
   const msgCliente: MensagemSimulacao = { papel: "cliente", texto: limpo, em: agora.toISOString() };
   const historico = [...sim.mensagens, msgCliente].filter((m) => m.papel !== "sistema").map((m) => ({ papel: m.papel, texto: m.texto, em: m.em }));
 
-  const r = await processarTurno({
+  const comum = {
     cfg: amb.cfg,
     conhecimento: amb.conhecimento,
-    estado: { ...estadoInicial(), ...sim.estado },
-    historico,
     novas: [limpo],
-    crm: amb.crm,
     chaveIA: amb.chaveIA,
     modelo: sim.modelo,
-    modo: sim.gravar_crm ? "real" : "simulacao",
+    modo: (sim.gravar_crm ? "real" : "simulacao") as "real" | "simulacao",
     pausado: amb.pausado,
-    agora,
     telefone: sim.estado?.telefone ?? null,
     tituloNovoPedido: "SIMULADOR · teste (pode excluir)",
-  });
+  };
+  let r: ResultadoTurno;
+  let noMotor = true;
+  try {
+    const peloMotor = await chamarMotor<ResultadoTurno>("turno", {
+      ...comum,
+      conversa: `sim-${sim.id}`,
+      crm: { endereco: amb.crmUrl, chave: amb.chaveCrm },
+      agora: agora.toISOString(),
+      estadoInicial: sim.estado,
+    });
+    if (peloMotor) r = peloMotor;
+    else {
+      noMotor = false;
+      r = await processarTurno({ ...comum, estado: { ...estadoInicial(), ...sim.estado }, historico, crm: amb.crm, agora });
+    }
+  } catch (e) {
+    return { ok: false, mensagem: mensagemDeErro(e) };
+  }
+  if (!noMotor) r.rastro.push({ tipo: "aviso", nome: "Rodou no painel", detalhe: "O motor do agente não está ligado a este painel: a resposta foi calculada aqui, com as mesmas regras." });
 
   const novas: MensagemSimulacao[] = [msgCliente];
   const em = new Date().toISOString();
@@ -135,29 +153,19 @@ export async function enviarMensagem(simulacaoId: string, texto: string): Promis
   }
 
   const custo = r.uso.custo_usd ?? 0;
-  const [{ error }] = await Promise.all([
-    supabase
-      .from("simulacoes")
-      .update({
-        mensagens: [...sim.mensagens, ...novas],
-        estado: r.estado,
-        custo_usd: Number(sim.custo_usd) + custo,
-        tokens: sim.tokens + r.uso.entrada + r.uso.saida,
-      })
-      .eq("id", sim.id),
-    r.uso.chamadas
-      ? supabase.rpc("registrar_uso_ia", {
-          p_origem: "simulador",
-          p_modelo: r.uso.modelo,
-          p_entrada: r.uso.entrada,
-          p_cache: r.uso.cache,
-          p_saida: r.uso.saida,
-          p_custo: Number(custo.toFixed(6)),
-          p_simulacao: sim.id,
-        })
-      : Promise.resolve({ error: null }),
-  ]);
-  if (error) return { ok: false, mensagem: mensagemErroBanco(error) };
+  try {
+    await op.atualizarSimulacao(db, ator, sim.id, {
+      mensagens: [...sim.mensagens, ...novas],
+      estado: r.estado as unknown as Record<string, unknown>,
+      custo_usd: Number(sim.custo_usd) + custo,
+      tokens: sim.tokens + r.uso.entrada + r.uso.saida,
+    });
+    if (r.uso.chamadas) {
+      await op.registrarUsoIA(db, ator, { origem: "simulador", modelo: r.uso.modelo, entrada: r.uso.entrada, cache: r.uso.cache, saida: r.uso.saida, custo: Number(custo.toFixed(6)), simulacao: sim.id });
+    }
+  } catch (e) {
+    return { ok: false, mensagem: mensagemDeErro(e) };
+  }
   revalidatePath("/simulador");
   return { ok: true };
 }
@@ -166,10 +174,12 @@ export async function apagarSimulacao(id: string): Promise<EstadoAcao> {
   const p = await exigirPerfil();
   if ("erro" in p) return falha(p.erro);
   if (!ehUuid(id)) return falha("Simulação inválida.");
-  const supabase = await createClient();
-  const { error, count } = await supabase.from("simulacoes").delete({ count: "exact" }).eq("id", id);
-  if (error) return falha(mensagemErroBanco(error));
-  if (!count) return falha("Só quem criou (ou o gestor) pode apagar esta simulação.");
+  try {
+    await op.apagarSimulacao(await banco(), await atorAtual(), id);
+    await chamarMotor("apagar", { conversa: `sim-${id}` }).catch(() => undefined); // a memória da conversa no motor também
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
   revalidatePath("/simulador");
   return sucesso("Simulação apagada.");
 }

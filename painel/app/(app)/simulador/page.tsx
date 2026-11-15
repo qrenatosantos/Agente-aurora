@@ -4,7 +4,9 @@ import { CabecalhoPagina, Cartao, Selo } from "@/components/ui/cartao";
 import { obterConfigAgente } from "@/lib/dados";
 import { formatarDataHora } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { lerSimulacao, listarSimulacoes } from "@/lib/banco/operacao.ts";
+import { atorAtual, banco } from "@/lib/servidor";
+import type { SimulacaoLinha } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 import { validacaoUuid } from "./util";
 import { Conversa } from "./conversa";
@@ -16,13 +18,11 @@ export default async function PaginaSimulador({ searchParams }: { searchParams: 
   const { perfil } = await obterPerfil();
   const gestor = ehGestor(perfil);
   const { id, pergunta, nova } = await searchParams;
-  const supabase = await createClient();
-  const [{ data: lista }, { config }] = await Promise.all([
-    supabase.from("simulacoes").select("id, titulo, criado_por_nome, modelo, gravar_crm, custo_usd, updated_at").order("updated_at", { ascending: false }).limit(30),
-    obterConfigAgente(),
-  ]);
+  const db = await banco();
+  const ator = await atorAtual();
+  const [lista, { config }] = await Promise.all([listarSimulacoes(db, ator, 30).catch(() => []), obterConfigAgente()]);
   const atualId = id && validacaoUuid(id) ? id : null;
-  const { data: atual } = atualId ? await supabase.from("simulacoes").select("*").eq("id", atualId).maybeSingle() : { data: null };
+  const atual = atualId ? ((await lerSimulacao(db, ator, atualId).catch(() => null)) as SimulacaoLinha | null) : null;
   const mostrarNova = !atual || nova === "1";
 
   return (

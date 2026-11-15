@@ -1,13 +1,23 @@
 /**
- * Proxy do Next.js 16 (o antigo middleware.ts foi renomeado para proxy.ts).
- * Roda antes de cada página: renova a sessão do Supabase e protege as rotas.
- * A lógica está em lib/supabase/middleware.ts e as rotas públicas em lib/rotas.ts.
+ * Proxy do Next.js 16 (o antigo middleware.ts). Roda antes de cada página.
+ * Primeira barreira, rápida: sem o cookie de sessão, rota protegida → /login.
+ * A conferência de verdade (sessão válida, pessoa ativa, papel) acontece no servidor, em
+ * lib/servidor.ts e em cada operação de lib/banco/.
  */
-import type { NextRequest } from "next/server";
-import { atualizarSessao } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
+import { ehRotaPublica, ROTA_INICIAL } from "@/lib/rotas";
+import { COOKIE_SESSAO } from "@/lib/sessao-cookie";
 
-export async function proxy(request: NextRequest) {
-  return atualizarSessao(request);
+export function proxy(request: NextRequest) {
+  const caminho = request.nextUrl.pathname;
+  if (!request.cookies.get(COOKIE_SESSAO)?.value && !ehRotaPublica(caminho)) {
+    const destino = request.nextUrl.clone();
+    destino.pathname = "/login";
+    destino.search = "";
+    if (caminho !== ROTA_INICIAL) destino.searchParams.set("next", caminho + request.nextUrl.search);
+    return NextResponse.redirect(destino);
+  }
+  return NextResponse.next();
 }
 
 export const config = {

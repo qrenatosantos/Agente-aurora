@@ -6,36 +6,42 @@ import { obterConfigAgente, obterOperacao } from "@/lib/dados";
 import { formatarMoeda } from "@/lib/formatar";
 import { PROXIMAS_TELAS } from "@/lib/navegacao";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { listarVersoes } from "@/lib/banco/config.ts";
+import { listarConhecimento } from "@/lib/banco/conhecimento.ts";
+import { lerIntegracoes } from "@/lib/banco/integracoes.ts";
+import { gastoMes } from "@/lib/banco/operacao.ts";
+import { listarEquipe } from "@/lib/banco/pessoas.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 
 export const metadata: Metadata = { title: "Visão geral" };
 
 type Passo = { feito: boolean | null; titulo: string; detalhe: string; href?: string };
 
 export default async function PaginaInicio() {
-  const { perfil } = await obterPerfil(); // antes das leituras (1º acesso liga o cadastro)
-  const supabase = await createClient();
-  const [{ config }, operacao, conhecimento, versoesHumanas, integ, pessoas] = await Promise.all([
+  const { perfil } = await obterPerfil();
+  const db = await banco();
+  const ator = await atorAtual();
+  // leituras só do gestor (versões, integrações, equipe) voltam vazias para a atendente
+  const [{ config }, operacao, conhecimento, versoes, t, pessoas, gasto] = await Promise.all([
     obterConfigAgente(),
     obterOperacao(),
-    supabase.from("conhecimento").select("ativo, alertas"),
-    supabase.from("config_versoes").select("numero", { count: "exact", head: true }).not("autor_id", "is", null),
-    supabase.from("integracoes").select("teste_crm, teste_openai, teste_whatsapp").eq("unica", true).maybeSingle(),
-    supabase.from("perfis").select("id", { count: "exact", head: true }),
+    listarConhecimento(db, ator).catch(() => []),
+    listarVersoes(db, ator, 500).catch(() => []),
+    lerIntegracoes(db, ator).catch(() => null),
+    listarEquipe(db, ator).catch(() => []),
+    gastoMes(db, ator).catch(() => 0),
   ]);
-  const { data: gastoBruto } = await supabase.rpc("gasto_mes_usd");
-  const gasto = Number(gastoBruto ?? 0);
+  const versoesHumanas = versoes.filter((v) => v.autor_nome !== "Sistema").length;
   const limite = Number(config?.limite_mensal_usd ?? 0);
   const pct = limite > 0 ? Math.min(100, (gasto / limite) * 100) : 0;
   const gestor = ehGestor(perfil);
-  const itens = conhecimento.data ?? [];
+  const itens = conhecimento;
   const ativos = itens.filter((i) => i.ativo).length;
   const comAlerta = itens.filter((i) => i.ativo && i.alertas.length).length;
-  const t = integ.data;
 
   const passos: Passo[] = [
     {
-      feito: (versoesHumanas.count ?? 0) > 0,
+      feito: versoesHumanas > 0,
       titulo: "Revisar as instruções do agente",
       detalhe: "A versão inicial foi escrita a partir do site e das regras combinadas. O André deve ler e ajustar.",
       href: "/agente",
@@ -52,7 +58,7 @@ export default async function PaginaInicio() {
           { feito: Boolean(t?.teste_crm?.ok), titulo: "Conectar o CRM", detalhe: t?.teste_crm?.mensagem ?? "Criar a chave do agente no CRM e testar aqui.", href: "/integracoes" },
           { feito: Boolean(t?.teste_openai?.ok), titulo: "Conectar a OpenAI", detalhe: t?.teste_openai?.mensagem ?? "Necessária a partir da fase 2 (simulador).", href: "/integracoes" },
           { feito: Boolean(t?.teste_whatsapp?.ok), titulo: "Conectar o WhatsApp", detalhe: t?.teste_whatsapp?.mensagem ?? "Necessário a partir da fase 3 (número de teste da Meta).", href: "/integracoes" },
-          { feito: (pessoas.count ?? 0) > 1 ? true : null, titulo: "Cadastrar a equipe", detalhe: "Opcional: quem mais vai acompanhar as conversas.", href: "/equipe" },
+          { feito: pessoas.length > 1 ? true : null, titulo: "Cadastrar a equipe", detalhe: "Opcional: quem mais vai acompanhar as conversas.", href: "/equipe" },
         ]
       : []),
   ];

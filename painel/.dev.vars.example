@@ -1,0 +1,15 @@
+# O painel roda no Cloudflare Workers e usa o banco D1 (ligação "DB" no wrangler.jsonc).
+# NÃO há variáveis de banco para preencher: o D1 é ligado pelo wrangler.jsonc.
+#
+# Segredos (no computador, no arquivo painel/.dev.vars; no Cloudflare, com `npx wrangler secret put NOME`):
+#
+# CHAVE_MESTRA: cifra as chaves da OpenAI, da Meta e do CRM digitadas no painel. Gere com:
+#   openssl rand -base64 32
+# Se for perdida, as chaves salvas no painel precisam ser digitadas de novo.
+CHAVE_MESTRA=
+#
+# CODIGO_INSTALACAO: pedido em /instalar para criar o 1º gestor (só funciona com o painel vazio).
+CODIGO_INSTALACAO=
+#
+# SEGREDO_INTERNO: o MESMO cadastrado no motor (motor/.dev.vars). O painel usa para falar com o motor.
+SEGREDO_INTERNO=

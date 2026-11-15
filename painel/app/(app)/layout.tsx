@@ -15,18 +15,12 @@ import { obterOperacao } from "@/lib/dados";
 import { obterMarca } from "@/lib/marca-servidor";
 import { SUBTITULO_MENU } from "@/lib/navegacao";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  // Segunda barreira (a primeira é o proxy.ts): sem sessão, volta para o login.
-  if (!data?.claims) redirect("/login");
-
-  const email = typeof data.claims.email === "string" ? data.claims.email : "";
-  // O perfil vem PRIMEIRO: no 1º acesso, meu_perfil() liga o login ao cadastro, e só depois
-  // disso o banco libera as outras leituras (RLS).
   const [marca, { perfil, erro: erroPerfil }] = await Promise.all([obterMarca(), obterPerfil()]);
+  // Segunda barreira (a primeira é o proxy.ts): sem sessão válida, volta para o login.
+  if (!perfil && !erroPerfil) redirect("/login");
+  const email = perfil?.email ?? "";
   const operacao = perfil?.ativo ? await obterOperacao() : null;
   const bloqueado = perfil !== null && !perfil.ativo;
   const gestor = ehGestor(perfil);
@@ -49,8 +43,8 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
 
         {erroPerfil && (
           <div role="alert" className="mx-4 mt-4 rounded-xl bg-alerta-suave p-3 text-sm text-alerta sm:mx-6">
-            Não foi possível carregar o seu cadastro (função <code>meu_perfil</code>). Rode o arquivo{" "}
-            <code>supabase/schema.sql</code> no SQL Editor do Supabase do agente.
+            Não foi possível ler o banco do painel. Confira se o banco D1 foi criado e se o arquivo{" "}
+            <code>painel/banco/schema.sql</code> foi aplicado (veja o README).
           </div>
         )}
 

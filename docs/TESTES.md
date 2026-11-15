@@ -75,6 +75,41 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 1b: painel na Cloudflare (D1 e login próprio), simulador pelo motor (15/11/2026)
+
+Ambiente: painel compilado para o Cloudflare (`opennextjs-cloudflare build`) rodando com `wrangler dev`, banco D1
+local com a migração e os dados da Aurora; motor (Think) rodando ao lado, ligado ao painel pela ligação interna
+`MOTOR`; cópia local do CRM; OpenAI de verdade. O CRM real não foi tocado.
+
+| Teste | Resultado |
+|---|---|
+| Regras do banco D1 (`npm run test:banco`): os casos do banco antigo + login, links de senha e limite de tentativas | **36/36** |
+| Núcleo sem IA (`npm run test:nucleo`), com a nova proteção contra "resposta dupla" | **28/28** |
+| Bateria com IA de verdade **no motor** (15 situações × 3, `gpt-6-luna`), lendo a configuração do D1 | **45/45** (US$ 0,00103 por resposta, 2,1 s) |
+| Painel: `tsc`, `lint`, `build` | Passaram |
+| Tamanho do painel para o Cloudflare | **2,21 MB** compactado (antes, com Supabase: 2,57 MB; limite grátis: 3 MB) |
+| Motor: `tsc` e tamanho | Passou; 1,32 MB |
+
+**Navegador (Playwright), de ponta a ponta:**
+
+| Passo | Resultado |
+|---|---|
+| Painel vazio leva a `/instalar`; código de instalação errado é recusado | Passou ("Código de instalação incorreto.") |
+| Código certo cria o 1º gestor e já entra | Passou |
+| Integrações: salvar endereço e chave do CRM e chave da OpenAI (cifradas; a tela mostra só o final) | Passou |
+| Simulador: nova simulação, mensagem do cliente, resposta do agente **vinda do motor**, com "Por que respondeu assim?" | Passou |
+| Equipe: nova pessoa → link de senha; a pessoa cria a senha pelo link (no celular) e entra | Passou |
+| O mesmo link usado de novo | Recusado ("Este link não vale mais.") |
+| Atendente abrindo Integrações, Equipe e Registro | Não vê o conteúdo (o painel mostra a Visão geral) |
+| Sem login, `/agente` leva a `/login?next=/agente`; senha errada recusada; senha certa volta para `/agente` | Passou |
+
+**Problema encontrado e corrigido:** numa das 7 simulações, a IA escreveu **duas versões da resposta coladas**
+("Oi! Sim, ...\nOi! Sim, ..."), numa única chamada. Agora o sistema detecta a segunda saudação e fica só com a
+primeira versão (`removerRespostaDupla`, com teste). Em 6 novas simulações, não se repetiu.
+
+**Ficou para depois:** "Testar conexão" do CRM pelo painel não alcança um CRM em `localhost` (proteção
+`global_fetch_strictly_public` do Worker, de propósito); com o CRM publicado na internet funciona normalmente.
+
 ## Fase 1 (Think): o motor na Cloudflare, com a mesma bateria (15/11/2026)
 
 Ambiente: o **motor** (`motor/`, Cloudflare Worker + Think 0.23.0) rodando localmente com `wrangler dev`; a cópia local

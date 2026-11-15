@@ -4,7 +4,8 @@
  */
 import "server-only";
 import { decifrar } from "@/lib/cripto";
-import { createClient } from "@/lib/supabase/server";
+import { segredoCifrado } from "@/lib/banco/integracoes.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 import type { NomeSegredo, ResultadoTeste } from "@/lib/tipos";
 
 /** Permissões que a chave do agente precisa ter no CRM (docs/API-DO-AGENTE.md do CRM, seção 3). */
@@ -26,10 +27,9 @@ export const ESCOPOS_DO_AGENTE = [
 ] as const;
 
 export async function lerSegredo(nome: NomeSegredo): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("segredo_cifrado", { p_nome: nome });
-  if (error || !data) return null;
-  return decifrar(data, nome);
+  const cifrado = await segredoCifrado(await banco(), await atorAtual(), nome).catch(() => null);
+  if (!cifrado) return null;
+  return decifrar(cifrado, nome);
 }
 
 const TEMPO = 10000;

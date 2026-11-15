@@ -79,13 +79,33 @@ export function dataISO(d: Date, fuso = "America/Sao_Paulo") {
 
 /** Se a IA repetiu a mesma resposta duas vezes seguidas na mesma mensagem, fica uma só. */
 export function removerRepeticao(texto: string) {
-  const t = texto.trim();
+  const t = removerRespostaDupla(texto.trim());
   const meio = Math.floor(t.length / 2);
   for (let k = meio - 3; k <= meio + 3; k++) {
     if (k <= 20 || k >= t.length) continue;
     const a = t.slice(0, k).trim();
     const b = t.slice(k).trim();
     if (a === b) return a;
+  }
+  return t;
+}
+
+/**
+ * A IA às vezes escreve DUAS versões da resposta de uma vez ("Oi! Sim, ...\nOi! Sim, ...").
+ * Se a resposta começa com uma saudação e a MESMA saudação reaparece no começo de outra linha,
+ * fica só a primeira versão. (Visto 1 vez em 7 no simulador, com gpt-6-luna.)
+ */
+export function removerRespostaDupla(texto: string) {
+  const t = texto.trim();
+  const m = t.match(/^(oi|ol[aá]|bom dia|boa tarde|boa noite)\b/i);
+  if (!m) return t;
+  const saudacao = normalizar(m[1]);
+  const linhas = t.split("\n");
+  let acumulado = linhas[0].length;
+  for (let i = 1; i < linhas.length; i++) {
+    const inicio = normalizar(linhas[i].trim()).match(/^(oi|ola|bom dia|boa tarde|boa noite)\b/);
+    if (inicio && inicio[1] === saudacao && acumulado > 40) return linhas.slice(0, i).join("\n").trim();
+    acumulado += linhas[i].length + 1;
   }
   return t;
 }

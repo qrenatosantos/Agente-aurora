@@ -1,5 +1,5 @@
 -- =====================================================================
--- DADOS INICIAIS DA AURORA BARTENDERS (rode DEPOIS de painel/banco/schema.sql)
+-- DADOS INICIAIS DA AURORA BARTENDERS (rode DEPOIS das migrações de painel/banco/migracoes/)
 --   npx wrangler d1 execute <banco> --remote --file=clientes/aurora/dados-iniciais.sql
 --
 -- * Versão inicial das instruções, mensagens, gatilhos e horário: só entra se as instruções

@@ -3,6 +3,7 @@
  * Preço, condição, desconto e disponibilidade SÓ podem vir do CRM: o texto que parece falar disso
  * ganha ALERTAS, para o gestor revisar. Todos leem; só o gestor altera. Excluir guarda o texto no registro.
  */
+import { alertasTexto } from "../texto.ts";
 import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirGestor, novoId, registrar, traduzirErro } from "./base.ts";
 
 export type TipoConhecimento = "pergunta" | "texto" | "arquivo" | "site";
@@ -20,21 +21,8 @@ export type Conhecimento = {
   updated_at: string;
 };
 
-const normalizar = (t: string) => (t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
-/** Sinais de preço, condição comercial, desconto e disponibilidade num texto. */
-export function alertasTexto(texto: string): string[] {
-  const t = normalizar(texto);
-  const r: string[] = [];
-  if (/r\$\s*\d/.test(t) || /\d+(\.\d{3})*,\d{2}\s*(reais|r\$)?/.test(t) || /\b\d+\s*reais\b/.test(t) || /\breais\b/.test(t)) r.push("valor em reais");
-  if (/\d+([.,]\d+)?\s*%/.test(t) || /\bpor cento\b/.test(t)) r.push("percentual");
-  if (/\b(preco|precos|custa|custam|custo|valor do|valor da|valores|investimento|tabela de)\b/.test(t)) r.push("menção a preço");
-  if (/\b(desconto|descontos|promocao|promocoes|cupom|cortesia|gratis|gratuito)\b/.test(t)) r.push("desconto ou cortesia");
-  if (/\b(entrada|sinal|parcela|parcelas|parcelado|parcelamento|a vista|pix|boleto|cartao|pagamento|saldo)\b/.test(t)) r.push("forma de pagamento");
-  if (/\b(multa|cancelamento|cancelar|reembolso|estorno|rescisao)\b/.test(t)) r.push("cancelamento ou multa");
-  if (/\b(disponibilidade|data livre|datas livres|agenda livre|vaga|vagas|lotad[ao])\b/.test(t)) r.push("disponibilidade de data");
-  return r;
-}
+/** Sinais de preço, condição comercial, desconto e disponibilidade (mesma regra do aviso na tela). */
+export { alertasTexto };
 
 const linha = (r: Record<string, unknown> | null) => converter<Conhecimento>(r, ["ativo"], ["alertas"]);
 

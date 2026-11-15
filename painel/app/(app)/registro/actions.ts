@@ -1,17 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type EstadoAcao, falha, mensagemErroBanco, sucesso } from "@/lib/acoes";
-import { exigirGestor } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { type EstadoAcao, falha, sucesso } from "@/lib/acoes";
+import * as cfg from "@/lib/banco/config.ts";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
 
 export async function restaurarVersao(numero: number): Promise<EstadoAcao> {
-  const g = await exigirGestor();
-  if ("erro" in g) return falha(g.erro);
   if (!Number.isInteger(numero) || numero < 1) return falha("Versão inválida.");
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("restaurar_versao", { p_numero: numero });
-  if (error) return falha(mensagemErroBanco(error));
+  let data: number;
+  try {
+    data = await cfg.restaurarVersao(await banco(), await atorAtual(), numero);
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
   revalidatePath("/", "layout");
   return sucesso(`Pronto: a configuração voltou a ser igual à versão ${numero} (salva como versão ${data}).`);
 }

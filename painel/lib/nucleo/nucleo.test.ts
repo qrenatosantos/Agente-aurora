@@ -12,7 +12,7 @@ import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horari
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd } from "./openai.ts";
 import { estadoInicial, type ConfigAgente } from "./tipos.ts";
-import { contemAlguma, pediuParaParar, removerRepeticao, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
+import { contemAlguma, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
 
 // ------------------------------------------------------------------ utilitários
 describe("textos e valores", () => {
@@ -38,6 +38,16 @@ describe("textos e valores", () => {
     assert.ok(pediuParaParar("Por favor, não quero mais receber mensagens"));
     assert.ok(pediuParaParar("PARAR"));
     assert.ok(!pediuParaParar("Não pare a festa, quero mais drinks"));
+  });
+  test("duas versões da resposta coladas viram uma", () => {
+    const a = "Oi! Sim, todos os pacotes incluem gelo e frutas frescas. A festa já tem data?";
+    const b = "Oi! Sim, a Aurora leva o gelo e as frutas, incluídos nos pacotes. Já tem data?";
+    assert.equal(removerRespostaDupla(`${a}\n${b}`), a);
+    assert.equal(removerRepeticao(`${a}\n\n${b}`), a);
+    // saudação diferente ou resposta curta: não mexe
+    const ok = "Olá! O valor vem na proposta.\nOi, tudo bem por aí também?";
+    assert.equal(removerRespostaDupla(ok), ok);
+    assert.equal(removerRespostaDupla("Oi!\nOi!"), "Oi!\nOi!");
   });
   test("resposta repetida duas vezes vira uma", () => {
     const r = "Olá! O valor vem na proposta. Para quando é a festa?";

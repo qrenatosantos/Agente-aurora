@@ -2,7 +2,7 @@
 -- BANCO DO PAINEL DO AGENTE (Cloudflare D1 = SQLite)
 --
 -- Um banco por cliente. Pode rodar quantas vezes quiser: é idempotente e não apaga dados.
---   npx wrangler d1 execute <banco> --remote --file=banco/schema.sql
+--   Aplicado com: npx wrangler d1 migrations apply <banco> --remote   (mudança nova = arquivo novo, 0002_..., nunca editar um já aplicado)
 --
 -- As REGRAS de acesso (quem pode o quê) ficam no código do painel, em lib/banco/ (uma função por
 -- operação, sempre recebendo quem está agindo) e são testadas em lib/banco/banco.test.ts.

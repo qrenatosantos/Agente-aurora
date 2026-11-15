@@ -2,12 +2,13 @@
  * TESTES DAS REGRAS DO BANCO DO PAINEL (D1/SQLite), sem internet:
  *   npm run test:banco   (na raiz)
  *
- * Carrega painel/banco/schema.sql e clientes/aurora/dados-iniciais.sql DUAS vezes (prova de que podem
+ * Carrega as migrações de painel/banco/migracoes/ e clientes/aurora/dados-iniciais.sql DUAS vezes (prova de que podem
  * rodar de novo sem estragar nada) e exercita cada regra como o gestor, a atendente, uma pessoa
  * desativada e um visitante (sem login) fariam. São os mesmos casos do banco antigo (Supabase),
  * mais os do login com e-mail e senha.
  */
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -20,7 +21,8 @@ import { alterarPessoa, atorDaSessao, definirSenhaComLink, entrar, gerarLinkSenh
 import { bancoDeTeste } from "./sqlite-teste.ts";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "../../..");
-const ARQUIVOS = [join(raiz, "painel/banco/schema.sql"), join(raiz, "clientes/aurora/dados-iniciais.sql")];
+const MIGRACOES = join(raiz, "painel/banco/migracoes");
+const ARQUIVOS = [...readdirSync(MIGRACOES).filter((f) => f.endsWith(".sql")).sort().map((f) => join(MIGRACOES, f)), join(raiz, "clientes/aurora/dados-iniciais.sql")];
 const db = bancoDeTeste([...ARQUIVOS, ...ARQUIVOS]);
 
 const CODIGO = "codigo-de-instalacao-123";

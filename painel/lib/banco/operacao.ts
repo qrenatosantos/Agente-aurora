@@ -86,11 +86,18 @@ export async function atualizarSimulacao(db: Banco, ator: Ator, id: string, d: {
   await exigirDonaOuGestor(db, ator, id);
   const sets: string[] = [];
   const vals: unknown[] = [];
-  if (d.titulo !== undefined) (sets.push("titulo = ?"), vals.push(d.titulo.slice(0, 120)));
-  if (d.mensagens !== undefined) (sets.push("mensagens = ?"), vals.push(JSON.stringify(d.mensagens)));
-  if (d.estado !== undefined) (sets.push("estado = ?"), vals.push(JSON.stringify(d.estado)));
-  if (d.custo_usd !== undefined) (sets.push("custo_usd = ?"), vals.push(d.custo_usd));
-  if (d.tokens !== undefined) (sets.push("tokens = ?"), vals.push(d.tokens));
+  const campos: [string, unknown][] = [
+    ["titulo", d.titulo?.slice(0, 120)],
+    ["mensagens", d.mensagens === undefined ? undefined : JSON.stringify(d.mensagens)],
+    ["estado", d.estado === undefined ? undefined : JSON.stringify(d.estado)],
+    ["custo_usd", d.custo_usd],
+    ["tokens", d.tokens],
+  ];
+  for (const [campo, valor] of campos) {
+    if (valor === undefined) continue;
+    sets.push(`${campo} = ?`);
+    vals.push(valor);
+  }
   if (!sets.length) return;
   try {
     await db.prepare(`update simulacoes set ${sets.join(", ")}, updated_at = ? where id = ?`).bind(...vals, agora(), id).run();

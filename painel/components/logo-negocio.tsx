@@ -36,7 +36,7 @@ export function LogoNegocio({
   const classes = cn(TAMANHOS[tamanho], "shrink-0 rounded-xl", className);
   if (logoUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- logo vem do Supabase Storage (qualquer domínio)
+      // eslint-disable-next-line @next/next/no-img-element -- logo pode vir de qualquer domínio
       <img
         src={logoUrl}
         alt={decorativa ? "" : `Logo de ${nome}`}

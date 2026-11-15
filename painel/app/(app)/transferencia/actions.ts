@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { type EstadoAcao, errosDoZod, falha, mensagemErroBanco, sucesso } from "@/lib/acoes";
+import { type EstadoAcao, errosDoZod, falha, sucesso } from "@/lib/acoes";
 import { exigirGestor } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { salvarConfig } from "@/lib/banco/config.ts";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
 import type { HorarioEquipe, MensagensPadrao } from "@/lib/tipos";
 import { DIAS, MENSAGENS } from "./textos";
 
@@ -58,17 +59,14 @@ export async function salvarTransferencia(_anterior: EstadoAcao, formData: FormD
   }
   if (Object.keys(erros).length) return falha("Confira os campos destacados.", erros);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agente_config")
-    .update({ ...base.data, horario_equipe: horario, mensagens })
-    .eq("unica", true)
-    .select("versao")
-    .maybeSingle();
-  if (error) return falha(mensagemErroBanco(error));
-  if (!data) return falha("Sem permissão para alterar a configuração.");
+  let versao: number;
+  try {
+    versao = await salvarConfig(await banco(), await atorAtual(), { ...base.data, horario_equipe: horario, mensagens });
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
 
   revalidatePath("/transferencia");
   revalidatePath("/registro");
-  return sucesso(`Salvo. Esta é a versão ${data.versao} da configuração.`);
+  return sucesso(`Salvo. Esta é a versão ${versao} da configuração.`);
 }

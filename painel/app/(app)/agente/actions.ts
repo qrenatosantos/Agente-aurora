@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { type EstadoAcao, errosDoZod, falha, mensagemErroBanco, sucesso } from "@/lib/acoes";
+import { type EstadoAcao, errosDoZod, falha, sucesso } from "@/lib/acoes";
 import { exigirGestor } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import { salvarConfig } from "@/lib/banco/config.ts";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
 
 const texto = (max: number) =>
   z
@@ -47,17 +48,14 @@ export async function salvarAgente(_anterior: EstadoAcao, formData: FormData): P
   const dados = esquema.safeParse(Object.fromEntries(formData));
   if (!dados.success) return falha("Confira os campos destacados.", errosDoZod(dados.error));
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agente_config")
-    .update(dados.data)
-    .eq("unica", true)
-    .select("versao")
-    .maybeSingle();
-  if (error) return falha(mensagemErroBanco(error));
-  if (!data) return falha("Sem permissão para alterar a configuração.");
+  let versao: number;
+  try {
+    versao = await salvarConfig(await banco(), await atorAtual(), dados.data);
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
 
   revalidatePath("/agente");
   revalidatePath("/registro");
-  return sucesso(`Salvo. Esta é a versão ${data.versao} da configuração.`);
+  return sucesso(`Salvo. Esta é a versão ${versao} da configuração.`);
 }

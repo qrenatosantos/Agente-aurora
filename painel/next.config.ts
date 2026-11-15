@@ -1,3 +1,4 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -24,3 +25,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// No computador (`next dev`): dá ao painel o banco D1 local e as outras ligações do wrangler.jsonc.
+initOpenNextCloudflareForDev();

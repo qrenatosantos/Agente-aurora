@@ -1,18 +1,40 @@
 "use client";
 
-import { Pencil, Plus, UserRound } from "lucide-react";
-import { useRef, useState } from "react";
+import { Copy, KeyRound, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { Botao } from "@/components/ui/botao";
 import { Campo, Entrada, Selecao } from "@/components/ui/campo";
 import { Cartao, Selo } from "@/components/ui/cartao";
 import { Interruptor } from "@/components/ui/controles";
+import { useConfirmar } from "@/components/ui/confirmar";
 import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import type { Perfil } from "@/lib/tipos";
 import { useAcao } from "@/lib/use-acao";
-import { salvarPessoa } from "./actions";
+import { gerarLink, removerPessoa, salvarPessoa } from "./actions";
 
 export function ListaEquipe({ pessoas, meuId }: { pessoas: Perfil[]; meuId: string }) {
   const [editando, setEditando] = useState<Perfil | "nova" | null>(null);
+  const [link, setLink] = useState<{ link: string; nome: string } | null>(null);
+  const [pendente, iniciar] = useTransition();
+  const toast = useToast();
+  const confirmar = useConfirmar();
+
+  const novoLink = (p: Perfil) =>
+    iniciar(async () => {
+      const r = await gerarLink(p.id);
+      if (r.ok && r.dados?.link) setLink({ link: r.dados.link, nome: p.nome });
+      else toast.erro(r.mensagem ?? "Não foi possível gerar o link.");
+    });
+
+  const remover = async (p: Perfil) => {
+    if (!(await confirmar({ titulo: `Remover ${p.nome}?`, mensagem: "A pessoa perde o acesso ao painel na hora. O registro do que ela fez continua guardado.", textoConfirmar: "Remover", perigo: true }))) return;
+    iniciar(async () => {
+      const r = await removerPessoa(p.id);
+      if (r.ok) toast.sucesso(r.mensagem ?? "Removida.");
+      else toast.erro(r.mensagem ?? "Não foi possível remover.");
+    });
+  };
   return (
     <>
       <div className="mb-4 flex justify-end">
@@ -36,23 +58,79 @@ export function ListaEquipe({ pessoas, meuId }: { pessoas: Perfil[]; meuId: stri
               <div className="flex flex-wrap items-center gap-2">
                 <Selo cor={p.papel === "gestor" ? "marca" : "neutro"}>{p.papel === "gestor" ? "Gestor" : "Atendente"}</Selo>
                 {!p.ativo && <Selo cor="perigo">Bloqueado</Selo>}
-                {!p.user_id && <Selo cor="alerta">Ainda não entrou</Selo>}
+                {!p.tem_senha && <Selo cor="alerta">Ainda não criou a senha</Selo>}
+                <Botao variante="fantasma" className="min-h-10 px-3" onClick={() => novoLink(p)} disabled={pendente} aria-label={`Gerar link de senha para ${p.nome}`} title="Gerar link de senha">
+                  <KeyRound className="size-4" aria-hidden />
+                </Botao>
                 <Botao variante="fantasma" className="min-h-10 px-3" onClick={() => setEditando(p)} aria-label={`Editar ${p.nome}`}>
                   <Pencil className="size-4" aria-hidden />
                 </Botao>
+                {p.id !== meuId && (
+                  <Botao variante="fantasma" className="min-h-10 px-3" onClick={() => remover(p)} disabled={pendente} aria-label={`Remover ${p.nome}`}>
+                    <Trash2 className="size-4" aria-hidden />
+                  </Botao>
+                )}
               </div>
             </Cartao>
           </li>
         ))}
       </ul>
-      {editando && <EditorPessoa pessoa={editando === "nova" ? null : editando} souEu={editando !== "nova" && editando.id === meuId} aoFechar={() => setEditando(null)} />}
+      {editando && (
+        <EditorPessoa
+          pessoa={editando === "nova" ? null : editando}
+          souEu={editando !== "nova" && editando.id === meuId}
+          aoFechar={() => setEditando(null)}
+          aoCriar={(l) => {
+            setEditando(null);
+            setLink(l);
+          }}
+        />
+      )}
+      {link && <JanelaLink link={link.link} nome={link.nome} aoFechar={() => setLink(null)} />}
     </>
   );
 }
 
-function EditorPessoa({ pessoa, souEu, aoFechar }: { pessoa: Perfil | null; souEu: boolean; aoFechar: () => void }) {
+/** Mostra o link de senha para o gestor copiar e enviar (aparece uma vez só). */
+function JanelaLink({ link, nome, aoFechar }: { link: string; nome: string; aoFechar: () => void }) {
+  const toast = useToast();
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.sucesso("Link copiado.");
+    } catch {
+      toast.erro("Não deu para copiar. Selecione o link e copie.");
+    }
+  };
+  return (
+    <Modal aberto aoFechar={aoFechar} titulo={`Link de senha para ${nome}`} rodape={<Botao onClick={aoFechar}>Pronto</Botao>}>
+      <p className="text-sm text-texto-2">
+        Envie este link para {nome} (por WhatsApp, por exemplo). Por ele, a pessoa cria a própria senha. Vale por <b>48 horas</b> e uma vez
+        só. <b>Ele não aparece de novo</b>: se perder, gere outro.
+      </p>
+      <p className="mt-3 break-all rounded-xl bg-superficie-2 p-3 font-mono text-xs text-texto select-all">{link}</p>
+      <Botao variante="secundario" className="mt-3 w-full" onClick={copiar}>
+        <Copy className="size-4" aria-hidden /> Copiar link
+      </Botao>
+    </Modal>
+  );
+}
+
+function EditorPessoa({
+  pessoa,
+  souEu,
+  aoFechar,
+  aoCriar,
+}: {
+  pessoa: Perfil | null;
+  souEu: boolean;
+  aoFechar: () => void;
+  aoCriar: (l: { link: string; nome: string }) => void;
+}) {
   const form = useRef<HTMLFormElement>(null);
-  const { onSubmit, erros, pendente } = useAcao(salvarPessoa, { aoSucesso: aoFechar });
+  const { onSubmit, erros, pendente } = useAcao(salvarPessoa, {
+    aoSucesso: (estado) => (estado.dados?.link ? aoCriar({ link: estado.dados.link, nome: estado.dados.nome ?? "" }) : aoFechar()),
+  });
   const [ativo, setAtivo] = useState(pessoa?.ativo ?? true);
   return (
     <Modal
@@ -75,7 +153,7 @@ function EditorPessoa({ pessoa, souEu, aoFechar }: { pessoa: Perfil | null; souE
         <Campo rotulo="Nome" nome="nome" erro={erros.nome}>
           {(p) => <Entrada {...p} defaultValue={pessoa?.nome ?? ""} maxLength={80} />}
         </Campo>
-        <Campo rotulo="E-mail (o mesmo do login)" nome="email" erro={erros.email} ajuda={pessoa ? "O e-mail não muda depois do cadastro." : undefined}>
+        <Campo rotulo="E-mail (usado para entrar)" nome="email" erro={erros.email} ajuda={pessoa ? "O e-mail não muda depois do cadastro." : undefined}>
           {(p) => <Entrada {...p} type="email" inputMode="email" defaultValue={pessoa?.email ?? ""} readOnly={Boolean(pessoa)} />}
         </Campo>
         {souEu ? (

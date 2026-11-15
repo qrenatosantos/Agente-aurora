@@ -12,8 +12,8 @@ export default function ErroPagina({ reset }: { error: Error & { digest?: string
       </div>
       <h1 className="text-lg font-semibold text-texto">Algo deu errado</h1>
       <p className="mt-1 max-w-sm text-sm text-texto-2">
-        Verifique sua conexão com a internet e tente de novo. Se continuar, confira se o schema.sql foi executado no
-        Supabase.
+        Verifique sua conexão com a internet e tente de novo. Se continuar, avise quem cuida do painel (o banco pode não ter
+        sido criado ou atualizado).
       </p>
       <Botao className="mt-5" onClick={() => reset()}>
         Tentar de novo

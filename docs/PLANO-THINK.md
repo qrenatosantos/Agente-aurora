@@ -1,6 +1,6 @@
 # Plano: o "motor" do agente com o Cloudflare Think
 
-Escrito em 15/11/2026. **Aprovado pelo Renato em 15/11/2026, com a decisão: tudo na Cloudflare (D1 + Cloudflare Access), desde já.**
+Escrito em 15/11/2026. **Aprovado pelo Renato em 15/11/2026, com as decisões: tudo na Cloudflare (D1) desde já, e login do painel por e-mail e senha.**
 Base: [`PASSAGEM-PARA-THINK.md`](PASSAGEM-PARA-THINK.md), [`PLANO.md`](PLANO.md) e o código de `painel/lib/nucleo/`.
 
 ## Fontes consultadas
@@ -94,7 +94,7 @@ scripts/novo-cliente    cria banco e Workers, aplica o schema, pede os segredos
 | Login | Cloudflare Access (grátis até 50 pessoas; entra com código por e-mail ou Google) | Supabase Auth (pronto) |
 | Esforço | Reescrever a camada de banco do painel e portar os 32 testes do banco (as regras do RLS viram código) | Zero |
 
-**Decidido: D1 + Cloudflare Access, desde já** ("vamos começar do jeito certo"). O painel sai do Supabase logo depois
+**Decidido: D1, desde já** (login: e-mail e senha próprios, no lugar do Cloudflare Access) ("vamos começar do jeito certo"). O painel sai do Supabase logo depois
 de o motor provar o 45/45 (fase 1b), antes do WhatsApp: assim a Aurora já começa na instalação definitiva.
 
 As **conversas** ficam no SQLite do Durable Object de cada conversa (de qualquer jeito). Os papéis ficam assim:
@@ -131,12 +131,12 @@ o banco do painel guarda **configuração, equipe e registro**; o motor guarda *
 
 | Fase | Entrega | Como provar |
 |---|---|---|
-| **1** | Motor Think com o núcleo; roda a **mesma bateria** | `avaliar.ts` chamando o motor (local, `wrangler dev`): meta 45/45 com `gpt-6-luna`; 27 testes do núcleo verdes |
-| **1b** | Painel no **D1 + Cloudflare Access** (sai do Supabase); simulador ligado ao motor | Os 32 testes do banco portados para o D1; login pelo Access |
+| **1** ✔ | Motor Think com o núcleo; roda a **mesma bateria** | `avaliar.ts` chamando o motor (local, `wrangler dev`): meta 45/45 com `gpt-6-luna`; 27 testes do núcleo verdes |
+| **1b** | Painel no **D1**, com **login próprio por e-mail e senha** (decisão do Renato, no lugar do Cloudflare Access); simulador ligado ao motor | **Feito**: 36 testes do banco, bateria 45/45, fluxo completo no navegador |
 | **2** | WhatsApp com o número de teste da Meta | Mensagem real ida e volta; assinatura, repetidas, agrupamento e "digitando" testados |
 | **3** | Avisos do CRM (HMAC + `GET /eventos`), caixa de entrada, assumir/devolver, simulador ligado ao motor | Testes com avisos assinados de verdade e falsificados |
 | **4** | Retomadas, custos, LGPD (parar, apagar, prazo) | Tarefas agendadas testadas com relógio falso |
-| **5** | Molde: D1 + Access (se aprovado), `novo-cliente`, publicação automática | Criar um cliente "teste" do zero com um comando |
+| **5** | Molde: `novo-cliente` (cria banco, Workers e segredos), publicação automática | Criar um cliente "teste" do zero com um comando |
 | **6** | Piloto da Aurora com o número real | Acompanhado |
 
 ## 8. O que vou precisar (cada coisa só quando chegar a hora)

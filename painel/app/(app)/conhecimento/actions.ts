@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { type EstadoAcao, errosDoZod, falha, mensagemErroBanco, sucesso } from "@/lib/acoes";
+import { type EstadoAcao, errosDoZod, falha, sucesso } from "@/lib/acoes";
 import { textoDaPagina } from "@/lib/texto-pagina";
 import { exigirGestor } from "@/lib/perfil";
-import { createClient } from "@/lib/supabase/server";
+import * as k from "@/lib/banco/conhecimento.ts";
+import { atorAtual, banco, mensagemDeErro } from "@/lib/servidor";
 import { ehUuid } from "@/lib/validacao";
 
 const esquema = z
@@ -42,13 +43,14 @@ export async function salvarConhecimento(_anterior: EstadoAcao, formData: FormDa
 
   const { id, ...resto } = dados.data;
   const linha = { ...resto, pergunta: resto.tipo === "pergunta" ? resto.pergunta : null, fonte: resto.fonte || null };
-  const supabase = await createClient();
-  const consulta = id && ehUuid(id)
-    ? supabase.from("conhecimento").update(linha).eq("id", id).select("alertas").maybeSingle()
-    : supabase.from("conhecimento").insert(linha).select("alertas").maybeSingle();
-  const { data, error } = await consulta;
-  if (error) return falha(mensagemErroBanco(error));
-  if (!data) return falha("Item não encontrado ou sem permissão.");
+  let data: { alertas: string[] };
+  try {
+    const db = await banco();
+    const ator = await atorAtual();
+    data = id && ehUuid(id) ? await k.alterarConhecimento(db, ator, id, linha) : await k.incluirConhecimento(db, ator, linha);
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
 
   revalidatePath("/conhecimento");
   if (data.alertas.length) {
@@ -61,9 +63,11 @@ export async function alternarAtivo(id: string, ativo: boolean): Promise<EstadoA
   const g = await exigirGestor();
   if ("erro" in g) return falha(g.erro);
   if (!ehUuid(id)) return falha("Item inválido.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("conhecimento").update({ ativo }).eq("id", id);
-  if (error) return falha(mensagemErroBanco(error));
+  try {
+    await k.alterarConhecimento(await banco(), await atorAtual(), id, { ativo });
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
   revalidatePath("/conhecimento");
   return sucesso(ativo ? "O agente volta a usar este item." : "O agente deixa de usar este item.");
 }
@@ -72,10 +76,11 @@ export async function excluirConhecimento(id: string): Promise<EstadoAcao> {
   const g = await exigirGestor();
   if ("erro" in g) return falha(g.erro);
   if (!ehUuid(id)) return falha("Item inválido.");
-  const supabase = await createClient();
-  const { error, count } = await supabase.from("conhecimento").delete({ count: "exact" }).eq("id", id);
-  if (error) return falha(mensagemErroBanco(error));
-  if (!count) return falha("Item não encontrado ou sem permissão.");
+  try {
+    await k.excluirConhecimento(await banco(), await atorAtual(), id);
+  } catch (e) {
+    return falha(mensagemDeErro(e));
+  }
   revalidatePath("/conhecimento");
   return sucesso("Excluído. O texto anterior fica guardado no Registro.");
 }

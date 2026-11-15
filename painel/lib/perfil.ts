@@ -1,31 +1,26 @@
 /**
- * Perfil da pessoa LOGADA (tabela perfis).
- *
- * A função `meu_perfil()` do banco garante o cadastro no 1º acesso: liga pelo e-mail a um
- * cadastro feito pelo gestor em Equipe ou cria um novo (o 1º login vira gestor; os demais
- * ficam desativados até o gestor liberar). `cache()` = uma chamada por requisição.
- *
- * As permissões de verdade ficam no banco (RLS). Estas funções só escondem botões e dão
- * mensagens claras antes de tentar gravar.
+ * Perfil da pessoa LOGADA. As permissões de verdade ficam em lib/banco/ (cada operação confere);
+ * estas funções só escondem botões e dão mensagens claras antes de tentar gravar.
  */
 import "server-only";
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { cadastroAtual } from "@/lib/servidor";
 import type { Perfil } from "@/lib/tipos";
 
 export const obterPerfil = cache(async (): Promise<{ perfil: Perfil | null; erro?: string }> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("meu_perfil");
-  if (error) {
-    console.error("[meu_perfil]", error.message);
-    return { perfil: null, erro: error.message };
+  try {
+    return { perfil: await cadastroAtual() };
+  } catch (e) {
+    unstable_rethrow(e); // erros internos do Next (página dinâmica, redirecionamento) seguem adiante
+    console.error("[perfil]", e);
+    return { perfil: null, erro: "Não foi possível ler o banco do painel." };
   }
-  return { perfil: (data as unknown as Perfil | null) ?? null };
 });
 
 export async function exigirPerfil(): Promise<{ perfil: Perfil } | { erro: string }> {
   const { perfil } = await obterPerfil();
-  if (!perfil) return { erro: "Não foi possível identificar seu cadastro. Faça login novamente." };
+  if (!perfil) return { erro: "Sua sessão terminou. Faça login novamente." };
   if (!perfil.ativo) return { erro: "Seu acesso está desativado. Fale com o gestor." };
   return { perfil };
 }
