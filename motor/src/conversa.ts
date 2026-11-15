@@ -18,6 +18,7 @@ import { DEFINICOES } from "../../painel/lib/nucleo/ferramentas.ts";
 import { MAX_HISTORICO, motorOpenAI, type MotorIA, type PedidoIA, type UsoIA } from "../../painel/lib/nucleo/motor-ia.ts";
 import { ErroIA } from "../../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa, type ResultadoTurno } from "../../painel/lib/nucleo/tipos.ts";
+import { ligarConversaInterno } from "../../painel/lib/banco/avisos.ts";
 import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
 import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
@@ -344,9 +345,45 @@ export class Conversa extends Think<Env> {
       pausado: amb.pausado || noLimite,
     });
     for (const t of r.respostas) await wa.enviarTexto(canal.telefone, t);
+    // guarda qual conversa atende este pedido (para os avisos do CRM, como "proposta aprovada")
+    if (r.estado.negocio_id) {
+      await ligarConversaInterno(this.env.DB, { negocioId: r.estado.negocio_id, conversa: this.name, telefone: canal.telefone, ultimaDoCliente: canal.ultima_em }).catch((e) =>
+        console.error("[ligar conversa]", e),
+      );
+    }
     if (r.uso.chamadas) {
       await registrarUsoAgente(this.env.DB, { modelo: r.uso.modelo, entrada: r.uso.entrada, cache: r.uso.cache, saida: r.uso.saida, custo: Number((r.uso.custo_usd ?? 0).toFixed(6)) });
     }
+  }
+
+  /**
+   * Aviso do CRM: o gestor APROVOU a proposta. Pede o link ao CRM (marca como enviada) e manda ao cliente, na mesma
+   * conversa. Só dentro da janela de 24 h desde a última mensagem do cliente (fora dela, a Meta cobra e exige modelo
+   * aprovado: fica para a equipe). Devolve o que aconteceu, para o registro do aviso.
+   */
+  async enviarPropostaAprovada(d: { propostaId: string; negocioId: string }): Promise<string> {
+    this.tabelasWhatsApp();
+    const estado = this.lerEstado();
+    if (estado.negocio_id !== d.negocioId) return "esta conversa não é deste pedido";
+    if (estado.optout) return "cliente pediu para não receber mensagens";
+    const canal = this.sql<{ telefone: string; ultima_em: string }>`select telefone, ultima_em from aurora_canal where id = 1`[0];
+    if (!canal) return "conversa sem telefone";
+    const horas = (Date.now() - new Date(canal.ultima_em).getTime()) / 3600_000;
+    if (horas > 23.5) return `fora da janela de 24 h (última mensagem do cliente há ${Math.round(horas)} h): a equipe envia`;
+    const amb = await carregarAmbiente(this.env);
+    const wa = this.whatsapp(amb);
+    if (!wa || !amb.crm) return "WhatsApp ou CRM não configurados";
+    const crm = new ClienteCrm(amb.crm.endereco, amb.crm.chave);
+    const r = await crm.post<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}/enviar`);
+    if (!r.dados?.link) return `o CRM não liberou o link: ${r.erro?.mensagem ?? "sem link"}`;
+    const link = r.dados.link.startsWith("/") ? `${amb.crm.endereco.replace(/\/+$/, "")}${r.dados.link}` : r.dados.link;
+    const nome = estado.contato.nome && estado.contato.nome !== "Cliente do WhatsApp" ? `, ${estado.contato.nome.split(" ")[0]}` : "";
+    const modelo = amb.cfg.mensagens.proposta_aprovada ?? "Sua proposta está pronta{nome}! 🥂\n\nÉ só abrir o link para ver todos os detalhes e, se estiver tudo certo, aceitar por lá mesmo:\n{link}\n\nQualquer dúvida, é só me chamar por aqui.";
+    const texto = modelo.replaceAll("{nome}", nome).replaceAll("{link}", link);
+    await wa.enviarTexto(canal.telefone, texto);
+    await this.addMessages([msg("assistant", texto)], { broadcast: false });
+    this.gravarEstado({ ...estado, proposta: estado.proposta ? { ...estado.proposta, status: "enviada" } : estado.proposta });
+    return `link enviado ao cliente (${r.dados.numero ?? "proposta"})`;
   }
 
   /** Apaga tudo desta conversa (LGPD, ou "recomeçar" no simulador). */

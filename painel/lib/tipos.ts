@@ -16,7 +16,7 @@ export type Exemplo = { situacao: string; cliente: string; agente: string };
 /** Horário da equipe: chave = dia da semana (0 = domingo … 6 = sábado). */
 export type HorarioEquipe = Partial<Record<"0" | "1" | "2" | "3" | "4" | "5" | "6", { inicio: string; fim: string } | null>>;
 
-export type MensagensPadrao = Partial<Record<"aviso_automatico" | "fora_horario" | "transferencia" | "erro" | "midia" | "sair_confirmacao", string>>;
+export type MensagensPadrao = Partial<Record<"aviso_automatico" | "fora_horario" | "transferencia" | "erro" | "midia" | "sair_confirmacao" | "proposta_aprovada", string>>;
 
 export type Perfil = Pessoa;
 export type AgenteConfig = Omit<Config, "exemplos" | "horario_equipe" | "mensagens"> & { exemplos: Exemplo[]; horario_equipe: HorarioEquipe; mensagens: MensagensPadrao };

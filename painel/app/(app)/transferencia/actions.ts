@@ -55,6 +55,7 @@ export async function salvarTransferencia(_anterior: EstadoAcao, formData: FormD
     const v = String(formData.get(`msg-${m.id}`) ?? "").replace(/\r\n/g, "\n").trim();
     if (v.length > 1000) erros[`msg-${m.id}`] = "Máximo de 1.000 caracteres.";
     else if (!v && !m.opcional) erros[`msg-${m.id}`] = "Escreva a mensagem.";
+    else if (m.id === "proposta_aprovada" && v && !v.includes("{link}")) erros[`msg-${m.id}`] = "Inclua {link} no texto: é onde entra o link da proposta.";
     else if (v) mensagens[m.id] = v;
   }
   if (Object.keys(erros).length) return falha("Confira os campos destacados.", erros);

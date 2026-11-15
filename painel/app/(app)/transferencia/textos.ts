@@ -27,4 +27,10 @@ export const MENSAGENS: { id: keyof MensagensPadrao; titulo: string; ajuda: stri
   { id: "midia", titulo: "Imagem, figurinha, vídeo ou arquivo", ajuda: "O agente não abre esses arquivos: responde com esta mensagem." },
   { id: "erro", titulo: "Quando algo dá errado", ajuda: "Se a IA ou o CRM ficarem fora do ar. A conversa também vai para a equipe." },
   { id: "sair_confirmacao", titulo: "Quando o cliente pede para não receber mensagens", ajuda: "Confirmação final. Depois disso o agente não escreve mais." },
+  {
+    id: "proposta_aprovada",
+    titulo: "Proposta aprovada: envio do link (opcional)",
+    ajuda: "Enviada ao cliente assim que o gestor aprova a proposta no CRM. Use {link} (obrigatório) e {nome}. Em branco, vale o texto padrão do sistema.",
+    opcional: true,
+  },
 ];

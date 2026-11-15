@@ -75,6 +75,17 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 3 (parte 2): proposta aprovada → link no WhatsApp do cliente (15/11/2026)
+
+- Aviso `proposta.aprovada` do CRM → o motor acha a conversa do pedido (tabela `conversas_whatsapp`, ou pelo
+  telefone do contato no CRM) → `POST /propostas/:id/enviar` → manda o link ao cliente na mesma conversa.
+  Só dentro da janela de 24 h desde a última mensagem do cliente (fora dela a Meta cobra e exige modelo: fica para a equipe).
+  Texto padrão, ou o do painel (Transferência ▸ "Proposta aprovada: envio do link", com {link} e {nome}).
+- Ponta a ponta local: link enviado ("Sua proposta está pronta, Marina! 🥂 …"). As travas do CRM funcionaram:
+  não aprova por fora (só gestor), não manda link de proposta não aprovada e **não manda proposta com valor zero**
+  (sem regra de preço aprovada, o gestor precisa pôr o valor antes de aprovar).
+- Banco **39/39**, núcleo **33/33**, motor **6/6**.
+
 ## Fase 3 (parte 1): pedidos do site chegam à Cecília pela referência (15/11/2026)
 
 - A mensagem pronta do site termina em "Ref. XK4A" (o código do pedido no CRM). A Cecília acha o pedido

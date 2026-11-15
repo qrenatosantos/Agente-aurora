@@ -12,7 +12,7 @@ import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { guardarAvisoInterno, listarAvisos } from "./avisos.ts";
+import { conversaDoNegocioInterno, guardarAvisoInterno, ligarConversaInterno, listarAvisos, marcarAvisoProcessadoInterno } from "./avisos.ts";
 import type { Ator } from "./base.ts";
 import { lerConfig, listarVersoes, restaurarVersao, salvarConfig } from "./config.ts";
 import { alertasTexto, alterarConhecimento, excluirConhecimento, incluirConhecimento, listarConhecimento } from "./conhecimento.ts";
@@ -354,5 +354,20 @@ describe("avisos do CRM", () => {
     assert.equal(lista[0].dados.numero, "PROP-1");
     await recusa(listarAvisos(db, bruna), /Só o gestor/);
     await assert.rejects(guardarAvisoInterno(db, { id: 0, tipo: "" }), /sem id/);
+  });
+});
+
+describe("pedido ligado à conversa do WhatsApp", () => {
+  test("liga, atualiza sem perder a última mensagem do cliente e marca o aviso como tratado", async () => {
+    await ligarConversaInterno(db, { negocioId: "neg-1", conversa: "wa-5534988887777", telefone: "5534988887777", ultimaDoCliente: "2026-11-15T20:00:00.000Z" });
+    await ligarConversaInterno(db, { negocioId: "neg-1", conversa: "wa-5534988887777", telefone: "5534988887777", ultimaDoCliente: null });
+    const c = await conversaDoNegocioInterno(db, "neg-1");
+    assert.equal(c?.conversa, "wa-5534988887777");
+    assert.equal(c?.ultima_do_cliente, "2026-11-15T20:00:00.000Z");
+    assert.equal(await conversaDoNegocioInterno(db, "nao-existe"), null);
+    await marcarAvisoProcessadoInterno(db, 42, "link enviado");
+    const a = (await listarAvisos(db, andre)).find((x) => x.id === 42)!;
+    assert.ok(a.processado_em);
+    assert.equal(a.dados._resultado, "link enviado");
   });
 });

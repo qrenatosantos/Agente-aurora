@@ -31,3 +31,26 @@ export async function listarAvisos(db: Banco, ator: Ator, limite = 50): Promise<
   const r = await db.prepare("select * from avisos_crm order by id desc limit ?").bind(Math.min(Math.max(limite, 1), 200)).all();
   return r.results.map((x) => converter<LinhaAviso>(x, [], ["dados"])!);
 }
+
+// ------------------------------------------------------------------ pedido ↔ conversa do WhatsApp (uso do motor)
+export async function ligarConversaInterno(db: Banco, d: { negocioId: string; conversa: string; telefone: string; ultimaDoCliente: string | null }) {
+  await db
+    .prepare(
+      `insert into conversas_whatsapp (negocio_id, conversa, telefone, ultima_do_cliente, atualizado_em) values (?, ?, ?, ?, ?)
+       on conflict (negocio_id) do update set conversa = excluded.conversa, telefone = excluded.telefone,
+         ultima_do_cliente = coalesce(excluded.ultima_do_cliente, conversas_whatsapp.ultima_do_cliente), atualizado_em = excluded.atualizado_em`,
+    )
+    .bind(d.negocioId, d.conversa, d.telefone, d.ultimaDoCliente, new Date().toISOString())
+    .run();
+}
+
+export async function conversaDoNegocioInterno(db: Banco, negocioId: string) {
+  return db.prepare("select conversa, telefone, ultima_do_cliente from conversas_whatsapp where negocio_id = ?").bind(negocioId).first<{ conversa: string; telefone: string; ultima_do_cliente: string | null }>();
+}
+
+export async function marcarAvisoProcessadoInterno(db: Banco, id: number, resultado: string) {
+  await db
+    .prepare("update avisos_crm set processado_em = ?, dados = json_set(dados, '$._resultado', ?) where id = ?")
+    .bind(new Date().toISOString(), resultado.slice(0, 300), id)
+    .run();
+}

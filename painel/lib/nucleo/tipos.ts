@@ -30,7 +30,7 @@ export type ConfigAgente = {
   max_msgs_sem_avanco: number;
   horario_equipe: Partial<Record<string, { inicio: string; fim: string } | null>>;
   agente_24h: boolean;
-  mensagens: Partial<Record<"aviso_automatico" | "fora_horario" | "transferencia" | "erro" | "midia" | "sair_confirmacao", string>>;
+  mensagens: Partial<Record<"aviso_automatico" | "fora_horario" | "transferencia" | "erro" | "midia" | "sair_confirmacao" | "proposta_aprovada", string>>;
   modelo: string;
 };
 

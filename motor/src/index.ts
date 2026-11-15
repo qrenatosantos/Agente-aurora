@@ -19,7 +19,9 @@
  * (nada de WebSocket público). Só as rotas acima falam com elas.
  */
 import { getAgentByName } from "agents";
-import { guardarAvisoInterno } from "../../painel/lib/banco/avisos.ts";
+import { conversaDoNegocioInterno, guardarAvisoInterno, marcarAvisoProcessadoInterno } from "../../painel/lib/banco/avisos.ts";
+import { ClienteCrm, variantesTelefone } from "../../painel/lib/nucleo/crm.ts";
+import { carregarAmbiente } from "./ambiente.ts";
 import { segredoDosAvisos, segredosDoWebhook } from "./ambiente.ts";
 import { avisoVerdadeiro } from "./crm-avisos.ts";
 import { Conversa, type EntradaConversa } from "./conversa.ts";
@@ -64,8 +66,40 @@ async function webhookWhatsApp(req: Request, env: Env): Promise<Response> {
   return new Response("ok");
 }
 
-/** Avisos do CRM: confere a assinatura, guarda e responde rápido (o CRM espera até 8 s). */
-async function avisoDoCrm(req: Request, env: Env): Promise<Response> {
+/** Acha a conversa do WhatsApp de um pedido: pela ligação guardada ou, se não houver, pelo telefone do contato no CRM. */
+async function conversaDoPedido(env: Env, negocioId: string) {
+  const ligada = await conversaDoNegocioInterno(env.DB, negocioId);
+  if (ligada) return getAgentByName(env.Conversa, ligada.conversa);
+  const amb = await carregarAmbiente(env);
+  if (!amb.crm) return null;
+  const n = await new ClienteCrm(amb.crm.endereco, amb.crm.chave).get<{ contato?: { telefone?: string | null } }>(`/negocios/${negocioId}`);
+  const tel = n.dados?.contato?.telefone;
+  if (!tel) return null;
+  for (const v of variantesTelefone(tel)) {
+    const c = await getAgentByName(env.Conversa, `wa-55${v}`);
+    const lido = (await c.ler()) as unknown as { estado: { negocio_id: string | null } };
+    if (lido.estado.negocio_id === negocioId) return c;
+  }
+  return null;
+}
+
+/** O que a Cecília faz com cada aviso. (Por enquanto: proposta aprovada → link para o cliente.) */
+async function processarAviso(env: Env, aviso: { id: number; tipo: string; negocio_id?: string | null; proposta_id?: string | null }) {
+  let resultado = "guardado";
+  try {
+    if (aviso.tipo === "proposta.aprovada" && aviso.negocio_id && aviso.proposta_id) {
+      const c = await conversaDoPedido(env, aviso.negocio_id);
+      resultado = c ? await c.enviarPropostaAprovada({ propostaId: aviso.proposta_id, negocioId: aviso.negocio_id }) : "pedido sem conversa no WhatsApp";
+    }
+  } catch (e) {
+    resultado = `erro: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  console.log(`[aviso ${aviso.id} ${aviso.tipo}] ${resultado}`);
+  await marcarAvisoProcessadoInterno(env.DB, aviso.id, resultado);
+}
+
+/** Avisos do CRM: confere a assinatura, guarda e responde rápido (o CRM espera até 8 s); o trabalho segue depois. */
+async function avisoDoCrm(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   if (req.method !== "POST") return new Response("Use POST", { status: 405 });
   const corpo = await req.text();
   if (!(await avisoVerdadeiro(corpo, req.headers.get("x-aurora-assinatura"), await segredoDosAvisos(env)))) return new Response("Assinatura inválida", { status: 401 });
@@ -76,7 +110,8 @@ async function avisoDoCrm(req: Request, env: Env): Promise<Response> {
     return new Response("JSON inválido", { status: 400 });
   }
   if (!Number.isInteger(aviso.id) || typeof aviso.tipo !== "string") return new Response("Aviso sem id ou tipo", { status: 400 });
-  await guardarAvisoInterno(env.DB, aviso as Parameters<typeof guardarAvisoInterno>[1]);
+  const novo = await guardarAvisoInterno(env.DB, aviso as Parameters<typeof guardarAvisoInterno>[1]);
+  if (novo) ctx.waitUntil(processarAviso(env, aviso as Parameters<typeof processarAviso>[1]));
   return new Response("ok");
 }
 
@@ -86,11 +121,11 @@ async function iguaisSeguro(a: string, b: string) {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/") return new Response("Motor do agente: ok");
     if (url.pathname === "/whatsapp/webhook") return webhookWhatsApp(req, env);
-    if (url.pathname === "/crm/avisos") return avisoDoCrm(req, env);
+    if (url.pathname === "/crm/avisos") return avisoDoCrm(req, env, ctx);
     if (!url.pathname.startsWith("/interno/")) return new Response("Não encontrado", { status: 404 });
     if (req.method !== "POST") return new Response("Use POST", { status: 405 });
     if (!(await autorizado(req, env))) return new Response("Não autorizado", { status: 401 });
