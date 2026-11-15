@@ -13,7 +13,7 @@
 	},
 	// Banco do painel (Cloudflare D1). O id é preenchido pelo assistente de novo cliente.
 	"d1_databases": [
-		{ "binding": "DB", "database_name": "aurora-agente", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "banco/migracoes" }
+		{ "binding": "DB", "database_name": "aurora-agente", "database_id": "0a0e06bd-2913-4230-9508-6fce4c6b3533", "migrations_dir": "banco/migracoes" }
 	],
 	// Ligação interna com o motor do agente (simulador), sem passar pela internet.
 	"services": [{ "binding": "MOTOR", "service": "aurora-motor" }],

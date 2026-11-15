@@ -1,0 +1,73 @@
+# TESTAR E PUBLICAR na Cloudflare, sozinho, a cada atualização.
+# 1) roda os testes (banco, núcleo, tipos e padrão de código); 2) só se passarem, publica o motor e o painel
+#    e aplica as migrações novas do banco D1.
+# Precisa do segredo CLOUDFLARE_API_TOKEN no GitHub (Settings ▸ Secrets and variables ▸ Actions).
+# Os segredos dos programas (CHAVE_MESTRA, CODIGO_INSTALACAO, SEGREDO_INTERNO) ficam na própria Cloudflare.
+name: Testar e publicar
+
+on:
+  push:
+    branches: [main, claude/serene-faraday-w06f6u]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+env:
+  # Conta da Cloudflare do cliente (não é segredo). No molde (fase 5), vem de clientes/<cliente>/.
+  CLOUDFLARE_ACCOUNT_ID: 5a292fc980c65378451156ed927154d4
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Regras do banco e do agente
+        run: |
+          npm ci
+          npm run test:banco
+          npm run test:nucleo
+      - name: Painel (tipos e padrão de código)
+        working-directory: painel
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm run lint
+      - name: Motor (tipos)
+        working-directory: motor
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+  publicar:
+    needs: testar
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Conferir a chave da Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Falta o segredo CLOUDFLARE_API_TOKEN no GitHub (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publicar o motor
+        working-directory: motor
+        run: |
+          npm ci
+          npx wrangler deploy
+      - name: Atualizar o banco e publicar o painel
+        working-directory: painel
+        run: |
+          npm ci
+          npx wrangler d1 migrations apply aurora-agente --remote
+          npx opennextjs-cloudflare build
+          npx wrangler deploy
