@@ -85,7 +85,26 @@ export async function testarOpenAI(chave: string, modelo: string): Promise<Resul
   }
 }
 
-export async function testarWhatsApp(versao: string, phoneNumberId: string, token: string): Promise<ResultadoTeste> {
+/**
+ * Liga o app à conta do WhatsApp (WABA). Sem isso, a Meta NÃO manda as mensagens recebidas para o atendente,
+ * mesmo com o webhook verificado. Pode chamar de novo sem problema (não duplica).
+ */
+async function assinarApp(versao: string, wabaId: string, token: string) {
+  try {
+    const r = await fetch(`https://graph.facebook.com/${versao}/${wabaId}/subscribed_apps`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(TEMPO),
+      cache: "no-store",
+    });
+    const j = (await r.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string } };
+    return j.success ? null : (j.error?.message ?? `erro ${r.status}`);
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
+export async function testarWhatsApp(versao: string, phoneNumberId: string, token: string, wabaId?: string | null): Promise<ResultadoTeste> {
   try {
     const campos = "display_phone_number,verified_name,quality_rating,name_status";
     const r = await fetch(`https://graph.facebook.com/${versao}/${phoneNumberId}?fields=${campos}`, {
@@ -105,9 +124,12 @@ export async function testarWhatsApp(versao: string, phoneNumberId: string, toke
       if (r.status === 401 || json.error?.code === 190) return { ok: false, mensagem: "A Meta recusou o token (expirado ou sem permissão). Gere um token permanente de usuário do sistema." };
       return { ok: false, mensagem: `A Meta respondeu: ${m}` };
     }
+    const erroAssinatura = wabaId ? await assinarApp(versao, wabaId, token) : "falta a identificação da conta (WABA ID)";
     return {
-      ok: true,
-      mensagem: `Número ${json.display_phone_number ?? "?"} (${json.verified_name ?? "sem nome aprovado"}) conectado.`,
+      ok: !erroAssinatura,
+      mensagem: erroAssinatura
+        ? `Número ${json.display_phone_number ?? "?"} encontrado, mas não deu para ligar o app à conta do WhatsApp (${erroAssinatura}). Sem isso, as mensagens não chegam ao atendente.`
+        : `Número ${json.display_phone_number ?? "?"} (${json.verified_name ?? "sem nome aprovado"}) conectado, e o app ligado à conta para receber as mensagens.`,
       detalhes: { numero: json.display_phone_number ?? null, nome: json.verified_name ?? null, qualidade: json.quality_rating ?? null, situacao_nome: json.name_status ?? null },
     };
   } catch (e) {

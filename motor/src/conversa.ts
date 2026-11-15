@@ -320,7 +320,16 @@ export class Conversa extends Think<Env> {
 
     const noLimite = amb.limite.pararNoLimite && amb.limite.gastoMes >= amb.limite.valor;
     if (noLimite) console.warn("[limite] gasto do mês atingido: o agente não responde até o gestor aumentar o limite");
-    if (!amb.crm || !amb.chaveIA) return console.error("[whatsapp] CRM ou chave da OpenAI não configurados no painel");
+    if (!amb.crm || !amb.chaveIA) {
+      // Integração incompleta no painel: o cliente não fica sem resposta. Avisa com a mensagem de erro do painel.
+      // (Não marca a conversa como "com uma pessoa": assim, quando o gestor completar o painel, o agente segue.)
+      console.error("[whatsapp] CRM ou chave da OpenAI não configurados no painel");
+      if (podeFalar) {
+        await wa.enviarTexto(canal.telefone, amb.cfg.mensagens.erro ?? "Tive um probleminha aqui. Já chamei alguém da equipe.");
+        await this.addMessages([msg("user", novas.join("\n")), msg("assistant", amb.cfg.mensagens.erro ?? "")], { broadcast: false });
+      }
+      return;
+    }
 
     const r = await this.turno({
       novas,

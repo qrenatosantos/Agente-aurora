@@ -182,7 +182,7 @@ export async function testarConexao(servico: "crm" | "openai" | "whatsapp"): Pro
       resultado =
         !token || !dadosInteg.whatsapp_phone_number_id
           ? { ok: false, mensagem: "Preencha a identificação do número e o token antes de testar." }
-          : await testarWhatsApp(dadosInteg.whatsapp_graph_versao, dadosInteg.whatsapp_phone_number_id, token);
+          : await testarWhatsApp(dadosInteg.whatsapp_graph_versao, dadosInteg.whatsapp_phone_number_id, token, dadosInteg.whatsapp_waba_id);
     }
   } catch {
     resultado = { ok: false, mensagem: "Não foi possível abrir a chave guardada. A CHAVE_MESTRA do servidor mudou? Digite a chave de novo." };
