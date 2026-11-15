@@ -31,6 +31,7 @@ jobs:
           npm ci
           npm run test:banco
           npm run test:nucleo
+          npm run test:motor
       - name: Painel (tipos e padrão de código)
         working-directory: painel
         run: |

@@ -14,7 +14,7 @@ pela API dele, com uma chave de permissões limitadas.
 |---|---|---|
 | 1 | **Motor** com o Cloudflare Think, com as regras garantidas por código; bateria com IA real **45/45** | **Pronta** |
 | 1b | **Painel na Cloudflare**: banco D1, login próprio (e-mail e senha), simulador falando com o motor | **Pronta** |
-| 2 | WhatsApp com o número de teste da Meta | Próxima |
+| 2 | WhatsApp: receber, juntar mensagens, "digitando", responder, áudio | **Pronta** (falta o teste com o número da Meta) |
 | 3 | Avisos do CRM, caixa de entrada e transferências | — |
 | 4 | Retomadas, custos e LGPD | — |
 | 5 | Molde para novos clientes (um comando) e publicação automática | — |
@@ -25,7 +25,9 @@ pela API dele, com uma chave de permissões limitadas.
 ```
 motor/                  Worker do AGENTE (Cloudflare Think): uma conversa = um Durable Object.
   src/conversa.ts       o laço da IA pelo Think + memória da conversa; as regras vêm do núcleo
-  src/index.ts          rotas internas (/interno/*), protegidas por SEGREDO_INTERNO
+  src/index.ts          webhook do WhatsApp (/whatsapp/webhook, com assinatura) e rotas internas (/interno/*)
+  src/whatsapp.ts       Meta Cloud API só com fetch: assinatura, leitura dos avisos, envio, "digitando", áudio
+  src/ambiente.ts       lê do banco do painel a configuração e as chaves (abertas com a CHAVE_MESTRA)
 painel/                 Worker do PAINEL (Next.js 16 via OpenNext).
   banco/migracoes/      estrutura do banco D1 (uma migração por arquivo; nunca editar um já aplicado)
   lib/banco/            quem pode o quê: uma função por operação, sempre com quem está agindo (+ testes)
@@ -43,6 +45,7 @@ docs/                   planos, pedidos ao CRM, testes
 ```bash
 npm run test:banco          # regras do banco do painel (D1/SQLite em memória, sem internet)
 npm run test:nucleo         # regras do agente, com IA e CRM falsos (grátis)
+npm run test:motor          # canal WhatsApp (assinatura e leitura dos avisos da Meta)
 cd painel && npx tsc --noEmit && npm run lint && npm run build
 cd motor && npx tsc --noEmit && npm run tamanho
 

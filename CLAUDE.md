@@ -32,7 +32,10 @@
 - `motor/` usa o Think (experimental): versões **fixas** no `package.json`. Atualizar só com `npm run test:nucleo` +
   bateria no motor (`node avaliacao/avaliar.ts gpt-6-luna --rodadas 3 --motor ...`) dando 45/45.
   Tamanho: `cd motor && npm run tamanho` (1,32 MB).
-- O motor não expõe WebSocket nem `routeAgentRequest`: só as rotas `/interno/*` com `SEGREDO_INTERNO`.
+- O motor não expõe WebSocket nem `routeAgentRequest`: só `/whatsapp/webhook` (assinatura da Meta conferida) e as
+  rotas `/interno/*` com `SEGREDO_INTERNO`. Lê o mesmo D1 do painel, só pelas funções "interno" de `lib/banco/`.
+- Publicação: pelo GitHub (`.github/workflows/publicar.yml`), não daqui (o proxy da sessão estraga o envio dos
+  arquivos estáticos do painel). Segredos dos Workers: `wrangler secret put` daqui funciona.
 
 ## Sessões na nuvem
 - O Node só sai pela rede com `NODE_USE_ENV_PROXY=1` (no Cloudflare não precisa).
@@ -42,5 +45,5 @@
   `CLOUDFLARE_API_TOKEN=proxy-injected` e `CLOUDFLARE_ACCOUNT_ID=...` no `wrangler`.
 
 ## Antes de entregar
-`npm run test:banco` e `npm run test:nucleo` (raiz); `npx tsc --noEmit`, `npm run lint`, `npm run build` (painel);
+`npm run test:banco`, `npm run test:nucleo` e `npm run test:motor` (raiz); `npx tsc --noEmit`, `npm run lint`, `npm run build` (painel);
 `npx tsc --noEmit` (motor); e atualize `docs/TESTES.md`.

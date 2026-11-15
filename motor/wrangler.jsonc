@@ -8,5 +8,8 @@
     "bindings": [{ "name": "Conversa", "class_name": "Conversa" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversa"] }],
+  // O mesmo banco D1 do painel (configuração e chaves cifradas). O id vem do cliente (clientes/<cliente>/).
+  "d1_databases": [{ "binding": "DB", "database_name": "aurora-agente", "database_id": "0a0e06bd-2913-4230-9508-6fce4c6b3533" }],
+  // Segredos (wrangler secret put): SEGREDO_INTERNO e CHAVE_MESTRA (os mesmos do painel).
   "observability": { "enabled": true }
 }

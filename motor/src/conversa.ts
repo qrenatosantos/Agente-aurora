@@ -18,7 +18,10 @@ import { DEFINICOES } from "../../painel/lib/nucleo/ferramentas.ts";
 import { MAX_HISTORICO, motorOpenAI, type MotorIA, type PedidoIA, type UsoIA } from "../../painel/lib/nucleo/motor-ia.ts";
 import { ErroIA } from "../../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa, type ResultadoTurno } from "../../painel/lib/nucleo/tipos.ts";
+import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
+import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
+import { ClienteWhatsApp, type MensagemRecebida, transcrever } from "./whatsapp.ts";
 
 /** O que chega para cada turno (do WhatsApp ou do simulador do painel). */
 export type EntradaConversa = {
@@ -226,10 +229,122 @@ export class Conversa extends Think<Env> {
     return r;
   }
 
+  // ------------------------------------------------------------------ WhatsApp
+  private tabelasWhatsApp() {
+    this.sql`create table if not exists aurora_recebidas (wamid text primary key, em text not null)`;
+    this.sql`create table if not exists aurora_pendentes (wamid text primary key, tipo text not null, texto text, midia text, em text not null)`;
+    this.sql`create table if not exists aurora_canal (id integer primary key, telefone text not null, nome text, ultima_em text not null)`;
+  }
+
+  private whatsapp(amb: Awaited<ReturnType<typeof carregarAmbiente>>) {
+    const w = amb.whatsapp;
+    return w ? new ClienteWhatsApp(w.token, w.phoneNumberId, w.versao, this.env.GRAPH_BASE_URL || undefined) : null;
+  }
+
+  /**
+   * Chegou uma mensagem do cliente pelo WhatsApp. Guarda e espera alguns segundos (configurável no painel)
+   * para juntar as mensagens que chegam seguidas; então responde tudo de uma vez (responderPendentes).
+   * A mesma mensagem (mesmo wamid) nunca é processada duas vezes, mesmo que a Meta reenvie o aviso.
+   */
+  async receberWhatsApp(m: MensagemRecebida): Promise<{ nova: boolean }> {
+    this.tabelasWhatsApp();
+    if (this.sql`select 1 from aurora_recebidas where wamid = ${m.wamid}`.length) return { nova: false };
+    const agora = new Date().toISOString();
+    this.sql`insert into aurora_recebidas (wamid, em) values (${m.wamid}, ${agora})`;
+    this.sql`insert into aurora_pendentes (wamid, tipo, texto, midia, em) values (${m.wamid}, ${m.tipo}, ${m.texto}, ${m.midiaId}, ${m.em})`;
+    this.sql`insert into aurora_canal (id, telefone, nome, ultima_em) values (1, ${m.de}, ${m.nome}, ${agora})
+             on conflict(id) do update set telefone = excluded.telefone, nome = coalesce(excluded.nome, aurora_canal.nome), ultima_em = excluded.ultima_em`;
+    await this.schedule(await this.esperaSegundos(), "responderPendentes");
+    // "digitando…" em segundo plano (a Meta recebe a confirmação sem esperar por isto).
+    // Só quando o agente vai mesmo responder: não com a conversa com uma pessoa nem com quem pediu para parar.
+    const estado = this.lerEstado();
+    if (estado.atendimento !== "agente" || estado.optout) return { nova: true };
+    this.ctx.waitUntil(
+      (async () => {
+        const amb = await carregarAmbiente(this.env);
+        if (!amb.pausado) await this.whatsapp(amb)?.digitando(m.wamid);
+      })().catch((e) => console.error("[digitando]", e)),
+    );
+    return { nova: true };
+  }
+
+  private async esperaSegundos() {
+    const r = await this.env.DB.prepare("select espera_segundos from agente_config where id = 1").first<{ espera_segundos: number }>();
+    return Math.min(Math.max(Number(r?.espera_segundos ?? 8), 2), 30);
+  }
+
+  /** Responde as mensagens guardadas (chamado pelo agendamento). */
+  async responderPendentes() {
+    this.tabelasWhatsApp();
+    const canal = this.sql<{ telefone: string; nome: string | null; ultima_em: string }>`select telefone, nome, ultima_em from aurora_canal where id = 1`[0];
+    if (!canal) return;
+    // ainda chegando mensagem? espera completar o tempo desde a ÚLTIMA
+    const espera = await this.esperaSegundos();
+    const falta = new Date(canal.ultima_em).getTime() + espera * 1000 - Date.now();
+    if (falta > 500) {
+      await this.schedule(Math.ceil(falta / 1000), "responderPendentes");
+      return;
+    }
+    const pendentes = this.sql<{ wamid: string; tipo: string; texto: string | null; midia: string | null }>`select wamid, tipo, texto, midia from aurora_pendentes order by em`;
+    if (!pendentes.length) return;
+    for (const p of pendentes) this.sql`delete from aurora_pendentes where wamid = ${p.wamid}`;
+
+    const amb = await carregarAmbiente(this.env);
+    const wa = this.whatsapp(amb);
+    if (!wa) return console.error("[whatsapp] sem token ou número configurado no painel");
+
+    // textos (áudio vira texto, se a transcrição estiver ligada)
+    const novas: string[] = [];
+    let soMidia = false;
+    for (const p of pendentes) {
+      if ((p.tipo === "texto" || p.tipo === "botao") && p.texto?.trim()) novas.push(p.texto.trim());
+      else if (p.tipo === "audio" && p.midia && amb.transcreverAudio && amb.chaveIA) {
+        try {
+          const t = await transcrever(await wa.baixarMidia(p.midia), amb.chaveIA, this.env.OPENAI_BASE_URL || undefined);
+          if (t) novas.push(t);
+          else soMidia = true;
+        } catch (e) {
+          console.error("[audio]", e);
+          soMidia = true;
+        }
+      } else soMidia = true;
+    }
+
+    const estado = this.lerEstado();
+    const podeFalar = !amb.pausado && !estado.optout && estado.atendimento === "agente";
+    if (!novas.length) {
+      // só imagem, vídeo, figurinha…: avisa (com as palavras do painel) e não chama a IA
+      if (soMidia && podeFalar && amb.cfg.mensagens.midia) await wa.enviarTexto(canal.telefone, amb.cfg.mensagens.midia);
+      return;
+    }
+
+    const noLimite = amb.limite.pararNoLimite && amb.limite.gastoMes >= amb.limite.valor;
+    if (noLimite) console.warn("[limite] gasto do mês atingido: o agente não responde até o gestor aumentar o limite");
+    if (!amb.crm || !amb.chaveIA) return console.error("[whatsapp] CRM ou chave da OpenAI não configurados no painel");
+
+    const r = await this.turno({
+      novas,
+      modo: "real",
+      cfg: amb.cfg,
+      conhecimento: amb.conhecimento,
+      crm: amb.crm,
+      chaveIA: amb.chaveIA,
+      telefone: canal.telefone,
+      pausado: amb.pausado || noLimite,
+    });
+    for (const t of r.respostas) await wa.enviarTexto(canal.telefone, t);
+    if (r.uso.chamadas) {
+      await registrarUsoAgente(this.env.DB, { modelo: r.uso.modelo, entrada: r.uso.entrada, cache: r.uso.cache, saida: r.uso.saida, custo: Number((r.uso.custo_usd ?? 0).toFixed(6)) });
+    }
+  }
+
   /** Apaga tudo desta conversa (LGPD, ou "recomeçar" no simulador). */
   async apagarTudo() {
     await this.clearMessages();
     this.sql`drop table if exists aurora_estado`;
+    this.sql`drop table if exists aurora_pendentes`;
+    this.sql`drop table if exists aurora_canal`;
+    // aurora_recebidas fica (só ids da Meta, sem conteúdo): impede reprocessar um aviso antigo reenviado
   }
 
   async ler() {

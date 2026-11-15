@@ -5,6 +5,7 @@
   "description": "Agente SDR (molde para vários clientes): painel (Next.js) e motor (Cloudflare Worker + Think), tudo na Cloudflare (D1). Fala com o CRM só pela API.",
   "scripts": {
     "test:banco": "node --test painel/lib/banco/*.test.ts",
-    "test:nucleo": "node --test painel/lib/nucleo/*.test.ts"
+    "test:nucleo": "node --test painel/lib/nucleo/*.test.ts",
+    "test:motor": "node --test motor/src/*.test.ts"
   }
 }

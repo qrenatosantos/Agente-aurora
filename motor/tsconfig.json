@@ -12,5 +12,5 @@
     "verbatimModuleSyntax": false
   },
   "include": ["src", "../painel/lib/nucleo"],
-  "exclude": ["../painel/lib/nucleo/*.test.ts"]
+  "exclude": ["../painel/lib/nucleo/*.test.ts", "src/*.test.ts"]
 }

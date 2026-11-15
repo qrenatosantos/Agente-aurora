@@ -75,6 +75,31 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 2: WhatsApp no atendente (motor) (15/11/2026)
+
+Ambiente: motor e painel com `wrangler dev`, compartilhando o mesmo banco D1 local; uma "Meta de mentira" que manda
+avisos **assinados** como a Meta e recebe os envios no lugar da Graph API; cópia local do CRM; OpenAI de verdade.
+O número real e o CRM real não foram tocados.
+
+| Teste | Resultado |
+|---|---|
+| Testes do canal (`npm run test:motor`): assinatura `X-Hub-Signature-256` e leitura dos avisos (texto, áudio, botão, imagem, confirmações) | **4/4** |
+| Verificação do webhook (GET): token certo devolve o desafio; token errado | 200 com o desafio / **403** |
+| Aviso com assinatura errada | **401**, ignorado |
+| Duas mensagens seguidas do cliente | **uma resposta só**, depois de esperar os segundos configurados no painel |
+| A mesma mensagem reenviada pela Meta (mesmo `wamid`) | processada **uma vez** |
+| "Digitando…" antes de responder | Aparece; **não** aparece com a conversa já com uma pessoa |
+| Configuração, conhecimento e chaves lidos do banco do painel (chaves abertas com a `CHAVE_MESTRA`) | Passou |
+| Conversa real: casamento, data, cidade e convidados | **Pedido criado no CRM** (telefone sem o 55), resposta com o aviso automático |
+| "Quero falar com uma pessoa" | Transferido (CRM marcou atendimento humano); mensagem de fora do horário correta (domingo) |
+| Mensagem depois da transferência | Sem resposta e sem "digitando" |
+| CRM fora do ar | Mensagem de erro gentil ao cliente e transferência (comportamento esperado) |
+| Uso da IA do atendimento gravado no banco (soma no gasto do mês do painel) | Passou |
+| Tamanho do motor | 1,32 MB |
+
+**Não testado ainda:** áudio de verdade (transcrição) e o número de teste da Meta de ponta a ponta. Os dois dependem
+do webhook cadastrado na Meta e do CRM publicado.
+
 ## Fase 1b: painel na Cloudflare (D1 e login próprio), simulador pelo motor (15/11/2026)
 
 Ambiente: painel compilado para o Cloudflare (`opennextjs-cloudflare build`) rodando com `wrangler dev`, banco D1
