@@ -75,6 +75,16 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 3 (parte 1): pedidos do site chegam à Cecília pela referência (15/11/2026)
+
+- A mensagem pronta do site termina em "Ref. XK4A" (o código do pedido no CRM). A Cecília acha o pedido
+  (`GET /negocios?codigo=`), liga a conversa a ele, grava o telefone do WhatsApp no contato (modo real) e continua
+  com os dados que o site já mandou. Pedido do site com atendimento "pessoa": ela não responde (regra do CRM).
+- Núcleo: **33/33** (3 testes novos). Ponta a ponta local (CRM de testes, Meta falsa, IA real): pedido achado,
+  telefone gravado, **nenhum pedido duplicado**, resposta já com data, cidade e convidados do site.
+- Para valer com clientes reais: no CRM, Configurações ▸ Propostas e agenda ▸ "Leads novos do site vão para" = Agente;
+  e o site precisa abrir o WhatsApp no número em que a Cecília estiver.
+
 ## Mensagens "bonitinhas": pacotes em balões separados (15/11/2026, pedido do Renato)
 
 - Cada parágrafo da resposta vira um **balão** no WhatsApp; os pacotes saem um por mensagem, nome em *negrito*,

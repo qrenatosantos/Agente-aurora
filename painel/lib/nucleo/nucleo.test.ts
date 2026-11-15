@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
-import { processarTurno, prometeuTransferir, type EntradaTurno } from "./agente.ts";
+import { processarTurno, prometeuTransferir, referenciaDoSite, type EntradaTurno } from "./agente.ts";
 import { ClienteCrm, variantesTelefone } from "./crm.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
@@ -115,6 +115,7 @@ function respostaCrm(metodo: string, caminho: string, corpo?: unknown): unknown 
   if (caminho.startsWith("/agenda/disponibilidade")) return { situacao: disponibilidade, vagas: disponibilidade === "lotada" ? 0 : 3 };
   if (caminho === "/precos/calcular") return { disponivel: false, motivos: ["sem regra"] };
   if (metodo === "GET" && caminho.startsWith("/negocios/")) return negocioCrm;
+  if (metodo === "GET" && caminho === "/negocios?codigo=XK4A") return { negocios: [{ id: "n9", codigo: "XK4A", contato: { id: "c9", nome: "Carla", telefone: null } }] };
   if (metodo === "GET" && caminho.startsWith("/negocios?")) return { negocios: [] };
   if (metodo === "POST" && caminho === "/negocios") return { id: "n1", codigo: "AB12CD", contato: { id: "c1" }, evento: (corpo as { evento?: unknown })?.evento };
   if (metodo === "PUT" && caminho.endsWith("/evento")) return { evento: corpo, disponibilidade: { situacao: disponibilidade } };
@@ -182,6 +183,30 @@ function entrada(novas: string[], extra: Partial<EntradaTurno> = {}): EntradaTur
     ...extra,
   };
 }
+
+describe("pedido vindo do site (Ref.)", () => {
+  test("acha a referência na mensagem pronta do site", () => {
+    assert.equal(referenciaDoSite("Oi, Aurora! Orçamento: Aniversário, 12/09/2027, Araxá, 51–100 convidados. Ref. XK4A."), "XK4A");
+    assert.equal(referenciaDoSite("ref: ab12cd"), "AB12CD");
+    assert.equal(referenciaDoSite("Quero um orçamento"), null);
+  });
+  test("liga a conversa ao pedido do site e grava o telefone (modo real), sem criar pedido novo", async () => {
+    negocioCrm = { id: "n9", codigo: "XK4A", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "aniversario", cidade: "Araxá" }, contato: { id: "c9", nome: "Carla", telefone: null, email: null, cidade: null }, tags: [] };
+    const ia = iaFalsa([texto("Oi, Carla! Já recebi os dados do seu aniversário.")]);
+    const r = await processarTurno(entrada(["Oi, Aurora! Orçamento: Aniversário. Ref. XK4A."], { chamar: ia.fn, modo: "real", telefone: "5534988887777" }));
+    assert.equal(r.estado.negocio_id, "n9");
+    assert.equal(r.estado.codigo, "XK4A");
+    assert.ok(chamadasCrm.some((c) => c.metodo === "PATCH" && c.caminho === "/contatos/c9" && (c.corpo as { telefone: string }).telefone === "5534988887777"));
+    assert.ok(!chamadasCrm.some((c) => c.metodo === "POST" && c.caminho === "/negocios"));
+  });
+  test("pedido do site com atendimento de uma pessoa: a Cecília não responde", async () => {
+    negocioCrm = { id: "n9", codigo: "XK4A", status: "aberto", atendimento: "humano", etapa: { nome: "Novo lead" }, evento: {}, contato: { id: "c9", nome: "Carla", telefone: null, email: null, cidade: null }, tags: [] };
+    const ia = iaFalsa([]);
+    const r = await processarTurno(entrada(["Orçamento. Ref. XK4A."], { chamar: ia.fn }));
+    assert.equal(r.respostas.length, 0);
+    assert.equal(ia.recebido.length, 0);
+  });
+});
 
 describe("regras garantidas por código", () => {
   test("agente pausado não responde nem chama a IA", async () => {

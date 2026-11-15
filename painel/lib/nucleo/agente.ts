@@ -69,6 +69,38 @@ async function lerContexto(crm: ClienteCrm, estado: EstadoConversa, modo: Modo, 
   return { pacotes: pac.dados.pacotes, condicoes: cond.dados, etapa };
 }
 
+/** Referência do pedido na mensagem pronta do site ("… Ref. XK4A"). É o código do pedido no CRM. */
+export function referenciaDoSite(texto: string): string | null {
+  const m = texto.match(/\bref(?:er[eê]ncia)?\.?\s*:?\s*#?([A-Z0-9]{4,10})\b/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/**
+ * Cliente que veio pelo site: acha o pedido pela referência, liga a conversa a ele e (no modo real) grava o
+ * telefone do WhatsApp no contato. Assim a Cecília continua de onde o site parou, sem criar pedido novo.
+ */
+async function ligarPedidoDoSite(crm: ClienteCrm, estado: EstadoConversa, texto: string, modo: Modo, telefone: string | null | undefined, rastro: PassoRastro[]) {
+  if (estado.negocio_id) return;
+  const ref = referenciaDoSite(texto);
+  if (!ref) return;
+  const r = await crm.get<{ negocios?: NegocioCrm[] } | NegocioCrm>(`/negocios?codigo=${encodeURIComponent(ref)}`);
+  const d = r.dados as { negocios?: NegocioCrm[] } | NegocioCrm | undefined;
+  const negocio = d && "negocios" in d ? d.negocios?.[0] : (d as NegocioCrm | undefined);
+  if (!negocio?.id) {
+    rastro.push({ tipo: "aviso", nome: "Referência do site não encontrada", detalhe: `A mensagem traz "Ref. ${ref}", mas o CRM não achou esse pedido.` });
+    return;
+  }
+  estado.negocio_id = negocio.id;
+  estado.codigo = negocio.codigo;
+  estado.contato_id = negocio.contato?.id ?? null;
+  if (negocio.contato?.nome && !estado.contato.nome) estado.contato.nome = negocio.contato.nome;
+  rastro.push({ tipo: "ferramenta", nome: "achar o pedido do site pela referência", efeito: "leitura", argumentos: { codigo: ref }, resultado: { codigo: negocio.codigo } });
+  if (modo === "real" && telefone && negocio.contato?.id && !negocio.contato.telefone) {
+    const p = await crm.patch(`/contatos/${negocio.contato.id}`, { telefone });
+    rastro.push({ tipo: "ferramenta", nome: "gravar o telefone do WhatsApp no contato", efeito: "gravacao", resultado: p.dados ? { gravado: true } : p.erro });
+  }
+}
+
 /** A IA disse que ia passar para a equipe? (então passa de verdade, mesmo que ela não tenha chamado a ferramenta) */
 export function prometeuTransferir(texto: string) {
   return /\b(vou|irei|vamos|já vou)\s+(te\s+)?(passar|transferir|encaminhar)\b|\bvou chamar algu[eé]m\b|\bpass(ar|ando|ei) (a |sua |essa |esta )?conversa\b|algu[eé]m da (nossa )?equipe (vai|ir[aá]|já vai) (te )?(responder|atender|chamar|falar|entrar em contato)/i.test(texto);
@@ -109,6 +141,7 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
 
   let ctx: ContextoFerramentas | null = null;
   try {
+    await ligarPedidoDoSite(e.crm, estado, texto, e.modo, e.telefone ?? estado.telefone, rastro);
     const { pacotes, condicoes, etapa } = await lerContexto(e.crm, estado, e.modo, rastro);
     if (estado.atendimento === "humano") return sair("A conversa está com uma pessoa da equipe: o agente só registra as mensagens.");
 
