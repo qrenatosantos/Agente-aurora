@@ -1,5 +1,10 @@
 # Pedidos de mudança no CRM (para levar à sessão do CRM)
 
+> **Situação em 15/11/2026:** C1, C2, C3, C4 e S1 já foram feitos no CRM (commit `6a85797` de `qrenatosantos/Aurora`:
+> rota `encaminhar-agente` com a permissão `atendimento.devolver`, telefone com e sem o 9, `nao_contatar` e
+> `aceita_retomadas`, `foto_url` nos drinks e política de privacidade). O que falta agora é **publicar o CRM**:
+> veja o pedido P1 no fim deste arquivo.
+
 Aprovados pelo Renato em 15/11/2026. Nenhum deles impede o agente de começar: cada item diz
 o que o agente faz enquanto o pedido não for atendido.
 
@@ -74,3 +79,17 @@ O arquivo `integracao-site/politica-de-privacidade.md` já tem o item. Falta diz
 - que as conversas com o agente seguem o **mesmo prazo de guarda** dos pedidos (12 meses para quem não fechou) e são apagadas quando a pessoa pede.
 
 **Quando publicar:** antes de o agente atender o primeiro cliente real (fase 6, piloto). Não publique antes disso.
+
+---
+
+## P1. Publicar o CRM e criar a chave do agente (15/11/2026)
+
+O agente (motor e painel) já está no ar na Cloudflare e recebe mensagens do WhatsApp de teste, mas não consegue
+responder sem o CRM publicado (catálogo, agenda e preços vêm só dele). Pedido à sessão do CRM:
+
+1. Publicar o CRM seguindo `docs/PUBLICAR-NO-CLOUDFLARE.md`, na mesma conta da Cloudflare do agente.
+2. Conferir no CRM o catálogo (pacotes e drinks), a agenda e as condições. Preço só é informado ao cliente se houver
+   regra de preço **aprovada**; sem isso, o agente diz que o valor vem na proposta.
+3. Criar a **chave do agente** (Integrações ▸ chaves) com as permissões padrão (sem `atendimento.devolver`).
+4. Depois (fase 3 do agente): segunda chave, só para o painel, com `negocios.ler`, `mensagens.ler` e
+   `atendimento.devolver`; e o aviso (webhook) apontando para o motor.
