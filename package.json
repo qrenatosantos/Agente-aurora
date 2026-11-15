@@ -1,0 +1,12 @@
+{
+  "name": "aurora-agente",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agente SDR da Aurora Bartenders: painel (Next.js) e motor (Cloudflare Worker), que falam com o CRM só pela API.",
+  "scripts": {
+    "test:banco": "node --test supabase/testes/*.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}

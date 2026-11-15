@@ -1,0 +1,17 @@
+{
+	// Configuração do Cloudflare Workers (hospedagem do PAINEL do agente).
+	// O guia de publicação chega na fase 6 (docs/PUBLICAR.md).
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "aurora-agente-painel",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-10-01",
+	// global_fetch_strictly_public: o servidor não consegue abrir endereços internos (proteção da importação de páginas).
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	// Mantém as variáveis e segredos cadastrados no painel do Cloudflare a cada publicação.
+	"keep_vars": true,
+	"observability": { "enabled": true }
+}
