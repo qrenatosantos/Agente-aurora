@@ -63,6 +63,12 @@ async function lerContexto(crm: ClienteCrm, estado: EstadoConversa, modo: Modo, 
         if (n.dados.contato?.nome && !estado.contato.nome) estado.contato.nome = n.dados.contato.nome;
       }
       if (n.dados.status !== "aberto") estado.atendimento = "humano";
+      // a proposta também vem do CRM (a equipe pode ter recusado, aprovado ou mudado)
+      if (modo === "real" && n.dados.propostas?.length) {
+        const vivas = n.dados.propostas.filter((p) => !["recusada", "cancelada", "expirada"].includes(p.status));
+        const p = vivas.at(-1) ?? n.dados.propostas.at(-1)!;
+        estado.proposta = { id: p.id, numero: p.numero, status: p.status, simulada: false, total: p.total, preco_pendente: p.preco_pendente };
+      }
       rastro.push({ tipo: "ferramenta", nome: "ler pedido no CRM", efeito: "leitura", resultado: { codigo: n.dados.codigo, etapa, atendimento: n.dados.atendimento, status: n.dados.status } });
     }
   }

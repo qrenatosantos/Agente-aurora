@@ -348,7 +348,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       }
 
       case "preparar_proposta": {
-        if (ctx.estado.proposta && ["aguardando_aprovacao", "aprovada", "enviada"].includes(ctx.estado.proposta.status)) {
+        if (ctx.estado.proposta && ["aguardando_aprovacao", "ajustes_solicitados", "aprovada", "enviada", "aceita"].includes(ctx.estado.proposta.status)) {
           return fim({ erro: `Já existe a proposta ${ctx.estado.proposta.numero ?? ""} (${ctx.estado.proposta.status}). Aguarde a equipe.` }, "nenhum");
         }
         const escolhidos = await drinksPorNome(ctx, args.drinks);
