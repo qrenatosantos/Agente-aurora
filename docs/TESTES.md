@@ -85,7 +85,7 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
   descartáveis (sem citar valor); se o cliente insistir, transfere. "desconto", "mais barato" e "negociar" saíram dos
   gatilhos de palavras (configuração versão 8); regra fixa ajustada.
 - **Nome obrigatório:** o sistema recusa montar a proposta sem o nome do cliente (o "Cliente do WhatsApp" não vale).
-- Testes (sem IA, a pedido do Renato): banco 38/38, núcleo 37/37, motor 10/10 (regra de horário e janela).
+- Testes (sem IA, a pedido do Renato): banco 38/38, núcleo 35/35, motor 10/10 (regra de horário e janela).
   Local: aprovada → link + lembrete agendado; aberta → lembrete agendado.
 
 ## Fase 3 (parte 2): proposta aprovada → link no WhatsApp do cliente (15/11/2026)
