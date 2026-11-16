@@ -33,6 +33,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 ## Pendências
 - CRM: aprovar as regras de preço (Catálogo ▸ Calculadora) e confirmar condições (Configurações ▸ Propostas e agenda).
   Até lá, propostas vêm "Preço a definir" e o gestor põe o valor antes de aprovar.
+- CRM ▸ Configurações ▸ Propostas e agenda ▸ "WhatsApp que recebe os clientes pela proposta" = número da Cecília
+  (hoje o de teste, 15551423124; trocar quando houver o definitivo). Vazio = vai para o WhatsApp da empresa (André).
 - Número definitivo (decisão do Renato/André): chip novo só da Cecília (simples; o site troca o "wa" na config) OU
   número do André em coexistência (exige Provedor de Tecnologia ou parceira; cuidado: amigos/família receberiam a Cecília).
 - Fase 3 restante: aviso ao André no WhatsApp (proposta para aprovar; transferência), caixa de entrada no painel,
