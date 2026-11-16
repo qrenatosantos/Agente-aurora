@@ -104,9 +104,10 @@ export const DEFINICOES = [
       parameters: {
         type: "object",
         additionalProperties: false,
-        required: ["pacote", "convidados", "duracao_horas"],
+        required: ["convidados", "duracao_horas"],
         properties: {
-          pacote: { type: "string", description: "Nome do pacote." },
+          pacote: { type: "string", description: "Nome do pacote. Ou use drinks para uma proposta personalizada." },
+          drinks: { type: "array", items: { type: "string" }, description: "Proposta personalizada: nomes dos drinks escolhidos (do catálogo), no lugar do pacote." },
           convidados: { type: "integer" },
           duracao_horas: { type: "number" },
           linha: { type: "string", enum: ["tradicional", "premium"] },
@@ -120,7 +121,7 @@ export const DEFINICOES = [
     function: {
       name: "preparar_proposta",
       description:
-        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: nome do cliente, tipo, data (ou mês), cidade, convidados, quantas horas de bar e pacote (ou que o cliente quer ajuda para escolher). Se faltar algo, PERGUNTE ao cliente antes. O cliente só recebe o link depois que a equipe aprovar.",
+        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: nome do cliente, tipo, data (ou mês), cidade, convidados, quantas horas de bar e o que vai no bar: um pacote que o CLIENTE escolheu, ou os drinks que ele escolheu (proposta personalizada, em drinks). Se faltar algo, PERGUNTE ao cliente antes. Nunca escolha o pacote pelo cliente. O cliente só recebe o link depois que a equipe aprovar.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -128,6 +129,11 @@ export const DEFINICOES = [
         properties: {
           recado_para_equipe: { type: "string", description: "Resumo curto para o André: o que o cliente quer, dúvidas, preferências." },
           titulo_capa: { type: "string", description: "Frase da capa, ex.: 'Um brinde ao primeiro ano do José Miguel.'" },
+          drinks: {
+            type: "array",
+            items: { type: "string" },
+            description: "SÓ para proposta personalizada que o cliente CONFIRMOU: os nomes exatos dos drinks do catálogo que ele escolheu. Vazio = usa os drinks do pacote registrado.",
+          },
         },
       },
     },
@@ -137,7 +143,7 @@ export const DEFINICOES = [
     function: {
       name: "transferir_para_pessoa",
       description:
-        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido fora dos pacotes; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta.",
+        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -172,6 +178,25 @@ function pacotePorNome(pacotes: PacoteCrm[], nome: unknown) {
   if (typeof nome !== "string") return null;
   const n = nome.trim().toLowerCase();
   return pacotes.find((p) => p.nome.toLowerCase() === n) ?? pacotes.find((p) => n.includes(p.nome.toLowerCase())) ?? null;
+}
+
+const normal = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Proposta personalizada: troca nomes de drinks pelos ids do catálogo. Devolve o erro se algum não existir. */
+async function drinksPorNome(ctx: ContextoFerramentas, nomes: unknown): Promise<{ ids: string[]; nomes: string[] } | { erro: string } | null> {
+  if (!Array.isArray(nomes) || !nomes.length) return null;
+  const r = await ctx.crm.get<{ drinks: { id: string; nome: string }[] }>("/catalogo/drinks");
+  const catalogo = r.dados?.drinks ?? [];
+  if (!catalogo.length) return { erro: r.erro?.mensagem ?? "Catálogo de drinks indisponível." };
+  const achados: { id: string; nome: string }[] = [];
+  const faltam: string[] = [];
+  for (const n of nomes.map((x) => normal(String(x)))) {
+    const d = catalogo.find((c) => normal(c.nome) === n) ?? catalogo.find((c) => normal(c.nome).includes(n) || n.includes(normal(c.nome)));
+    if (d) achados.some((a) => a.id === d.id) || achados.push(d);
+    else faltam.push(String(n));
+  }
+  if (faltam.length) return { erro: `Não estão no catálogo: ${faltam.join(", ")}. Drinks do catálogo: ${catalogo.map((c) => c.nome).join(", ")}. Confirme com o cliente.` };
+  return { ids: achados.map((a) => a.id), nomes: achados.map((a) => a.nome) };
 }
 
 /** Garante que existe um pedido no CRM (só no modo real). */
@@ -214,7 +239,7 @@ function dataValida(v: unknown, hoje: string) {
 }
 
 /** Quais dados mínimos faltam para montar a proposta. */
-export function faltamParaProposta(evento: Record<string, unknown>, contato: { nome?: string | null } = {}) {
+export function faltamParaProposta(evento: Record<string, unknown>, contato: { nome?: string | null } = {}, personalizada = false) {
   const f: string[] = [];
   const nome = (contato.nome ?? "").trim();
   if (!nome || /^cliente( do whatsapp)?$/i.test(nome)) f.push("o nome do cliente (a proposta vai com o nome dele)");
@@ -223,7 +248,7 @@ export function faltamParaProposta(evento: Record<string, unknown>, contato: { n
   if (!evento.cidade) f.push("cidade");
   if (!evento.convidados) f.push("número de convidados");
   if (!evento.duracao_horas) f.push("quantas horas de bar (o preço depende disso)");
-  if (!evento.pacote && !evento.pacote_id && !evento.quer_ajuda_pacote) f.push("pacote (ou o pedido de ajuda para escolher)");
+  if (!personalizada && !evento.pacote && !evento.pacote_id && !evento.quer_ajuda_pacote) f.push("pacote (ou o pedido de ajuda para escolher)");
   return f;
 }
 
@@ -267,16 +292,18 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       }
 
       case "calcular_preco": {
-        const p = pacotePorNome(ctx.pacotes, args.pacote);
-        if (!p) return fim({ erro: `Pacote "${String(args.pacote)}" não existe. Pacotes: ${ctx.pacotes.map((x) => x.nome).join(", ")}.` }, "nenhum");
-        const corpo = { pacote_id: p.id, convidados: args.convidados, duracao_horas: args.duracao_horas, linha: args.linha, outra_cidade: args.outra_cidade };
+        const escolhidos = await drinksPorNome(ctx, args.drinks);
+        if (escolhidos && "erro" in escolhidos) return fim({ erro: escolhidos.erro }, "nenhum");
+        const p = escolhidos ? null : pacotePorNome(ctx.pacotes, args.pacote);
+        if (!escolhidos && !p) return fim({ erro: `Pacote "${String(args.pacote ?? "")}" não existe. Pacotes: ${ctx.pacotes.map((x) => x.nome).join(", ")}.` }, "nenhum");
+        const corpo = { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: args.convidados, duracao_horas: args.duracao_horas, linha: args.linha, outra_cidade: args.outra_cidade };
         const r = await ctx.crm.post<Record<string, unknown>>("/precos/calcular", corpo);
         const d = r.dados;
         // A IA recebe só o necessário: os "motivos" internos da calculadora não vão para o cliente.
         const saida = !d
           ? { erro: r.erro?.mensagem }
           : d.disponivel
-            ? { disponivel: true, pacote: p.nome, preco: d.preco, observacao: "Valor calculado pelas regras aprovadas. Pode informar." }
+            ? { disponivel: true, pacote: p?.nome ?? "personalizada", drinks: escolhidos?.nomes, preco: d.preco, observacao: "Valor calculado pelas regras aprovadas. Pode informar." }
             : { disponivel: false, orientacao: "Preço ainda não definido no sistema. NÃO informe valor; diga que a equipe envia na proposta." };
         return fim(saida, "leitura");
       }
@@ -324,20 +351,26 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         if (ctx.estado.proposta && ["aguardando_aprovacao", "aprovada", "enviada"].includes(ctx.estado.proposta.status)) {
           return fim({ erro: `Já existe a proposta ${ctx.estado.proposta.numero ?? ""} (${ctx.estado.proposta.status}). Aguarde a equipe.` }, "nenhum");
         }
-        const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato);
+        const escolhidos = await drinksPorNome(ctx, args.drinks);
+        if (escolhidos && "erro" in escolhidos) return fim({ erro: escolhidos.erro }, "nenhum");
+        const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato, Boolean(escolhidos));
         if (faltam.length) return fim({ ok: false, faltam, orientacao: "Pergunte ao cliente o que falta antes de preparar a proposta." }, "nenhum");
         if (sim) {
           const p = pacotePorNome(ctx.pacotes, ctx.estado.evento.pacote);
           let preco: { disponivel: boolean; preco?: number } = { disponivel: false };
-          if (p && ctx.estado.evento.convidados && ctx.estado.evento.duracao_horas) {
-            const r = await ctx.crm.post<{ disponivel: boolean; preco?: number }>("/precos/calcular", { pacote_id: p.id, convidados: ctx.estado.evento.convidados, duracao_horas: ctx.estado.evento.duracao_horas });
+          if ((p || escolhidos) && ctx.estado.evento.convidados && ctx.estado.evento.duracao_horas) {
+            const r = await ctx.crm.post<{ disponivel: boolean; preco?: number }>("/precos/calcular", { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: ctx.estado.evento.convidados, duracao_horas: ctx.estado.evento.duracao_horas });
             preco = r.dados ?? preco;
           }
           ctx.estado.proposta = { id: null, numero: "(simulação)", status: "aguardando_aprovacao", simulada: true, total: preco.disponivel ? (preco.preco ?? null) : null, preco_pendente: !preco.disponivel };
           return fim({ ok: true, numero: "(simulação)", status: "aguardando_aprovacao", preco_pendente: !preco.disponivel, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada." }, "simulada", { avancou: true });
         }
         const id = await garantirNegocio(ctx);
-        const criada = await ctx.crm.post<{ id: string; numero: string; total: number; preco_pendente: boolean }>(`/negocios/${id}/propostas`, { nota: args.recado_para_equipe, capa_titulo: args.titulo_capa });
+        const criada = await ctx.crm.post<{ id: string; numero: string; total: number; preco_pendente: boolean }>(`/negocios/${id}/propostas`, {
+          nota: escolhidos ? `PROPOSTA PERSONALIZADA (drinks escolhidos: ${escolhidos.nomes.join(", ")}). ${String(args.recado_para_equipe ?? "")}` : args.recado_para_equipe,
+          capa_titulo: args.titulo_capa,
+          ...(escolhidos ? { drinks: escolhidos.ids } : {}),
+        });
         if (!criada.dados) return fim({ erro: criada.erro?.mensagem }, "gravacao");
         const sub = await ctx.crm.post<{ status: string }>(`/propostas/${criada.dados.id}/submeter`, { nota: args.recado_para_equipe });
         ctx.estado.proposta = { id: criada.dados.id, numero: criada.dados.numero, status: sub.dados?.status ?? "rascunho", simulada: false, total: criada.dados.total, preco_pendente: criada.dados.preco_pendente };

@@ -335,3 +335,13 @@ Em nenhuma das 90 conversas os dois modelos citaram preço sem base.
 ### Confirmado na cópia local do CRM: pedido C2
 
 `GET /negocios?telefone=3400001111` (sem o 9) **não acha** o contato cadastrado como `34900001111`. O agente já contorna isso buscando as duas formas, mas o pedido C2 continua valendo para o CRM.
+
+## 16/11/2026 — Proposta personalizada (caso Poliana)
+- Problema: a cliente pediu drinks soltos (caipirinha, Aperol, Moscow Mule e um sem álcool); a Cecília escolheu o
+  Exclusive sozinha e preparou a proposta sem perguntar.
+- Mudança: `preparar_proposta` e `calcular_preco` aceitam `drinks` (nomes do catálogo → ids; o CRM refaz cardápio e
+  preço). Prompt: nunca escolher o pacote pelo cliente; mostrar qual pacote cobre e oferecer a personalizada;
+  confirmar o resumo antes de preparar. "Fora dos pacotes" só transfere se nem a personalizada resolver.
+- Núcleo 38/38 (2 testes novos), banco 38/38, motor 12/12, tsc e lint ok.
+- Bateria (IA de verdade, CRM publicado só leitura, gpt-6-luna, 2 rodadas): drinks-avulsos, drinks-personalizada,
+  caminho-feliz, pacotes = 8/8 (US$ 0,04).

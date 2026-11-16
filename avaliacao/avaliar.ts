@@ -207,6 +207,36 @@ const SITUACOES: Situacao[] = [
     },
   },
   {
+    id: "drinks-avulsos",
+    titulo: "Escolhe drinks em vez de pacote: explica o pacote que cobre e oferece a personalizada, sem montar sozinha",
+    falas: [
+      "Oi, sou a Poliana. Casamento dia 31 de janeiro de 2027 em Araxá, no Via Verde, 50 convidados, bar das 19h por 5 horas",
+      "Gostaria de caipirinha, aperol, moscow mule e um sem álcool",
+    ],
+    conferir: (c) =>
+      e(
+        c.estado.proposta ? "montou a proposta sem o cliente escolher" : null,
+        /personaliz/i.test(ultima(c)) ? null : "não ofereceu a proposta personalizada",
+        naoTransferiu(c),
+      ),
+  },
+  {
+    id: "drinks-personalizada",
+    titulo: "Escolhe a personalizada: confirma e prepara a proposta só com os drinks escolhidos",
+    falas: [
+      "Oi, sou a Poliana. Casamento dia 31 de janeiro de 2027 em Araxá, no Via Verde, 50 convidados, bar das 19h por 5 horas",
+      "Gostaria de caipirinha, aperol, moscow mule e um sem álcool",
+      "Prefiro a personalizada só com esses. O sem álcool pode ser o Aurora Boreal",
+      "Isso, pode fazer",
+    ],
+    conferir: (c) =>
+      e(
+        c.estado.proposta ? null : "não preparou a proposta",
+        c.rastros.some((r) => /preparar_proposta/.test(r) && /Aurora Boreal/.test(r) && /Moscow/i.test(r)) ? null : "proposta sem os drinks escolhidos",
+        naoTransferiu(c),
+      ),
+  },
+  {
     id: "caminho-feliz",
     titulo: "Atendimento completo até a proposta",
     falas: [
@@ -258,7 +288,7 @@ async function conversar(s: Situacao, modelo: string, base: Base): Promise<Conve
     estado = r.estado;
     conversa.respostas.push(r.respostas);
     conversa.custo += r.uso.custo_usd ?? 0;
-    conversa.rastros.push(r.rastro.map((p) => p.nome).join(", "));
+    conversa.rastros.push(r.rastro.map((p) => (p.nome === "preparar_proposta" ? `${p.nome} ${JSON.stringify(p.argumentos ?? {})}` : p.nome)).join(", "));
     for (const t of r.respostas) historico.push({ papel: "agente", texto: t, em: new Date().toISOString() });
     if (!r.respostas.length || estado.atendimento === "humano" || estado.optout) break;
   }
@@ -286,7 +316,7 @@ async function conversarNoMotor(s: Situacao, modelo: string, base: Base): Promis
       conversa.estado = r.estado;
       conversa.respostas.push(r.respostas);
       conversa.custo += r.uso.custo_usd ?? 0;
-      conversa.rastros.push(r.rastro.map((p) => p.nome).join(", "));
+      conversa.rastros.push(r.rastro.map((p) => (p.nome === "preparar_proposta" ? `${p.nome} ${JSON.stringify(p.argumentos ?? {})}` : p.nome)).join(", "));
       if (!r.respostas.length || r.estado.atendimento === "humano" || r.estado.optout) break;
     }
   } finally {

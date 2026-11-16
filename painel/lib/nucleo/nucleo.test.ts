@@ -118,6 +118,9 @@ const PACOTES = [
 
 function respostaCrm(metodo: string, caminho: string, corpo?: unknown): unknown {
   if (caminho === "/catalogo/pacotes") return { pacotes: PACOTES };
+  if (caminho === "/catalogo/drinks") return { drinks: [{ id: "d1", nome: "Caipirinha" }, { id: "d5", nome: "Moscow Mule" }, { id: "d9", nome: "Moscow Mule sem álcool" }] };
+  if (metodo === "POST" && caminho === "/negocios/n1/propostas") return { id: "pr1", numero: "PROP-1", total: 0, preco_pendente: true };
+  if (caminho === "/propostas/pr1/submeter") return { status: "aguardando_aprovacao" };
   if (caminho === "/catalogo/condicoes") return { empresa: {}, condicoes: { entrada_pct: null }, agenda: { capacidade_simultanea: 3 }, precos_aprovados: false, condicoes_confirmadas: false };
   if (caminho.startsWith("/agenda/disponibilidade")) return { situacao: disponibilidade, vagas: disponibilidade === "lotada" ? 0 : 3 };
   if (caminho === "/precos/calcular") return { disponivel: false, motivos: ["sem regra"] };
@@ -358,6 +361,24 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.equal(chamadasCrm.filter((c) => c.metodo === "POST" && c.caminho === "/negocios").length, 1);
     assert.ok(chamadasCrm.some((c) => c.metodo === "PUT" && c.caminho === "/negocios/n1/evento"));
     assert.equal(r.estado.codigo, "AB12CD");
+  });
+
+  test("proposta personalizada: vai ao CRM só com os drinks escolhidos (sem pacote)", async () => {
+    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, duracao_horas: 5 }, contato: { id: "c1", nome: "Poliana" } };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "x", drinks: ["caipirinha", "Moscow mule"] }), texto("Pronto!")]);
+    const r = await processarTurno(entrada(["Pode fazer só com esses"], { modo: "real", estado: estadoInicial({ negocio_id: "n1", contato: { nome: "Poliana", cidade: "Araxá" } }), chamar: ia.fn }));
+    const criada = chamadasCrm.find((c) => c.metodo === "POST" && c.caminho === "/negocios/n1/propostas");
+    assert.deepEqual((criada?.corpo as { drinks: string[] }).drinks, ["d1", "d5"]);
+    assert.match((criada?.corpo as { nota: string }).nota, /PERSONALIZADA/);
+    assert.equal(r.estado.proposta?.numero, "PROP-1");
+  });
+
+  test("drink fora do catálogo: a proposta não sai e a IA recebe a lista", async () => {
+    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, duracao_horas: 5 }, contato: { id: "c1", nome: "Poliana" } };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "x", drinks: ["Tequila sunrise"] }), texto("Esse não temos.")]);
+    const r = await processarTurno(entrada(["Quero tequila sunrise"], { modo: "real", estado: estadoInicial({ negocio_id: "n1", contato: { nome: "Poliana", cidade: "Araxá" } }), chamar: ia.fn }));
+    assert.ok(!chamadasCrm.some((c) => c.caminho === "/negocios/n1/propostas"));
+    assert.match(JSON.stringify(r.rastro), /Não estão no catálogo/);
   });
 
   test("transferência pela IA no modo real chama o CRM", async () => {
