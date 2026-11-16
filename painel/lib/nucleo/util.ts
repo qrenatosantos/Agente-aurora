@@ -166,7 +166,7 @@ export function separarPacotes(partes: string[], nomes: string[]): string[] {
     const intro = limpar(parte.slice(0, achados[0].index));
     if (intro) saida.push(intro.replace(/[:;,]$/, (x) => (x === ":" ? ":" : "")));
     achados.forEach((m, i) => {
-      let trecho = parte.slice(m.index, i + 1 < achados.length ? achados[i + 1].index : undefined);
+      const trecho = parte.slice(m.index, i + 1 < achados.length ? achados[i + 1].index : undefined);
       if (i === achados.length - 1) {
         // pergunta final ("Qual deles combina…?") vira balão próprio
         const q = trecho.match(/^([\s\S]*?[.!])\s+([^.!?]*\?)\s*$/);
