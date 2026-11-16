@@ -120,7 +120,7 @@ export const DEFINICOES = [
     function: {
       name: "preparar_proposta",
       description:
-        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: tipo, data (ou mês), cidade, convidados e pacote (ou que o cliente quer ajuda para escolher). O cliente só recebe o link depois que a equipe aprovar.",
+        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: tipo, data (ou mês), cidade, convidados, quantas horas de bar e pacote (ou que o cliente quer ajuda para escolher). Se faltar algo, PERGUNTE ao cliente antes. O cliente só recebe o link depois que a equipe aprovar.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -220,6 +220,7 @@ export function faltamParaProposta(evento: Record<string, unknown>) {
   if (!evento.data && !evento.mes_previsto) f.push("data ou mês previsto");
   if (!evento.cidade) f.push("cidade");
   if (!evento.convidados) f.push("número de convidados");
+  if (!evento.duracao_horas) f.push("quantas horas de bar (o preço depende disso)");
   if (!evento.pacote && !evento.pacote_id && !evento.quer_ajuda_pacote) f.push("pacote (ou o pedido de ajuda para escolher)");
   return f;
 }

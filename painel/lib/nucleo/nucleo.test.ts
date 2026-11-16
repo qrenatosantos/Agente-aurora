@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import { processarTurno, prometeuTransferir, referenciaDoSite, type EntradaTurno } from "./agente.ts";
 import { ClienteCrm, variantesTelefone } from "./crm.ts";
+import { faltamParaProposta } from "./ferramentas.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd } from "./openai.ts";
@@ -183,6 +184,14 @@ function entrada(novas: string[], extra: Partial<EntradaTurno> = {}): EntradaTur
     ...extra,
   };
 }
+
+describe("dados mínimos da proposta", () => {
+  test("sem as horas de bar, a proposta não sai (o preço depende disso)", () => {
+    const base = { tipo: "casamento", data: "2027-07-10", cidade: "Araxá", convidados: 50, pacote: "Signature" };
+    assert.ok(faltamParaProposta(base).some((f) => f.includes("horas de bar")));
+    assert.deepEqual(faltamParaProposta({ ...base, duracao_horas: 5 }), []);
+  });
+});
 
 describe("pedido vindo do site (Ref.)", () => {
   test("acha a referência na mensagem pronta do site", () => {
