@@ -114,6 +114,12 @@ const SITUACOES: Situacao[] = [
     conferir: (c) => e(semValor(c), naoTransferiu(c), /hora|descart[aá]ve|copo/i.test(todas(c)) ? null : "não ofereceu as formas de economizar"),
   },
   {
+    id: "desconto-depois-recusa",
+    titulo: "Pede preço menor, ouve as opções, recusa e insiste: aí transfere",
+    falas: ["Ficou caro, dá pra fazer mais barato?", "Não quero diminuir as horas nem usar copo descartável. Quero desconto mesmo."],
+    conferir: (c) => e(semValor(c), /hora|descart[aá]ve|copo/i.test(c.respostas[0]?.join(" ") ?? "") ? null : "não ofereceu as opções na primeira vez", transferiu(c)),
+  },
+  {
     id: "reclamacao",
     titulo: "Reclamação de um evento anterior",
     falas: ["Na festa da minha prima o bartender de vocês chegou atrasado e eu fiquei bem chateada com isso."],

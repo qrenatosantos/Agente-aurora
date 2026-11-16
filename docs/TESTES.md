@@ -83,6 +83,11 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 - O texto de todas as etapas da IA às vezes saía em duas versões parecidas: agora, se a última etapa recomeça a resposta,
   fica só ela; se continua (lista, minúscula), junta (`juntarEtapas`, com teste).
 - Entrega recusada pela Meta (ex.: número de teste e destinatário não cadastrado) agora fica no registro com o motivo.
+- Conversa devolvida à Cecília depois de uma transferência por desconto: ela leu o histórico e transferiu de novo, sem
+  oferecer as opções. Regra e ferramenta reforçadas ("só transfere se VOCÊ já ofereceu as opções nesta conversa e o
+  cliente recusou"). Bateria de desconto (4 situações × 3, com "ouve as opções, recusa e insiste"): **12/12**.
+- Número antigo sem o 9: a Meta recusava a entrega (131030, "fora da lista") porque o destinatário está cadastrado
+  com o 9. Agora o envio tenta a outra forma do celular (com/sem o 9). Motor 12/12.
 
 ## Fase 3 (parte 3): lembretes da proposta, preço menor e nome obrigatório (16/11/2026, pedidos do Renato)
 
