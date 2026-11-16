@@ -3,7 +3,9 @@
   "name": "aurora-motor",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
-  "compatibility_flags": ["nodejs_compat"],
+  // global_fetch_strictly_public: chamadas a endereços da mesma conta (ex.: o CRM em workers.dev) saem pela internet
+  // pública; sem isso, o Worker recebe 404 (erro 1042) ao chamar outro Worker da conta.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "durable_objects": {
     "bindings": [{ "name": "Conversa", "class_name": "Conversa" }]
   },
