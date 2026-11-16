@@ -13,6 +13,7 @@
  *  POST /interno/turno   { conversa, ...EntradaConversa } → ResultadoTurno   (simulador do painel e bateria)
  *  POST /interno/apagar  { conversa }                     → apaga a conversa
  *  POST /interno/ler     { conversa }                     → estado e histórico
+ *  POST /interno/aviso   { conversa: "avisos", id }       → processa de novo um aviso do CRM já guardado
  * Todas exigem "Authorization: Bearer <SEGREDO_INTERNO>".
  *
  * De propósito NÃO usa routeAgentRequest: as conversas não ficam abertas para a internet
@@ -74,7 +75,10 @@ async function conversaDoPedido(env: Env, negocioId: string) {
   if (!amb.crm) return null;
   const n = await new ClienteCrm(amb.crm.endereco, amb.crm.chave).get<{ contato?: { telefone?: string | null } }>(`/negocios/${negocioId}`);
   const tel = n.dados?.contato?.telefone;
-  if (!tel) return null;
+  if (!tel) {
+    console.log(`[aviso] pedido ${negocioId.slice(0, 8)}: contato sem telefone no CRM`);
+    return null;
+  }
   for (const v of variantesTelefone(tel)) {
     const c = await getAgentByName(env.Conversa, `wa-55${v}`);
     const lido = (await c.ler()) as unknown as { estado: { negocio_id: string | null } };
@@ -96,6 +100,7 @@ async function processarAviso(env: Env, aviso: { id: number; tipo: string; negoc
   }
   console.log(`[aviso ${aviso.id} ${aviso.tipo}] ${resultado}`);
   await marcarAvisoProcessadoInterno(env.DB, aviso.id, resultado);
+  return resultado;
 }
 
 /** Avisos do CRM: confere a assinatura, guarda e responde rápido (o CRM espera até 8 s); o trabalho segue depois. */
@@ -130,7 +135,12 @@ export default {
     if (req.method !== "POST") return new Response("Use POST", { status: 405 });
     if (!(await autorizado(req, env))) return new Response("Não autorizado", { status: 401 });
 
-    const corpo = (await req.json().catch(() => null)) as ({ conversa?: unknown } & Partial<EntradaConversa>) | null;
+    const corpo = (await req.json().catch(() => null)) as ({ conversa?: unknown; id?: unknown } & Partial<EntradaConversa>) | null;
+    if (url.pathname === "/interno/aviso") {
+      const a = await env.DB.prepare("select id, tipo, negocio_id, proposta_id from avisos_crm where id = ?").bind(Number(corpo?.id)).first<{ id: number; tipo: string; negocio_id: string | null; proposta_id: string | null }>();
+      if (!a) return Response.json({ erro: "Aviso não encontrado." }, { status: 404 });
+      return Response.json({ resultado: await processarAviso(env, a) });
+    }
     if (!corpo || !nomeValido(corpo.conversa)) return Response.json({ erro: "Informe a conversa." }, { status: 400 });
     const conversa = await getAgentByName(env.Conversa, corpo.conversa);
 
