@@ -1,6 +1,7 @@
 # Agente SDR (molde; 1º cliente: Aurora) — regras para quem for mexer neste projeto
 
-- Fale com o Renato em português, de forma simples (ele não é programador).
+- **Leia primeiro `docs/SITUACAO.md`** (o que está no ar, decisões recentes e pendências) e mantenha-o atualizado.
+- Fale com o Renato em português, de forma simples (ele não é programador). Respostas curtas.
 - **Nunca altere o CRM** (`qrenatosantos/Aurora`). Faltou algo na API? Escreva em `docs/PEDIDOS-CRM.md` e avise.
 - O agente fala com o CRM **só pela API** (`/api/v1`, chave `aur_...`). Nunca acessa o banco do CRM.
 - Decisão do Renato (15/11/2026): **tudo na Cloudflare** (Workers + D1 + Durable Objects), login próprio por
