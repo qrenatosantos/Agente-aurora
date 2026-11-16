@@ -91,11 +91,11 @@ async function conversaDoPedido(env: Env, negocioId: string) {
 async function processarAviso(env: Env, aviso: { id: number; tipo: string; negocio_id?: string | null; proposta_id?: string | null }) {
   let resultado = "guardado";
   try {
-    const tipos = ["proposta.aprovada", "proposta.visualizada", "proposta.aceita", "proposta.recusada"];
+    const tipos = ["proposta.aprovada", "proposta.enviada", "proposta.visualizada", "proposta.aceita", "proposta.recusada"];
     if (tipos.includes(aviso.tipo) && aviso.negocio_id && aviso.proposta_id) {
       const c = await conversaDoPedido(env, aviso.negocio_id);
       if (!c) resultado = "pedido sem conversa no WhatsApp";
-      else if (aviso.tipo === "proposta.aprovada") resultado = await c.enviarPropostaAprovada({ propostaId: aviso.proposta_id, negocioId: aviso.negocio_id });
+      else if (aviso.tipo === "proposta.aprovada" || aviso.tipo === "proposta.enviada") resultado = await c.enviarPropostaAprovada({ propostaId: aviso.proposta_id, negocioId: aviso.negocio_id });
       else if (aviso.tipo === "proposta.visualizada") resultado = await c.propostaAberta(aviso.proposta_id);
       else resultado = await c.propostaEncerrada(aviso.proposta_id);
     }

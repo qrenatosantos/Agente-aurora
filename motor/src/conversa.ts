@@ -394,7 +394,14 @@ export class Conversa extends Think<Env> {
     const wa = this.whatsapp(amb);
     if (!wa || !amb.crm) return "WhatsApp ou CRM não configurados";
     const crm = new ClienteCrm(amb.crm.endereco, amb.crm.chave);
-    const r = await crm.post<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}/enviar`);
+    if (this.sql`select 1 from aurora_propostas where proposta_id = ${d.propostaId}`.length) return "link já enviado antes por esta conversa";
+    // aprovada: a Cecília marca como enviada e pega o link. Se o gestor já usou "Aprovar e enviar" (ou a conversa está
+    // com uma pessoa, e o CRM não deixa o agente alterar), o link é só lido da proposta.
+    let r = await crm.post<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}/enviar`);
+    if (!r.dados?.link) {
+      const lida = await crm.get<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}`);
+      if (lida.dados?.link) r = lida;
+    }
     if (!r.dados?.link) return `o CRM não liberou o link: ${r.erro?.mensagem ?? "sem link"}`;
     const link = r.dados.link.startsWith("/") ? `${amb.crm.endereco.replace(/\/+$/, "")}${r.dados.link}` : r.dados.link;
     const nome = this.nomeParaMensagem(estado);
