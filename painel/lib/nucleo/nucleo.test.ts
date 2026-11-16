@@ -13,7 +13,7 @@ import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horari
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd } from "./openai.ts";
 import { estadoInicial, type ConfigAgente } from "./tipos.ts";
-import { contemAlguma, dividirMensagens, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
+import { contemAlguma, dividirMensagens, juntarEtapas, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
 
 // ------------------------------------------------------------------ utilitários
 describe("textos e valores", () => {
@@ -67,6 +67,12 @@ describe("textos e valores", () => {
     assert.deepEqual(dividirMensagens(`Qual prefere?\n\nAssistant: Você tem razão.`), ["Qual prefere?"]);
     // recomeço na mesma linha seguinte (sem linha em branco)
     assert.deepEqual(dividirMensagens(`${lista}\n*Essencial* 🥂 Caipirinha, caipiroska e gin tônica.`), lista.split("\n\n"));
+  });
+  test("texto das etapas: recomeço fica só a última; continuação junta", () => {
+    assert.equal(juntarEtapas(["O valor vem na proposta. Qual é a data?", "O valor do Reserve vem na proposta. Para quando é?"]), "O valor do Reserve vem na proposta. Para quando é?");
+    assert.equal(juntarEtapas(["*Essencial* 🥂 caipirinha", "*Exclusive* ✨ Aurora Boreal"]), "*Essencial* 🥂 caipirinha\n\n*Exclusive* ✨ Aurora Boreal");
+    assert.equal(juntarEtapas(["Anotei a data.", "e a cidade também."]), "Anotei a data.\n\ne a cidade também.");
+    assert.equal(juntarEtapas(["", "Oi!"]), "Oi!");
   });
   test("resposta repetida duas vezes vira uma", () => {
     const r = "Olá! O valor vem na proposta. Para quando é a festa?";

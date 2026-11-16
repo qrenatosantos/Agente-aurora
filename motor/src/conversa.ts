@@ -15,6 +15,7 @@ import { jsonSchema, tool, type ToolSet, type UIMessage } from "ai";
 import { processarTurno } from "../../painel/lib/nucleo/agente.ts";
 import { ClienteCrm } from "../../painel/lib/nucleo/crm.ts";
 import { DEFINICOES } from "../../painel/lib/nucleo/ferramentas.ts";
+import { juntarEtapas } from "../../painel/lib/nucleo/util.ts";
 import { MAX_HISTORICO, motorOpenAI, type MotorIA, type PedidoIA, type UsoIA } from "../../painel/lib/nucleo/motor-ia.ts";
 import { ErroIA } from "../../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa, type ResultadoTurno } from "../../painel/lib/nucleo/tipos.ts";
@@ -66,6 +67,7 @@ export class Conversa extends Think<Env> {
   private turnoIA: { chave: string; modelo: string } | null = null;
   private usoTurno: UsoIA = novoUso();
   private textoFinal = "";
+  private textosEtapas: string[] = [];
   /** Fila: uma resposta por vez, mesmo se duas chamadas chegarem juntas. */
   private fila: Promise<unknown> = Promise.resolve();
 
@@ -138,7 +140,8 @@ export class Conversa extends Think<Env> {
     // a resposta é o texto de todos os passos: a IA às vezes escreve, consulta o sistema e continua
     // (repetição entre os passos é cortada depois, em dividirMensagens)
     const t = (s.text ?? "").trim();
-    if (t) this.textoFinal = this.textoFinal ? `${this.textoFinal}\n\n${t}` : t;
+    if (t) this.textosEtapas.push(t);
+    this.textoFinal = juntarEtapas(this.textosEtapas);
   }
 
   // ------------------------------------------------------------------ laço da IA pelo Think
@@ -150,6 +153,7 @@ export class Conversa extends Think<Env> {
         this.turnoIA = { chave, modelo };
         this.usoTurno = novoUso();
         this.textoFinal = "";
+        this.textosEtapas = [];
         try {
           const r = await this.saveMessages([msg("user", p.novas.join("\n"))]);
           if (r.status !== "completed") {
@@ -352,7 +356,15 @@ export class Conversa extends Think<Env> {
       telefone: canal.telefone,
       pausado: amb.pausado || noLimite,
     });
-    for (const t of r.respostas) await wa.enviarTexto(canal.telefone, t);
+    for (const t of r.respostas) {
+      try {
+        await wa.enviarTexto(canal.telefone, t);
+      } catch (e) {
+        // ex.: número de teste da Meta só entrega para os destinatários cadastrados (erro 131030)
+        console.error(`[whatsapp] a Meta recusou a entrega para ${canal.telefone.slice(0, 4)}…: ${e instanceof Error ? e.message : String(e)}`);
+        break;
+      }
+    }
     // guarda qual conversa atende este pedido (para os avisos do CRM, como "proposta aprovada")
     if (r.estado.negocio_id) {
       await ligarConversaInterno(this.env.DB, { negocioId: r.estado.negocio_id, conversa: this.name, telefone: canal.telefone, ultimaDoCliente: canal.ultima_em }).catch((e) =>

@@ -146,3 +146,16 @@ export function dividirMensagens(texto: string): string[] {
   if (partes.length <= MAX_MENSAGENS) return partes;
   return [...partes.slice(0, MAX_MENSAGENS - 1), partes.slice(MAX_MENSAGENS - 1).join("\n\n")];
 }
+
+/**
+ * Junta o texto que a IA escreveu em cada etapa (antes e depois de consultar o sistema).
+ * - Uma etapa só com texto: ela.
+ * - A última etapa CONTINUA a anterior (começa com minúscula, item de lista, *negrito* ou número): junta tudo.
+ * - A última etapa RECOMEÇA a resposta (começa com maiúscula): fica só a última (evita duas versões da mesma resposta).
+ */
+export function juntarEtapas(textos: string[]): string {
+  const t = textos.map((x) => x.trim()).filter(Boolean);
+  if (t.length <= 1) return t[0] ?? "";
+  const ultima = t[t.length - 1];
+  return /^[a-zà-ú*•\-–\d_]/.test(ultima) ? t.join("\n\n") : ultima;
+}

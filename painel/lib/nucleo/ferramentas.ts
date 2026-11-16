@@ -137,7 +137,7 @@ export const DEFINICOES = [
     function: {
       name: "transferir_para_pessoa",
       description:
-        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; desconto ou negociação de valor; reclamação; pedido fora dos pacotes; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta.",
+        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de você oferecer as formas de economizar das instruções (no primeiro pedido de preço menor, NÃO transfira: ofereça as opções); reclamação; pedido fora dos pacotes; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta.",
       parameters: {
         type: "object",
         additionalProperties: false,

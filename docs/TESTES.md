@@ -75,6 +75,15 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Correções do teste de "preço menor" (16/11/2026)
+
+- A ferramenta de transferência ainda dizia "use quando: desconto ou negociação" e contradizia a regra nova:
+  a Cecília transferiu no primeiro pedido de desconto. Descrição corrigida (só transfere se o cliente INSISTIR depois
+  das opções). Bateria (só estas situações): pedido de preço menor e "ficou caro, tem desconto?" 6/6 com as opções e sem transferir.
+- O texto de todas as etapas da IA às vezes saía em duas versões parecidas: agora, se a última etapa recomeça a resposta,
+  fica só ela; se continua (lista, minúscula), junta (`juntarEtapas`, com teste).
+- Entrega recusada pela Meta (ex.: número de teste e destinatário não cadastrado) agora fica no registro com o motivo.
+
 ## Fase 3 (parte 3): lembretes da proposta, preço menor e nome obrigatório (16/11/2026, pedidos do Renato)
 
 - **Lembretes:** link enviado → se o cliente não abrir em 120 min, "Conseguiu ver a proposta?"; abriu

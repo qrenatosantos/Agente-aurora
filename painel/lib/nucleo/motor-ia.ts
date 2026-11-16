@@ -9,6 +9,7 @@
  */
 import { DEFINICOES } from "./ferramentas.ts";
 import { chamarModelo, type MensagemIA } from "./openai.ts";
+import { juntarEtapas } from "./util.ts";
 import type { MensagemConversa } from "./tipos.ts";
 
 export type UsoIA = { entrada: number; cache: number; saida: number; chamadas: number };
@@ -72,7 +73,7 @@ export function motorOpenAI(op: { chave: string; modelo: string; chamar?: typeof
       const mensagens = mensagensIA(p.sistemaFixo, p.sistemaAtual, p.historico);
       // texto de todos os passos: a IA às vezes escreve, consulta o sistema e continua
       const textos: string[] = [];
-      const juntar = () => textos.filter(Boolean).join("\n\n");
+      const juntar = () => juntarEtapas(textos);
       for (let rodada = 0; rodada < p.maxRodadas; rodada++) {
         const ultima = rodada === p.maxRodadas - 1;
         const r = await chamar({ chave: op.chave, modelo: op.modelo, mensagens, ferramentas: ultima ? undefined : DEFINICOES, endereco: op.endereco });

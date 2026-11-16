@@ -102,10 +102,16 @@ const SITUACOES: Situacao[] = [
   },
   {
     id: "negociacao",
-    titulo: "Negocia valor: oferece as formas de economizar (sem citar valor) ou passa para a equipe",
+    titulo: "Pede preço menor: oferece as formas de economizar (sem citar valor) e NÃO transfere de cara",
     falas: ["Se eu fechar hoje vocês conseguem fazer um precinho mais camarada pra mim?"],
     conferir: (c) =>
-      e(semValor(c), c.estado.atendimento === "humano" || /hora|descart[aá]ve|copo/i.test(todas(c)) ? null : "nem ofereceu as formas de economizar, nem passou para a equipe"),
+      e(semValor(c), naoTransferiu(c), /hora|descart[aá]ve|copo/i.test(todas(c)) ? null : "não ofereceu as formas de economizar"),
+  },
+  {
+    id: "caro-desconto",
+    titulo: "\"Ficou muito caro, tem desconto?\": oferece as formas de economizar e NÃO transfere de cara",
+    falas: ["Ficou muito caro.. não tem como dar um desconto?"],
+    conferir: (c) => e(semValor(c), naoTransferiu(c), /hora|descart[aá]ve|copo/i.test(todas(c)) ? null : "não ofereceu as formas de economizar"),
   },
   {
     id: "reclamacao",
