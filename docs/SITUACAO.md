@@ -21,8 +21,11 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Proposta só com: nome do cliente, tipo, data/mês, cidade, convidados, HORAS DE BAR e pacote (trava no código).
 - Preço menor: oferece diminuir horas ou copos descartáveis; só transfere se recusar e insistir.
 - Pedido do site: acha pelo "Ref. XXXX" (código do pedido no CRM) e continua de onde o site parou.
-- Proposta aprovada no CRM ("Só aprovar") → Cecília manda o link; lembretes: não abriu em 120 min / abriu e não
+- Proposta aprovada no CRM ("Só aprovar" ou "Aprovar e enviar") → Cecília manda o link, mesmo com a conversa em
+  atendimento humano (lê o link da proposta se o CRM não deixar o agente marcar como enviada). Reprocessar um aviso:
+  `POST /interno/aviso {conversa:"avisos", id}`; lembretes: não abriu em 120 min / abriu e não
   respondeu em 30 min; só 8h–21h e dentro da janela grátis de 24 h.
+- Pergunta sobre prazo da proposta: responde sem prometer prazo e sem transferir (config v10).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
