@@ -18,7 +18,7 @@ import { motorOpenAI, type MotorIA, type UsoIA } from "./motor-ia.ts";
 import { chamarModelo, custoUsd, ErroIA } from "./openai.ts";
 import { parteAtual, parteFixa } from "./prompt.ts";
 import type { ConfigAgente, EstadoConversa, ItemConhecimento, MensagemConversa, PassoRastro, ResultadoTurno, UsoModelo } from "./tipos.ts";
-import { contemAlguma, dataISO, dividirMensagens, pediuParaParar, removerRepeticao, valoresSemBase } from "./util.ts";
+import { contemAlguma, dataISO, dividirMensagens, separarPacotes, pediuParaParar, removerRepeticao, valoresSemBase } from "./util.ts";
 
 const MAX_RODADAS = 6;
 
@@ -246,7 +246,7 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
         await transferirAgora("O agente não conseguiu responder.", ctx);
       }
       // a IA pode separar a resposta em várias mensagens (linha "---"): cada uma vira um balão no WhatsApp
-      if (!transferir && final) respostas.push(...dividirMensagens(final));
+      if (!transferir && final) respostas.push(...separarPacotes(dividirMensagens(final), pacotes.map((p) => p.nome)));
     }
   } catch (erro) {
     const msg = erro instanceof ErroIA || erro instanceof Error ? erro.message : String(erro);

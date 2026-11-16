@@ -148,6 +148,41 @@ export function dividirMensagens(texto: string): string[] {
 }
 
 /**
+ * Pacotes apresentados num parágrafo só ("*Essencial* …; *Signature* …; *Reserve* …"): separa um balão por pacote,
+ * com a introdução antes e a pergunta final depois. Só age quando 3 ou mais pacotes aparecem em negrito no mesmo parágrafo.
+ */
+export function separarPacotes(partes: string[], nomes: string[]): string[] {
+  if (nomes.length < 3) return partes;
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`\\*(?:${nomes.map(esc).join("|")})\\*`, "gi");
+  const saida: string[] = [];
+  for (const parte of partes) {
+    const achados = [...parte.matchAll(re)];
+    if (new Set(achados.map((m) => m[0].toLowerCase())).size < 3) {
+      saida.push(parte);
+      continue;
+    }
+    const limpar = (t: string) => t.trim().replace(/^[;,]\s*/, "").replace(/[;,]\s*(e\s*)?$/i, "").replace(/\s+e$/i, "").trim();
+    const intro = limpar(parte.slice(0, achados[0].index));
+    if (intro) saida.push(intro.replace(/[:;,]$/, (x) => (x === ":" ? ":" : "")));
+    achados.forEach((m, i) => {
+      let trecho = parte.slice(m.index, i + 1 < achados.length ? achados[i + 1].index : undefined);
+      if (i === achados.length - 1) {
+        // pergunta final ("Qual deles combina…?") vira balão próprio
+        const q = trecho.match(/^([\s\S]*?[.!])\s+([^.!?]*\?)\s*$/);
+        if (q) {
+          saida.push(limpar(q[1]).replace(/[.;,]$/, ""));
+          saida.push(q[2].trim());
+          return;
+        }
+      }
+      saida.push(limpar(trecho).replace(/[.;]$/, ""));
+    });
+  }
+  return saida.filter(Boolean);
+}
+
+/**
  * Junta o texto que a IA escreveu em cada etapa (antes e depois de consultar o sistema).
  * - Uma etapa só com texto: ela.
  * - A última etapa CONTINUA a anterior (começa com minúscula, item de lista, *negrito* ou número): junta tudo.
