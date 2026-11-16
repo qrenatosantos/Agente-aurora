@@ -25,7 +25,7 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
   atendimento humano (lê o link da proposta se o CRM não deixar o agente marcar como enviada). Reprocessar um aviso:
   `POST /interno/aviso {conversa:"avisos", id}`; lembretes: não abriu em 120 min / abriu e não
   respondeu em 30 min; só 8h–21h e dentro da janela grátis de 24 h.
-- Pergunta sobre prazo da proposta: responde sem prometer prazo e sem transferir (config v10).
+- Pergunta sobre prazo da proposta: "até o final do dia"; depois das 19h, "até amanhã às 14h"; nunca transfere por isso (config v11).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
