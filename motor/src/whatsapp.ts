@@ -106,6 +106,19 @@ export function lerMensagens(json: unknown): MensagemRecebida[] {
   return r;
 }
 
+/**
+ * Celular brasileiro com e sem o 9 extra (só dígitos, com o 55). A Meta às vezes entrega o número de quem escreve
+ * SEM o 9 (números antigos), mas só aceita mandar para a forma cadastrada. Devolve a outra forma, ou null.
+ */
+export function outraFormaDoCelular(numero: string): string | null {
+  const d = numero.replace(/\D/g, "");
+  if (!d.startsWith("55")) return null;
+  const local = d.slice(2); // DDD + número
+  if (local.length === 10 && /[6-9]/.test(local[2])) return `55${local.slice(0, 2)}9${local.slice(2)}`;
+  if (local.length === 11 && local[2] === "9") return `55${local.slice(0, 2)}${local.slice(3)}`;
+  return null;
+}
+
 export class ErroWhatsApp extends Error {
   readonly status: number;
   constructor(mensagem: string, status: number) {
@@ -136,16 +149,21 @@ export class ClienteWhatsApp {
     return json;
   }
 
-  /** Envia um texto. Devolve o id da mensagem enviada. */
+  /**
+   * Envia um texto. Devolve o id da mensagem enviada.
+   * Se a Meta recusar o número (erro 131030, "fora da lista"), tenta a outra forma do celular (com/sem o 9).
+   */
   async enviarTexto(para: string, texto: string) {
-    const j = await this.post(`${this.phoneNumberId}/messages`, {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: para,
-      type: "text",
-      text: { body: texto.slice(0, 4096), preview_url: true },
-    });
-    return j.messages?.[0]?.id ?? null;
+    const corpo = (to: string) => ({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { body: texto.slice(0, 4096), preview_url: true } });
+    try {
+      const j = await this.post(`${this.phoneNumberId}/messages`, corpo(para));
+      return j.messages?.[0]?.id ?? null;
+    } catch (e) {
+      const outra = outraFormaDoCelular(para);
+      if (!(e instanceof ErroWhatsApp) || !/131030|allowed list/i.test(e.message) || !outra) throw e;
+      const j = await this.post(`${this.phoneNumberId}/messages`, corpo(outra));
+      return j.messages?.[0]?.id ?? null;
+    }
   }
 
   /** Marca a mensagem do cliente como lida e mostra "digitando…" (some ao responder ou após ~25 s). */

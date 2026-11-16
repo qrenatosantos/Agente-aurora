@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { describe, test } from "node:test";
-import { assinaturaValida, lerMensagens } from "./whatsapp.ts";
+import { assinaturaValida, lerMensagens, outraFormaDoCelular } from "./whatsapp.ts";
 
 const SEGREDO = "0123456789abcdef0123456789abcdef";
 const assinar = (corpo: string, segredo = SEGREDO) => "sha256=" + createHmac("sha256", segredo).update(corpo).digest("hex");
@@ -59,5 +59,17 @@ describe("leitura dos avisos", () => {
     assert.deepEqual(lerMensagens(JSON.parse(status)), []);
     assert.deepEqual(lerMensagens({ object: "page" }), []);
     assert.deepEqual(lerMensagens(null), []);
+  });
+});
+
+describe("celular com e sem o 9", () => {
+  test("número antigo (sem o 9) ganha o 9, e o contrário", () => {
+    assert.equal(outraFormaDoCelular("553488935223"), "5534988935223");
+    assert.equal(outraFormaDoCelular("5534988935223"), "553488935223");
+  });
+  test("fixo, estrangeiro ou formato estranho: sem outra forma", () => {
+    assert.equal(outraFormaDoCelular("553433331234"), null);
+    assert.equal(outraFormaDoCelular("15551423124"), null);
+    assert.equal(outraFormaDoCelular("55349"), null);
   });
 });
