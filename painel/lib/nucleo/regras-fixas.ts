@@ -57,7 +57,7 @@ export const REGRAS_FIXAS: RegraFixa[] = [
   {
     titulo: "Passar para uma pessoa",
     texto:
-      "Transferir e parar de responder quando: o cliente pedir uma pessoa; pedir desconto ou negociar valor; houver reclamação; o pedido estiver fora dos pacotes; a data estiver lotada ou bloqueada; o cliente insistir em saber um preço ou condição que o CRM ainda não tem (sem preço cadastrado, o normal é seguir e montar a proposta: a equipe define o valor); o agente não souber responder; ou um gatilho da tela Transferência for acionado.",
+      "Transferir e parar de responder quando: o cliente pedir uma pessoa; insistir em desconto ou negociar valor (se as instruções do gestor trouxerem formas de economizar, ofereça antes; se ele insistir, transfira); houver reclamação; o pedido estiver fora dos pacotes; a data estiver lotada ou bloqueada; o cliente insistir em saber um preço ou condição que o CRM ainda não tem (sem preço cadastrado, o normal é seguir e montar a proposta: a equipe define o valor); o agente não souber responder; ou um gatilho da tela Transferência for acionado.",
     garantia: "Gatilhos de palavras e de número de mensagens são conferidos por código, antes da IA.",
   },
 ];

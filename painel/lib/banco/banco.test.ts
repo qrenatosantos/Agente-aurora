@@ -2,8 +2,8 @@
  * TESTES DAS REGRAS DO BANCO DO PAINEL (D1/SQLite), sem internet:
  *   npm run test:banco   (na raiz)
  *
- * Carrega as migrações de painel/banco/migracoes/ e clientes/aurora/dados-iniciais.sql DUAS vezes (prova de que podem
- * rodar de novo sem estragar nada) e exercita cada regra como o gestor, a atendente, uma pessoa
+ * Carrega as migrações de painel/banco/migracoes/ (uma vez, como o D1) e clientes/aurora/dados-iniciais.sql DUAS vezes
+ * (prova de que os dados iniciais podem rodar de novo sem estragar nada) e exercita cada regra como o gestor, a atendente, uma pessoa
  * desativada e um visitante (sem login) fariam. São os mesmos casos do banco antigo (Supabase),
  * mais os do login com e-mail e senha.
  */
@@ -24,7 +24,8 @@ import { bancoDeTeste } from "./sqlite-teste.ts";
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const MIGRACOES = join(raiz, "painel/banco/migracoes");
 const ARQUIVOS = [...readdirSync(MIGRACOES).filter((f) => f.endsWith(".sql")).sort().map((f) => join(MIGRACOES, f)), join(raiz, "clientes/aurora/dados-iniciais.sql")];
-const db = bancoDeTeste([...ARQUIVOS, ...ARQUIVOS]);
+// migrações rodam uma vez (o D1 controla quais já foram aplicadas); os dados iniciais, duas (não duplicam)
+const db = bancoDeTeste([...ARQUIVOS, join(raiz, "clientes/aurora/dados-iniciais.sql")]);
 
 const CODIGO = "codigo-de-instalacao-123";
 const SENHA = "senha-forte-123";
@@ -153,7 +154,8 @@ describe("dados iniciais", () => {
     assert.equal(versoes.filter((v) => v.numero === 1).length, 1);
     const c = await lerConfig(db, andre);
     assert.ok(c.instrucoes.length > 500);
-    assert.ok(c.gatilhos_palavras.includes("desconto"));
+    assert.ok(c.gatilhos_palavras.includes("falar com uma pessoa"));
+    assert.ok(!c.gatilhos_palavras.includes("desconto")); // desconto: a Cecília oferece as formas de economizar antes
   });
 
   test("conhecimento inicial entra sem duplicar e SEM alertas de preço", async () => {

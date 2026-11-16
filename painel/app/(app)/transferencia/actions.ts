@@ -30,6 +30,8 @@ export async function salvarTransferencia(_anterior: EstadoAcao, formData: FormD
       gatilhos_palavras: linhas(100, 80, "Palavras"),
       gatilhos_temas: linhas(50, 200, "Temas"),
       max_msgs_sem_avanco: z.coerce.number().int().min(3, "Mínimo de 3.").max(50, "Máximo de 50."),
+      retomada_aberta_min: z.coerce.number("Informe os minutos.").int().min(10, "Mínimo de 10 minutos.").max(720, "Máximo de 12 horas."),
+      retomada_nao_aberta_min: z.coerce.number("Informe os minutos.").int().min(30, "Mínimo de 30 minutos.").max(1200, "Máximo de 20 horas."),
       agente_24h: z.enum(["sim", "nao"]).transform((v) => v === "sim"),
     })
     .safeParse(Object.fromEntries(formData));

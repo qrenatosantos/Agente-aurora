@@ -18,6 +18,8 @@ export type Ambiente = {
   esperaSegundos: number;
   transcreverAudio: boolean;
   limite: { valor: number; pararNoLimite: boolean; gastoMes: number };
+  /** Minutos para os lembretes da proposta (abriu e não respondeu / não abriu). */
+  lembretes: { abertaMin: number; naoAbertaMin: number };
   crm: { endereco: string; chave: string } | null;
   chaveIA: string | null;
   whatsapp: { token: string; phoneNumberId: string; versao: string; appSecret: string | null } | null;
@@ -72,6 +74,7 @@ export async function carregarAmbiente(env: Env): Promise<Ambiente> {
     esperaSegundos: c.espera_segundos,
     transcreverAudio: c.transcrever_audio,
     limite: { valor: Number(c.limite_mensal_usd), pararNoLimite: c.parar_no_limite, gastoMes: gasto },
+    lembretes: { abertaMin: Number(c.retomada_aberta_min ?? 30), naoAbertaMin: Number(c.retomada_nao_aberta_min ?? 120) },
     crm: integ.crm_url && chaveCrm ? { endereco: integ.crm_url, chave: chaveCrm } : null,
     chaveIA,
     whatsapp: token && integ.whatsapp_phone_number_id ? { token, phoneNumberId: integ.whatsapp_phone_number_id, versao: integ.whatsapp_graph_versao, appSecret } : null,

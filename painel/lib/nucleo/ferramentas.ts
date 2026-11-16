@@ -120,7 +120,7 @@ export const DEFINICOES = [
     function: {
       name: "preparar_proposta",
       description:
-        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: tipo, data (ou mês), cidade, convidados, quantas horas de bar e pacote (ou que o cliente quer ajuda para escolher). Se faltar algo, PERGUNTE ao cliente antes. O cliente só recebe o link depois que a equipe aprovar.",
+        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: nome do cliente, tipo, data (ou mês), cidade, convidados, quantas horas de bar e pacote (ou que o cliente quer ajuda para escolher). Se faltar algo, PERGUNTE ao cliente antes. O cliente só recebe o link depois que a equipe aprovar.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -214,8 +214,10 @@ function dataValida(v: unknown, hoje: string) {
 }
 
 /** Quais dados mínimos faltam para montar a proposta. */
-export function faltamParaProposta(evento: Record<string, unknown>) {
+export function faltamParaProposta(evento: Record<string, unknown>, contato: { nome?: string | null } = {}) {
   const f: string[] = [];
+  const nome = (contato.nome ?? "").trim();
+  if (!nome || /^cliente( do whatsapp)?$/i.test(nome)) f.push("o nome do cliente (a proposta vai com o nome dele)");
   if (!evento.tipo) f.push("tipo de evento");
   if (!evento.data && !evento.mes_previsto) f.push("data ou mês previsto");
   if (!evento.cidade) f.push("cidade");
@@ -322,7 +324,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         if (ctx.estado.proposta && ["aguardando_aprovacao", "aprovada", "enviada"].includes(ctx.estado.proposta.status)) {
           return fim({ erro: `Já existe a proposta ${ctx.estado.proposta.numero ?? ""} (${ctx.estado.proposta.status}). Aguarde a equipe.` }, "nenhum");
         }
-        const faltam = faltamParaProposta(ctx.estado.evento);
+        const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato);
         if (faltam.length) return fim({ ok: false, faltam, orientacao: "Pergunte ao cliente o que falta antes de preparar a proposta." }, "nenhum");
         if (sim) {
           const p = pacotePorNome(ctx.pacotes, ctx.estado.evento.pacote);

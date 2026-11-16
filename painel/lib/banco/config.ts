@@ -25,6 +25,8 @@ export const CAMPOS_CONFIG = {
   limite_mensal_usd: "numero",
   alerta_pct: "numero",
   parar_no_limite: "booleano",
+  retomada_aberta_min: "numero",
+  retomada_nao_aberta_min: "numero",
 } as const;
 export type CampoConfig = keyof typeof CAMPOS_CONFIG;
 
@@ -50,6 +52,10 @@ export type Config = {
   limite_mensal_usd: number;
   alerta_pct: number;
   parar_no_limite: boolean;
+  /** Minutos depois que o cliente ABRIU a proposta sem responder, para a Cecília perguntar o que achou. */
+  retomada_aberta_min: number;
+  /** Minutos depois do envio do link, se o cliente NÃO abriu, para a Cecília perguntar se conseguiu ver. */
+  retomada_nao_aberta_min: number;
   versao: number;
   updated_at: string;
 };

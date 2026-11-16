@@ -33,4 +33,16 @@ export const MENSAGENS: { id: keyof MensagensPadrao; titulo: string; ajuda: stri
     ajuda: "Enviada ao cliente assim que o gestor aprova a proposta no CRM. Use {link} (obrigatório) e {nome}. Em branco, vale o texto padrão do sistema.",
     opcional: true,
   },
+  {
+    id: "retomada_aberta",
+    titulo: "Lembrete: abriu a proposta e não respondeu (opcional)",
+    ajuda: "Use {nome}. Em branco, vale o texto padrão (“E aí{nome}, o que achou da proposta? Ficou alguma dúvida?”).",
+    opcional: true,
+  },
+  {
+    id: "retomada_nao_aberta",
+    titulo: "Lembrete: ainda não abriu a proposta (opcional)",
+    ajuda: "Use {nome}. Em branco, vale o texto padrão (“Oi{nome}! Conseguiu ver a proposta? Ficou alguma dúvida?”).",
+    opcional: true,
+  },
 ];

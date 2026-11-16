@@ -56,6 +56,23 @@ export function FormTransferencia({ config, podeEditar }: { config: AgenteConfig
 
         <Cartao className="space-y-4">
           <div>
+            <h2 className="text-lg font-semibold text-texto">Lembretes da proposta</h2>
+            <p className="text-sm text-texto-2">
+              Depois que o link da proposta é enviado, a Cecília pergunta o que o cliente achou, uma vez só. Só entre 8h e 21h, e só
+              enquanto a conversa ainda é gratuita (até 24 h depois da última mensagem do cliente). Se o cliente responder, aceitar ou
+              for passado para uma pessoa, o lembrete é cancelado.
+            </p>
+          </div>
+          <Campo rotulo="Abriu a proposta e não respondeu: esperar (minutos)" nome="retomada_aberta_min" erro={erros.retomada_aberta_min} ajuda="Sugestão: 30.">
+            {(p) => <Entrada {...p} type="number" inputMode="numeric" min={10} max={720} defaultValue={config.retomada_aberta_min ?? 30} className="max-w-32" />}
+          </Campo>
+          <Campo rotulo="Ainda não abriu a proposta: esperar (minutos)" nome="retomada_nao_aberta_min" erro={erros.retomada_nao_aberta_min} ajuda="Sugestão: 120 (2 horas).">
+            {(p) => <Entrada {...p} type="number" inputMode="numeric" min={30} max={1200} defaultValue={config.retomada_nao_aberta_min ?? 120} className="max-w-32" />}
+          </Campo>
+        </Cartao>
+
+        <Cartao className="space-y-4">
+          <div>
             <h2 className="text-lg font-semibold text-texto">Horário da equipe</h2>
             <p className="text-sm text-texto-2">
               Quando uma pessoa da Aurora responde. Fora deste horário, o cliente transferido recebe a mensagem “fora do horário”.

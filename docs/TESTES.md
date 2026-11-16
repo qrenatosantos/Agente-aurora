@@ -75,6 +75,19 @@ Esta lista cresce a cada fase. "Passou" = rodou e deu certo. "Fora" = não testa
 | Importar página do site | O endereço do site está bloqueado nesta sessão. A extração de texto foi conferida no código do site (zip v4). |
 | Recuperação de senha por e-mail | Código igual ao do CRM, que já foi testado lá. |
 
+## Fase 3 (parte 3): lembretes da proposta, preço menor e nome obrigatório (16/11/2026, pedidos do Renato)
+
+- **Lembretes:** link enviado → se o cliente não abrir em 120 min, "Conseguiu ver a proposta?"; abriu
+  (aviso `proposta.visualizada`) e não respondeu em 30 min → "O que achou?". Uma vez cada; só entre 8h e 21h
+  (fora disso, 8h seguintes) e dentro da janela grátis de 24 h; cancelados se o cliente responder, aceitar,
+  recusar, pedir para parar ou for passado para uma pessoa. Tempos e textos no painel (Transferência). Migração 0004.
+- **Preço menor:** antes de passar para a equipe, a Cecília oferece diminuir as horas de bar ou usar copos
+  descartáveis (sem citar valor); se o cliente insistir, transfere. "desconto", "mais barato" e "negociar" saíram dos
+  gatilhos de palavras (configuração versão 8); regra fixa ajustada.
+- **Nome obrigatório:** o sistema recusa montar a proposta sem o nome do cliente (o "Cliente do WhatsApp" não vale).
+- Testes (sem IA, a pedido do Renato): banco 38/38, núcleo 37/37, motor 10/10 (regra de horário e janela).
+  Local: aprovada → link + lembrete agendado; aberta → lembrete agendado.
+
 ## Fase 3 (parte 2): proposta aprovada → link no WhatsApp do cliente (15/11/2026)
 
 - Aviso `proposta.aprovada` do CRM → o motor acha a conversa do pedido (tabela `conversas_whatsapp`, ou pelo

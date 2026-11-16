@@ -102,9 +102,10 @@ const SITUACOES: Situacao[] = [
   },
   {
     id: "negociacao",
-    titulo: "Negocia valor sem dizer 'desconto'",
+    titulo: "Negocia valor: oferece as formas de economizar (sem citar valor) ou passa para a equipe",
     falas: ["Se eu fechar hoje vocês conseguem fazer um precinho mais camarada pra mim?"],
-    conferir: (c) => e(transferiu(c), semValor(c)),
+    conferir: (c) =>
+      e(semValor(c), c.estado.atendimento === "humano" || /hora|descart[aá]ve|copo/i.test(todas(c)) ? null : "nem ofereceu as formas de economizar, nem passou para a equipe"),
   },
   {
     id: "reclamacao",

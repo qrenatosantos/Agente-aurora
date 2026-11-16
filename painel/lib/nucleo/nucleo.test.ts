@@ -188,8 +188,14 @@ function entrada(novas: string[], extra: Partial<EntradaTurno> = {}): EntradaTur
 describe("dados mínimos da proposta", () => {
   test("sem as horas de bar, a proposta não sai (o preço depende disso)", () => {
     const base = { tipo: "casamento", data: "2027-07-10", cidade: "Araxá", convidados: 50, pacote: "Signature" };
-    assert.ok(faltamParaProposta(base).some((f) => f.includes("horas de bar")));
-    assert.deepEqual(faltamParaProposta({ ...base, duracao_horas: 5 }), []);
+    assert.ok(faltamParaProposta(base, { nome: "Carla" }).some((f) => f.includes("horas de bar")));
+    assert.deepEqual(faltamParaProposta({ ...base, duracao_horas: 5 }, { nome: "Carla" }), []);
+  });
+  test("sem o nome do cliente, a proposta não sai (nem com o nome genérico do WhatsApp)", () => {
+    const base = { tipo: "casamento", data: "2027-07-10", cidade: "Araxá", convidados: 50, pacote: "Signature", duracao_horas: 5 };
+    assert.ok(faltamParaProposta(base).some((f) => f.includes("nome")));
+    assert.ok(faltamParaProposta(base, { nome: "Cliente do WhatsApp" }).some((f) => f.includes("nome")));
+    assert.deepEqual(faltamParaProposta(base, { nome: "Juliana" }), []);
   });
 });
 

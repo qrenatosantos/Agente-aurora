@@ -22,6 +22,7 @@ import { ligarConversaInterno } from "../../painel/lib/banco/avisos.ts";
 import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
 import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
+import { quandoMandar } from "./lembretes.ts";
 import { ClienteWhatsApp, type MensagemRecebida, transcrever } from "./whatsapp.ts";
 
 /** O que chega para cada turno (do WhatsApp ou do simulador do painel). */
@@ -237,6 +238,13 @@ export class Conversa extends Think<Env> {
     this.sql`create table if not exists aurora_recebidas (wamid text primary key, em text not null)`;
     this.sql`create table if not exists aurora_pendentes (wamid text primary key, tipo text not null, texto text, midia text, em text not null)`;
     this.sql`create table if not exists aurora_canal (id integer primary key, telefone text not null, nome text, ultima_em text not null)`;
+    this.sql`create table if not exists aurora_propostas (proposta_id text primary key, enviada_em text not null, aberta_em text, encerrada integer not null default 0, lembrete_nao_aberta_em text, lembrete_aberta_em text)`;
+  }
+
+  /** Primeiro nome do cliente para as mensagens prontas (", Juliana"), ou vazio se não souber. */
+  private nomeParaMensagem(estado: EstadoConversa) {
+    const n = (estado.contato.nome ?? "").trim();
+    return n && !/^cliente( do whatsapp)?$/i.test(n) ? `, ${n.split(/\s+/)[0]}` : "";
   }
 
   private whatsapp(amb: Awaited<ReturnType<typeof carregarAmbiente>>) {
@@ -377,13 +385,75 @@ export class Conversa extends Think<Env> {
     const r = await crm.post<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}/enviar`);
     if (!r.dados?.link) return `o CRM não liberou o link: ${r.erro?.mensagem ?? "sem link"}`;
     const link = r.dados.link.startsWith("/") ? `${amb.crm.endereco.replace(/\/+$/, "")}${r.dados.link}` : r.dados.link;
-    const nome = estado.contato.nome && estado.contato.nome !== "Cliente do WhatsApp" ? `, ${estado.contato.nome.split(" ")[0]}` : "";
+    const nome = this.nomeParaMensagem(estado);
     const modelo = amb.cfg.mensagens.proposta_aprovada ?? "Sua proposta está pronta{nome}! 🥂\n\nÉ só abrir o link para ver todos os detalhes e, se estiver tudo certo, aceitar por lá mesmo:\n{link}\n\nQualquer dúvida, é só me chamar por aqui.";
     const texto = modelo.replaceAll("{nome}", nome).replaceAll("{link}", link);
     await wa.enviarTexto(canal.telefone, texto);
     await this.addMessages([msg("assistant", texto)], { broadcast: false });
     this.gravarEstado({ ...estado, proposta: estado.proposta ? { ...estado.proposta, status: "enviada" } : estado.proposta });
-    return `link enviado ao cliente (${r.dados.numero ?? "proposta"})`;
+    this.sql`insert into aurora_propostas (proposta_id, enviada_em) values (${d.propostaId}, ${new Date().toISOString()}) on conflict(proposta_id) do nothing`;
+    await this.schedule(amb.lembretes.naoAbertaMin * 60, "lembreteProposta", { propostaId: d.propostaId, tipo: "nao_aberta" });
+    return `link enviado ao cliente (${r.dados.numero ?? "proposta"}); lembrete em ${amb.lembretes.naoAbertaMin} min se não abrir`;
+  }
+
+  /** Aviso do CRM: o cliente ABRIU a proposta. Agenda o "o que achou?" (se ele não falar nada até lá). */
+  async propostaAberta(propostaId: string): Promise<string> {
+    this.tabelasWhatsApp();
+    const linha = this.sql<{ aberta_em: string | null }>`select aberta_em from aurora_propostas where proposta_id = ${propostaId}`[0];
+    if (!linha) return "proposta não foi enviada por esta conversa";
+    if (linha.aberta_em) return "já tinha sido aberta";
+    this.sql`update aurora_propostas set aberta_em = ${new Date().toISOString()} where proposta_id = ${propostaId}`;
+    const amb = await carregarAmbiente(this.env);
+    await this.schedule(amb.lembretes.abertaMin * 60, "lembreteProposta", { propostaId, tipo: "aberta" });
+    return `cliente abriu; lembrete em ${amb.lembretes.abertaMin} min se não responder`;
+  }
+
+  /** Aviso do CRM: proposta aceita ou recusada. Cancela os lembretes. */
+  async propostaEncerrada(propostaId: string): Promise<string> {
+    this.tabelasWhatsApp();
+    this.sql`update aurora_propostas set encerrada = 1 where proposta_id = ${propostaId}`;
+    return "lembretes cancelados";
+  }
+
+  /**
+   * Lembrete da proposta (agendado). Manda UMA vez cada tipo, só se: a conversa está com a Cecília, o cliente não
+   * respondeu desde o envio (ou desde que abriu), a proposta não foi aceita/recusada, entre 8h e 21h e dentro da janela
+   * de 24 h (grátis). Fora do horário, reagenda para as 8h; fora da janela, desiste.
+   */
+  async lembreteProposta(p: { propostaId: string; tipo: "aberta" | "nao_aberta" }) {
+    this.tabelasWhatsApp();
+    const pr = this.sql<{ enviada_em: string; aberta_em: string | null; encerrada: number; lembrete_nao_aberta_em: string | null; lembrete_aberta_em: string | null }>`
+      select enviada_em, aberta_em, encerrada, lembrete_nao_aberta_em, lembrete_aberta_em from aurora_propostas where proposta_id = ${p.propostaId}`[0];
+    const canal = this.sql<{ telefone: string; ultima_em: string }>`select telefone, ultima_em from aurora_canal where id = 1`[0];
+    const estado = this.lerEstado();
+    const motivo = (m: string) => console.log(`[lembrete ${p.tipo}] não mandado: ${m}`);
+    if (!pr || !canal) return motivo("sem proposta ou conversa");
+    if (pr.encerrada) return motivo("proposta aceita ou recusada");
+    if (p.tipo === "nao_aberta" && pr.aberta_em) return motivo("o cliente já abriu");
+    if ((p.tipo === "aberta" ? pr.lembrete_aberta_em : pr.lembrete_nao_aberta_em)) return motivo("já mandado");
+    if (estado.atendimento !== "agente" || estado.optout) return motivo("conversa com uma pessoa ou cliente pediu para parar");
+    const referencia = p.tipo === "aberta" ? pr.aberta_em! : pr.enviada_em;
+    if (new Date(canal.ultima_em) > new Date(referencia)) return motivo("o cliente já respondeu");
+    const decisao = quandoMandar(new Date(), new Date(canal.ultima_em));
+    if (decisao.acao === "desistir") return motivo(decisao.motivo);
+    if (decisao.acao === "reagendar") {
+      await this.schedule(decisao.em, "lembreteProposta", p);
+      return console.log(`[lembrete ${p.tipo}] reagendado para ${decisao.em.toISOString()} (fora do horário)`);
+    }
+    const amb = await carregarAmbiente(this.env);
+    const wa = this.whatsapp(amb);
+    if (!wa || amb.pausado) return motivo("WhatsApp não configurado ou agente pausado");
+    const nome = this.nomeParaMensagem(estado);
+    const padrao =
+      p.tipo === "aberta"
+        ? "E aí{nome}, o que achou da proposta? Ficou alguma dúvida? Estou por aqui pra te ajudar 🙂"
+        : "Oi{nome}! Conseguiu dar uma olhada na proposta que te mandei? Se ficou alguma dúvida, é só me chamar por aqui.";
+    const texto = (amb.cfg.mensagens[p.tipo === "aberta" ? "retomada_aberta" : "retomada_nao_aberta"] ?? padrao).replaceAll("{nome}", nome);
+    await wa.enviarTexto(canal.telefone, texto);
+    await this.addMessages([msg("assistant", texto)], { broadcast: false });
+    if (p.tipo === "aberta") this.sql`update aurora_propostas set lembrete_aberta_em = ${new Date().toISOString()} where proposta_id = ${p.propostaId}`;
+    else this.sql`update aurora_propostas set lembrete_nao_aberta_em = ${new Date().toISOString()} where proposta_id = ${p.propostaId}`;
+    console.log(`[lembrete ${p.tipo}] mandado`);
   }
 
   /** Apaga tudo desta conversa (LGPD, ou "recomeçar" no simulador). */
@@ -392,6 +462,7 @@ export class Conversa extends Think<Env> {
     this.sql`drop table if exists aurora_estado`;
     this.sql`drop table if exists aurora_pendentes`;
     this.sql`drop table if exists aurora_canal`;
+    this.sql`drop table if exists aurora_propostas`;
     // aurora_recebidas fica (só ids da Meta, sem conteúdo): impede reprocessar um aviso antigo reenviado
   }
 
