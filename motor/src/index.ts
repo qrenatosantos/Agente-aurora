@@ -76,7 +76,7 @@ async function conversaDoPedido(env: Env, negocioId: string) {
   const n = await new ClienteCrm(amb.crm.endereco, amb.crm.chave).get<{ contato?: { telefone?: string | null } }>(`/negocios/${negocioId}`);
   const tel = n.dados?.contato?.telefone;
   if (!tel) {
-    console.log(`[aviso] pedido ${negocioId.slice(0, 8)}: contato sem telefone no CRM`);
+    console.log(`[aviso] pedido ${negocioId.slice(0, 8)}: contato sem telefone no CRM (status ${n.status}, erro ${n.erro?.mensagem ?? "-"}, chaves ${Object.keys((n.dados ?? {}) as object).join(",")}, contato ${JSON.stringify(Object.keys(n.dados?.contato ?? {}))})`);
     return null;
   }
   for (const v of variantesTelefone(tel)) {
