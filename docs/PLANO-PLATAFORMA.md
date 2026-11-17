@@ -1,7 +1,7 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
 Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
-**Situação:** decisões tomadas (seção 10); falta 1 confirmação (seção 11). Nenhum código escrito ainda.
+**Situação:** plano fechado (decisões na seção 10). Nenhum código escrito ainda. Próximo passo: Fase 0.
 Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
 [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 
@@ -322,6 +322,8 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
   > Trabalhe no ramo `claude/serene-faraday-w06f6u`. Leia `docs/SITUACAO.md` e `docs/PLANO-PLATAFORMA.md` e faça a
   > Fase N. Só me chame quando precisar de algo meu ou ao terminar a fase.
 - Fases longas (1, 2 e 7) podem ocupar mais de uma sessão; a própria sessão avisa onde parou.
+- A plataforma é feita no ramo `plataforma`; os chats da Cecília continuam no ramo dela. Toda sessão da plataforma
+  começa trazendo os ajustes novos da Cecília e rodando a bateria da Aurora.
 
 ## 10. Decisões do Renato (17/11/2026)
 
@@ -341,9 +343,8 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 | 12 | Excedente só com **autorização do cliente** (pedida a partir de 80%), teto de **1,3× o limite**, pausa no teto |
 | 13 | Depois do WhatsApp, o próximo canal é o **chat do site** |
 | 14 | Sem autorização do extra, o agente pausa ao chegar a 100% (volta na hora se o cliente autorizar) |
+| 15 | A Cecília **continua recebendo ajustes** em outros chats, no ramo dela, durante toda a construção. A plataforma é feita num ramo separado (`plataforma`) e, **no início de cada sessão da plataforma**, os ajustes novos da Cecília são trazidos para lá e conferidos com a bateria. Instruções editadas no painel (dados, não código) vêm junto quando a Aurora vira o cliente nº 1 |
 
-## 11. Ainda falta confirmar (curto)
+## 11. Ainda falta confirmar
 
-| # | Pergunta | Minha recomendação |
-|---|---|---|
-| D | Enquanto a base é refeita (fases 1 a 3), a Cecília recebe **só correções**, sem novidades grandes? (Hoje outra sessão ainda está acrescentando novidades nela.) | Sim, a partir do início da Fase 1 |
+Nada. Plano fechado em 17/11/2026; a próxima sessão começa pela Fase 0.
