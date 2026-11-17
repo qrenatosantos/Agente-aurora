@@ -361,3 +361,17 @@ Em nenhuma das 90 conversas os dois modelos citaram preço sem base.
   As 2 falhas de "data bloqueada" nos dois são do ambiente (o CRM publicado não tem a data 2027-06-12 bloqueada).
   Luna errou 1 vez em "negociação" (transferiu antes de oferecer as opções). Custo por resposta na bateria:
   Luna US$ 0,0013, Terra US$ 0,0032; tempo 3,0 s x 3,6 s.
+
+## 17/11/2026 — Qualidade do atendimento (juiz + checagens), 4 modelos
+`avaliacao/qualidade.ts`: 12 cenários × 2 rodadas, cliente simulado gpt-6.1-terra, juiz gpt-6.1-sol. Config no ar (v11).
+Relatório completo: `avaliacao/RESULTADO-QUALIDADE.md`.
+
+| Modelo | Nota | Aprovadas | US$/mês (100 clientes) |
+|---|---|---|---|
+| gpt-6-luna (sem raciocínio, o atual) | 4,13 | 15/24 | 0,82 |
+| gpt-6-luna@low (raciocínio baixo) | 4,49 | 20/24 | 0,81 |
+| gpt-6.1-terra | 4,44 | 18/24 | 5,59 |
+| gpt-6.1-sol@low | 4,66 | 21/24 | 10,81 |
+
+Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da Luna atual. Ponto fraco de todos:
+"não sabe qual pacote" (recomendação). A rodada com as instruções v12 não rodou: créditos da OpenAI acabaram.
