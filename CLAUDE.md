@@ -4,6 +4,10 @@
 - Fale com o Renato em português, de forma simples (ele não é programador). Respostas curtas.
 - **Pedido ao Renato = passo a passo de novato:** link direto para a tela (ex.: `https://dash.cloudflare.com/<conta>/r2/overview`),
   um clique por passo, nome exato de cada botão/menu e o que ele deve ver no fim. Nunca "vá no painel e ative X".
+- **Decisão do Renato (17/11/2026): plataforma e Cecília NÃO se misturam.** Sessões da plataforma trabalham só no ramo
+  `plataforma` e nunca enviam nada ao ramo da Cecília (`claude/serene-faraday-w06f6u`), nem mexem no comportamento dela.
+  Na plataforma, a Cecília é só um **agente de demonstração** (cópia congelada de 17/11). Não trazer os ajustes dela
+  a cada sessão. Quando os dois estiverem prontos, o Renato indica a versão final da Cecília e ela é importada (etapa final).
 - **Nunca altere o CRM** (`qrenatosantos/Aurora`). Faltou algo na API? Escreva em `docs/PEDIDOS-CRM.md` e avise.
 - O agente fala com o CRM **só pela API** (`/api/v1`, chave `aur_...`). Nunca acessa o banco do CRM.
 - Decisão do Renato (15/11/2026): **tudo na Cloudflare** (Workers + D1 + Durable Objects), login próprio por

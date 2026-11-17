@@ -25,8 +25,8 @@ programa à parte, que **não tem** as telas do Estúdio (não estão escondidas
 numa **sessão (chat) nova**, como explica a seção 9.
 
 **Como chegar lá sem derrubar a Cecília:** em fases pequenas, num **ambiente de testes separado**. Cada etapa termina com
-os testes passando e a **bateria da Aurora (45/45)** passando de novo. A Cecília é o cliente nº 1 e a prova de que nada
-piorou. Ela só recebe a mudança quando o Renato aprova.
+os testes passando. A Cecília entra na plataforma só como **demonstração** (cópia congelada de 17/11): a bateria dela
+serve de prova de que a reorganização não estragou o agente. A Cecília real segue no ramo dela, sem ser tocada (decisão 16).
 
 | Fase | O que entrega |
 |---|---|
@@ -288,6 +288,7 @@ aviso no Portal e você recebe por e-mail.
 |---|---|---|---|
 | 9.1 | `docs/MANUAL-NOVO-CLIENTE.md`: do contrato ao ar, com a lista do que pedir ao cliente, tempo de cada passo e o que fazer se falhar | — | Ler |
 | 9.2 | **Ensaio**: um cliente fictício do zero (ex.: clínica com agenda e chat do site) só com o manual e as skills | Cliente fictício respondendo, bateria verde, Portal funcionando | Fazer o ensaio comigo |
+| 9.4 | **Importar a versão final da Cecília** (indicada pelo Renato): instruções e exemplos viram a ficha; regras novas do código dela viram travas ou regras da peça "CRM da Aurora" | Bateria da Cecília final rodando na plataforma com o mesmo resultado do ramo dela | Dizer qual versão é a final |
 | 9.3 | Primeiro cliente real novo | No ar e acompanhado na 1ª semana | Trazer o cliente |
 
 ---
@@ -322,8 +323,8 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
   > Trabalhe no ramo `claude/serene-faraday-w06f6u`. Leia `docs/SITUACAO.md` e `docs/PLANO-PLATAFORMA.md` e faça a
   > Fase N. Só me chame quando precisar de algo meu ou ao terminar a fase.
 - Fases longas (1, 2 e 7) podem ocupar mais de uma sessão; a própria sessão avisa onde parou.
-- A plataforma é feita no ramo `plataforma`; os chats da Cecília continuam no ramo dela. Toda sessão da plataforma
-  começa trazendo os ajustes novos da Cecília e rodando a bateria da Aurora.
+- A plataforma é feita no ramo `plataforma`; os chats da Cecília continuam no ramo dela. **Os dois não se misturam**
+  (decisão 16): a plataforma não traz os ajustes da Cecília a cada sessão nem envia nada ao ramo dela.
 
 ## 10. Decisões do Renato (17/11/2026)
 
@@ -343,6 +344,7 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 | 12 | Excedente só com **autorização do cliente** (pedida a partir de 80%), teto de **1,3× o limite**, pausa no teto |
 | 13 | Depois do WhatsApp, o próximo canal é o **chat do site** |
 | 14 | Sem autorização do extra, o agente pausa ao chegar a 100% (volta na hora se o cliente autorizar) |
+| 16 | (17/11, substitui a parte de sincronizar da decisão 15) **Plataforma e Cecília separadas.** Na plataforma, a Cecília é só um agente de **demonstração** (cópia congelada de 17/11, ramo `plataforma`). Nenhuma sessão da plataforma mexe na Cecília real nem no ramo dela; nenhuma traz os ajustes dela a cada sessão. No fim, o Renato indica a versão final da Cecília e ela é **importada** para a plataforma (etapa 9.4) |
 | 15 | A Cecília **continua recebendo ajustes** em outros chats, no ramo dela, durante toda a construção. A plataforma é feita num ramo separado (`plataforma`) e, **no início de cada sessão da plataforma**, os ajustes novos da Cecília são trazidos para lá e conferidos com a bateria. Instruções editadas no painel (dados, não código) vêm junto quando a Aurora vira o cliente nº 1 |
 
 ## 11. Ainda falta confirmar

@@ -7,7 +7,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md`. Duas faces: Estúdio (Renato) e Portal do cliente.
   **Fase 0 feita no ramo `plataforma` (17/11)**: ambiente de testes, vigia (saúde a cada 5 min + cópia semanal no R2),
   alertas por e-mail (Issues), fotografia da Cecília. Guia: `OPERACAO.md`. Em produção desde 17/11 16h37 (aprovado pelo Renato);
-  ramo principal do GitHub = `claude/serene-faraday-w06f6u`. Próximo: Fase 1, numa sessão nova, no ramo `plataforma` (trazer antes os ajustes da Cecília).
+  ramo principal do GitHub = `claude/serene-faraday-w06f6u`. Próximo: Fase 1, numa sessão nova, no ramo `plataforma`. **Decisão 16 (17/11): a plataforma não mexe na
+  Cecília nem traz os ajustes dela;** na plataforma ela é só demonstração (cópia de 17/11). Importação da versão final = etapa 9.4.
   Base: `AVALIACAO-PLATAFORMA.md`. Guia de sessões: `COMO-USAR-O-CLAUDE.md`.
 
 ## No ar (conta Cloudflare do Renato, plano Workers Paid)
