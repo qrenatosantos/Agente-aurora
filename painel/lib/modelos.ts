@@ -8,10 +8,14 @@ import { PRECOS } from "./nucleo/openai.ts";
 
 export type ModeloOpenAI = { id: string; nome: string; entrada: number; saida: number; nota: string };
 
-const com = (id: string, nome: string, nota: string): ModeloOpenAI => ({ id, nome, entrada: PRECOS[id].entrada, saida: PRECOS[id].saida, nota });
+const com = (id: string, nome: string, nota: string): ModeloOpenAI => {
+  const p = PRECOS[id.split("@")[0]];
+  return { id, nome, entrada: p.entrada, saida: p.saida, nota };
+};
 
 export const MODELOS: ModeloOpenAI[] = [
-  com("gpt-6-luna", "GPT-6 Luna (recomendado: 45/45 nos testes)", "O mais barato da tabela da OpenAI e o que melhor seguiu as regras nos testes (docs/TESTES.md)."),
+  com("gpt-6-luna@low", "GPT-6 Luna pensando (recomendado)", "Luna com raciocínio baixo: atendimento melhor pelo mesmo preço (avaliacao/RESULTADO-QUALIDADE.md, 17/11)."),
+  com("gpt-6-luna", "GPT-6 Luna (sem raciocínio; 45/45 nos testes de regras)", "O mais barato da tabela da OpenAI e o que melhor seguiu as regras nos testes (docs/TESTES.md)."),
   com("gpt-4o-mini", "GPT-4o mini (barato; 40/45 nos testes)", "Barato, mas nos testes nem sempre passou a conversa para a equipe quando devia."),
   com("gpt-6.1-terra", "GPT-6.1 Terra (escrita melhor, ~10× mais caro)", "Para comparar: escreve melhor, custa bem mais."),
 ];

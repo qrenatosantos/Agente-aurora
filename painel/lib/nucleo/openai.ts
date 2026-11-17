@@ -32,7 +32,16 @@ export const PRECOS: Record<string, { entrada: number; cache: number; saida: num
   "gpt-6.1-sol": { entrada: 2, cache: 0.1, saida: 10 },
 };
 
-export function custoUsd(modelo: string, u: { entrada: number; cache: number; saida: number }): number | null {
+const ESFORCOS = ["none", "low", "medium", "high", "xhigh"] as const;
+
+/** "gpt-6-luna@low" = modelo gpt-6-luna com raciocínio baixo. Sem "@" = sem raciocínio. */
+export function separarModelo(m: string): { modelo: string; esforco: Esforco | undefined } {
+  const [modelo, e] = m.split("@");
+  return { modelo, esforco: (ESFORCOS as readonly string[]).includes(e ?? "") ? (e as Esforco) : undefined };
+}
+
+export function custoUsd(modeloCompleto: string, u: { entrada: number; cache: number; saida: number }): number | null {
+  const { modelo } = separarModelo(modeloCompleto);
   const p = PRECOS[modelo] ?? PRECOS[Object.keys(PRECOS).find((k) => modelo.startsWith(k + "-")) ?? ""];
   if (!p) return null;
   const semCache = Math.max(0, u.entrada - u.cache);
@@ -134,7 +143,9 @@ async function chamarResponses(opcoes: OpcoesChamada): Promise<RespostaIA> {
   };
 }
 
-export async function chamarModelo(opcoes: OpcoesChamada): Promise<RespostaIA> {
+export async function chamarModelo(opcoesBrutas: OpcoesChamada): Promise<RespostaIA> {
+  const sep = separarModelo(opcoesBrutas.modelo);
+  const opcoes = { ...opcoesBrutas, modelo: sep.modelo, esforco: opcoesBrutas.esforco ?? sep.esforco };
   const antigo = opcoes.modelo.startsWith("gpt-4");
   if (!antigo && opcoes.esforco && opcoes.esforco !== "none") return chamarResponses(opcoes);
   const corpo: Record<string, unknown> = {

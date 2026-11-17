@@ -382,3 +382,12 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
 - Conversa de verdade (gpt-6-luna, simulação contra o CRM no ar, instruções v12), datas de teste do CRM:
   28/11 20h lotada → oferece outra data → cliente insiste → transfere "Limite de capacidade"; 05/12 20h parcial → segue;
   12/12 bloqueada → oferece outra → 19/12 21h livre → segue; 19/12 sem horário → pergunta o horário → 19h cheio → 21h segue.
+
+## 17/11/2026 — "Pensar antes" (raciocínio baixo) na Cecília
+- Modelo no formato `gpt-6-luna@low`: núcleo usa a API Responses; motor (Think) usa `openai.responses()` com
+  `reasoningEffort: low`, `strictJsonSchema: false` e sem reenviar raciocínio antigo (store: false).
+- Qualidade (juiz, 12 cenários × 2, instruções v12): luna@low 4,58 · 19/24 (v11: 4,49 · 20/24); recomendação de
+  pacote passou a acertar 2/2. US$ ~0,97/mês para 100 clientes.
+- AI SDK com Responses + ferramentas em 2 turnos (Node, via repassar-openai): OK. Bateria no motor local não roda
+  nesta nuvem (workerd não resolve DNS externo: "failed to lookup address"); conferir no Simulador/WhatsApp.
+- Testes: núcleo 45/45, motor 12/12, banco 38/38; tsc, lint, build OK; motor 1,34 MB.

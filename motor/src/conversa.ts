@@ -17,7 +17,7 @@ import { ClienteCrm } from "../../painel/lib/nucleo/crm.ts";
 import { DEFINICOES } from "../../painel/lib/nucleo/ferramentas.ts";
 import { juntarEtapas } from "../../painel/lib/nucleo/util.ts";
 import { MAX_HISTORICO, motorOpenAI, type MotorIA, type PedidoIA, type UsoIA } from "../../painel/lib/nucleo/motor-ia.ts";
-import { ErroIA } from "../../painel/lib/nucleo/openai.ts";
+import { ErroIA, separarModelo } from "../../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa, type ResultadoTurno } from "../../painel/lib/nucleo/tipos.ts";
 import { ligarConversaInterno } from "../../painel/lib/banco/avisos.ts";
 import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
@@ -77,9 +77,16 @@ export class Conversa extends Think<Env> {
     return createOpenAI({ apiKey: chave, baseURL: base ? `${base}/v1` : undefined });
   }
 
+  /** "gpt-6-luna@low" = com raciocínio: só a API Responses aceita raciocínio junto com ferramentas. */
+  private modeloIA(chave: string, completo: string) {
+    const { modelo, esforco } = separarModelo(completo);
+    const pensa = Boolean(esforco && esforco !== "none" && !modelo.startsWith("gpt-4"));
+    return { pensa, esforco, modelo: pensa ? this.openai(chave).responses(modelo) : this.openai(chave).chat(modelo), antigo: modelo.startsWith("gpt-4") };
+  }
+
   getModel() {
     const t = this.turnoIA;
-    return this.openai(t?.chave ?? "sem-chave").chat(t?.modelo ?? "gpt-6-luna");
+    return this.modeloIA(t?.chave ?? "sem-chave", t?.modelo ?? "gpt-6-luna").modelo;
   }
 
   getSystemPrompt() {
@@ -107,21 +114,26 @@ export class Conversa extends Think<Env> {
     const p = this.pedido;
     const t = this.turnoIA;
     if (!p || !t) return;
-    const antigo = t.modelo.startsWith("gpt-4");
+    const m = this.modeloIA(t.chave, t.modelo);
+    const antigo = m.antigo;
     // histórico: as últimas mensagens (começando por uma do cliente)
     let mensagens = ctx.messages.slice(-MAX_HISTORICO);
     while (mensagens.length > 1 && mensagens[0].role !== "user") mensagens = mensagens.slice(1);
+    // raciocínio de turnos anteriores não volta para a OpenAI (store: false: ela não guardou)
+    mensagens = mensagens.map((x) => (Array.isArray(x.content) ? ({ ...x, content: (x.content as { type: string }[]).filter((c) => c.type !== "reasoning") } as typeof x) : x));
     return {
       // parte fixa primeiro (cache da OpenAI), situação atual do CRM por último
       system: `${p.sistemaFixo}\n\n${p.sistemaAtual}`,
       messages: mensagens,
-      model: this.openai(t.chave).chat(t.modelo),
+      model: m.modelo,
       maxSteps: p.maxRodadas,
       stopWhen: () => p.deveParar(),
-      maxOutputTokens: 500,
+      maxOutputTokens: m.pensa ? 4500 : 500,
       ...(antigo ? { temperature: 0.4 } : {}),
       providerOptions: {
-        openai: { store: false, parallelToolCalls: false, ...(antigo ? {} : { reasoningEffort: "none" }) },
+        openai: m.pensa
+          ? { store: false, parallelToolCalls: false, reasoningEffort: m.esforco, strictJsonSchema: false }
+          : { store: false, parallelToolCalls: false, ...(antigo ? {} : { reasoningEffort: "none" }) },
       },
     };
   }
