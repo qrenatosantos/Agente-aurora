@@ -456,3 +456,7 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
 - **Fora:** bateria da Aurora com IA (45/45) — precisa da cópia local do CRM (repositório do CRM), que esta sessão não
   pôde abrir. O núcleo e o caminho do turno no motor não mudaram (núcleo 48/48). Mensagem real no número de teste: o
   webhook da Meta aponta só para a produção (decisão 16: a Cecília real não é tocada).
+- **Publicado no ambiente de testes** (GitHub, execução 63, verde): migração 0005 aplicada no `aurora-agente-teste`
+  (Aurora = cliente `aurora`, Renato = dono, 15 conhecimentos, 13 versões, 23 registros); marca da Aurora gravada.
+  Motor de testes: webhook com token errado 403, aviso do CRM sem assinatura 401; painel de testes pede login em
+  `/clientes`. **Produção intocada** (login da produção continua o de antes).
