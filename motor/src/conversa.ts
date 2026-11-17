@@ -264,7 +264,7 @@ export class Conversa extends Think<Env> {
   /** Primeiro nome do cliente para as mensagens prontas (", Juliana"), ou vazio se não souber. */
   private nomeParaMensagem(estado: EstadoConversa) {
     const n = (estado.contato.nome ?? "").trim();
-    return n && !/^cliente( do whatsapp)?$/i.test(n) ? `, ${n.split(/\s+/)[0]}` : "";
+    return n && !/^(cliente|lead|contato)\b/i.test(n) ? `, ${n.split(/\s+/)[0]}` : "";
   }
 
   private whatsapp(amb: Awaited<ReturnType<typeof carregarAmbiente>>) {
@@ -406,11 +406,27 @@ export class Conversa extends Think<Env> {
     if (!canal) return "conversa sem telefone";
     const horas = (Date.now() - new Date(canal.ultima_em).getTime()) / 3600_000;
     if (horas > 23.5) return `fora da janela de 24 h (última mensagem do cliente há ${Math.round(horas)} h): a equipe envia`;
+    // Reserva a proposta ANTES de qualquer espera: os avisos "aprovada" e "enviada" chegam quase juntos e, sem isso,
+    // os dois passavam pela conferência e o cliente recebia o link duas vezes.
+    if (this.sql`select 1 from aurora_propostas where proposta_id = ${d.propostaId}`.length) return "link já enviado antes por esta conversa";
+    this.sql`insert into aurora_propostas (proposta_id, enviada_em) values (${d.propostaId}, ${new Date().toISOString()})`;
+    const liberar = (motivo: string) => {
+      this.sql`delete from aurora_propostas where proposta_id = ${d.propostaId}`;
+      return motivo;
+    };
+    try {
+      return await this.mandarLink(d, estado, canal.telefone, liberar);
+    } catch (e) {
+      liberar("");
+      throw e;
+    }
+  }
+
+  private async mandarLink(d: { propostaId: string }, estado: EstadoConversa, telefone: string, liberar: (m: string) => string): Promise<string> {
     const amb = await carregarAmbiente(this.env);
     const wa = this.whatsapp(amb);
-    if (!wa || !amb.crm) return "WhatsApp ou CRM não configurados";
+    if (!wa || !amb.crm) return liberar("WhatsApp ou CRM não configurados");
     const crm = new ClienteCrm(amb.crm.endereco, amb.crm.chave);
-    if (this.sql`select 1 from aurora_propostas where proposta_id = ${d.propostaId}`.length) return "link já enviado antes por esta conversa";
     // aprovada: a Cecília marca como enviada e pega o link. Se o gestor já usou "Aprovar e enviar" (ou a conversa está
     // com uma pessoa, e o CRM não deixa o agente alterar), o link é só lido da proposta.
     let r = await crm.post<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}/enviar`);
@@ -418,15 +434,15 @@ export class Conversa extends Think<Env> {
       const lida = await crm.get<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}`);
       if (lida.dados?.link) r = lida;
     }
-    if (!r.dados?.link) return `o CRM não liberou o link: ${r.erro?.mensagem ?? "sem link"}`;
+    if (!r.dados?.link) return liberar(`o CRM não liberou o link: ${r.erro?.mensagem ?? "sem link"}`);
     const link = r.dados.link.startsWith("/") ? `${amb.crm.endereco.replace(/\/+$/, "")}${r.dados.link}` : r.dados.link;
     const nome = this.nomeParaMensagem(estado);
     const modelo = amb.cfg.mensagens.proposta_aprovada ?? "Sua proposta está pronta{nome}! 🥂\n\nÉ só abrir o link para ver todos os detalhes e, se estiver tudo certo, aceitar por lá mesmo:\n{link}\n\nQualquer dúvida, é só me chamar por aqui.";
     const texto = modelo.replaceAll("{nome}", nome).replaceAll("{link}", link);
-    await wa.enviarTexto(canal.telefone, texto);
+    await wa.enviarTexto(telefone, texto);
     await this.addMessages([msg("assistant", texto)], { broadcast: false });
     this.gravarEstado({ ...estado, proposta: estado.proposta ? { ...estado.proposta, status: "enviada" } : estado.proposta });
-    this.sql`insert into aurora_propostas (proposta_id, enviada_em) values (${d.propostaId}, ${new Date().toISOString()}) on conflict(proposta_id) do nothing`;
+    this.sql`update aurora_propostas set enviada_em = ${new Date().toISOString()} where proposta_id = ${d.propostaId}`;
     await this.schedule(amb.lembretes.naoAbertaMin * 60, "lembreteProposta", { propostaId: d.propostaId, tipo: "nao_aberta" });
     return `link enviado ao cliente (${r.dados.numero ?? "proposta"}); lembrete em ${amb.lembretes.naoAbertaMin} min se não abrir`;
   }

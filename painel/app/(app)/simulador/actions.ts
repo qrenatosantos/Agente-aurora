@@ -10,10 +10,11 @@
  * o núcleo roda aqui mesmo, com as mesmas regras, e a tela avisa.
  */
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { falha, sucesso, type EstadoAcao } from "@/lib/acoes";
 import { carregarAmbienteAgente, chamarMotor } from "@/lib/agente-servidor";
+import * as op2 from "@/lib/banco/avisos.ts";
 import * as op from "@/lib/banco/operacao.ts";
 import { processarTurno } from "@/lib/nucleo/agente.ts";
 import type { NegocioCrm } from "@/lib/nucleo/crm.ts";
@@ -182,4 +183,21 @@ export async function apagarSimulacao(id: string): Promise<EstadoAcao> {
   }
   revalidatePath("/simulador");
   return sucesso("Simulação apagada.");
+}
+
+/** Zera uma conversa do WhatsApp para testar de novo do zero (memória no motor + ligação com os pedidos). Só gestor. */
+export async function zerarConversaWhatsApp(conversa: string): Promise<EstadoAcao> {
+  const g = await exigirGestor();
+  if ("erro" in g) return falha("Só o gestor zera conversas do WhatsApp.");
+  if (!/^wa-\d{8,15}$/.test(conversa)) return falha("Conversa inválida.");
+  try {
+    const r = await chamarMotor("apagar", { conversa });
+    if (r === null) return falha("O motor do agente não está ligado a este painel.");
+    await op2.zerarConversaWhatsApp(await banco(), await atorAtual(), conversa);
+  } catch (e) {
+    unstable_rethrow(e);
+    return falha(mensagemDeErro(e));
+  }
+  revalidatePath("/simulador");
+  return sucesso("Conversa zerada. A próxima mensagem desse número começa do zero.");
 }

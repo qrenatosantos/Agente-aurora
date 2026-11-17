@@ -4,6 +4,7 @@ import { CabecalhoPagina, Cartao, Selo } from "@/components/ui/cartao";
 import { obterConfigAgente } from "@/lib/dados";
 import { formatarDataHora } from "@/lib/formatar";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
+import { listarConversasWhatsApp } from "@/lib/banco/avisos.ts";
 import { lerSimulacao, listarSimulacoes } from "@/lib/banco/operacao.ts";
 import { atorAtual, banco } from "@/lib/servidor";
 import type { SimulacaoLinha } from "@/lib/tipos";
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { validacaoUuid } from "./util";
 import { Conversa } from "./conversa";
 import { NovaSimulacao } from "./nova";
+import { ZerarWhatsApp } from "./zerar-whatsapp";
 
 export const metadata: Metadata = { title: "Simulador" };
 
@@ -24,6 +26,7 @@ export default async function PaginaSimulador({ searchParams }: { searchParams: 
   const atualId = id && validacaoUuid(id) ? id : null;
   const atual = atualId ? ((await lerSimulacao(db, ator, atualId).catch(() => null)) as SimulacaoLinha | null) : null;
   const mostrarNova = !atual || nova === "1";
+  const conversasWa = gestor ? await listarConversasWhatsApp(db, ator).catch(() => []) : [];
 
   return (
     <>
@@ -62,6 +65,7 @@ export default async function PaginaSimulador({ searchParams }: { searchParams: 
               <p className="px-4 py-3 text-sm text-texto-2">Nenhuma ainda.</p>
             )}
           </Cartao>
+          {gestor && <ZerarWhatsApp conversas={conversasWa} />}
         </aside>
 
         <section className="order-1 min-w-0 lg:order-2">

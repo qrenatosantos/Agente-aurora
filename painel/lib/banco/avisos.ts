@@ -2,7 +2,7 @@
  * AVISOS DO CRM (webhooks). Gravados pelo motor, sem pessoa logada; só o gestor lê no painel.
  * O id é o do próprio CRM: aviso repetido (o CRM reenvia se não receber 2xx) não entra de novo.
  */
-import { type Ator, type Banco, converter, exigirGestor } from "./base.ts";
+import { type Ator, type Banco, converter, ErroRegra, exigirGestor, registrar } from "./base.ts";
 
 export type AvisoCrm = {
   id: number;
@@ -53,4 +53,30 @@ export async function marcarAvisoProcessadoInterno(db: Banco, id: number, result
     .prepare("update avisos_crm set processado_em = ?, dados = json_set(dados, '$._resultado', ?) where id = ?")
     .bind(new Date().toISOString(), resultado.slice(0, 300), id)
     .run();
+}
+
+export type ConversaWhatsApp = { conversa: string; telefone: string; ultima_do_cliente: string | null; pedidos: number };
+
+/** Conversas do WhatsApp que o agente já atendeu (uma linha por telefone). Só o gestor. */
+export async function listarConversasWhatsApp(db: Banco, ator: Ator): Promise<ConversaWhatsApp[]> {
+  exigirGestor(ator, "Só o gestor vê as conversas do WhatsApp.");
+  const r = await db
+    .prepare(
+      `select conversa, max(telefone) telefone, max(ultima_do_cliente) ultima_do_cliente, count(*) pedidos
+       from conversas_whatsapp group by conversa order by max(atualizado_em) desc limit 100`,
+    )
+    .all<ConversaWhatsApp>();
+  return r.results ?? [];
+}
+
+/**
+ * Zera uma conversa do WhatsApp (para testar de novo do zero): esquece a ligação com os pedidos do CRM.
+ * A memória da conversa no motor é apagada pela ação da tela. O CRM não é tocado. Só o gestor.
+ */
+export async function zerarConversaWhatsApp(db: Banco, ator: Ator, conversa: string): Promise<number> {
+  exigirGestor(ator, "Só o gestor zera conversas do WhatsApp.");
+  if (!/^wa-\d{8,15}$/.test(conversa)) throw new ErroRegra("Conversa inválida.");
+  const r = await db.prepare("delete from conversas_whatsapp where conversa = ?").bind(conversa).run();
+  await registrar(db, ator, "whatsapp.zerou", conversa, { pedidos_desligados: r.meta.changes }).run();
+  return r.meta.changes;
 }
