@@ -1,0 +1,15 @@
+{
+  "name": "aurora-vigia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vigia do agente: teste de saúde a cada 5 minutos (alerta por e-mail via Issues da Cloudflare) e cópia semanal do banco D1 no R2.",
+  "scripts": {
+    "tipos": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261115.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.162.0"
+  }
+}

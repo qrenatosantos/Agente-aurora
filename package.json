@@ -6,6 +6,7 @@
   "scripts": {
     "test:banco": "node --test painel/lib/banco/*.test.ts",
     "test:nucleo": "node --test painel/lib/nucleo/*.test.ts",
-    "test:motor": "node --test motor/src/*.test.ts"
+    "test:motor": "node --test motor/src/*.test.ts",
+    "test:vigia": "node --test vigia/src/*.test.ts"
   }
 }

@@ -13,5 +13,16 @@
   // O mesmo banco D1 do painel (configuração e chaves cifradas). O id vem do cliente (clientes/<cliente>/).
   "d1_databases": [{ "binding": "DB", "database_name": "aurora-agente", "database_id": "0a0e06bd-2913-4230-9508-6fce4c6b3533" }],
   // Segredos (wrangler secret put): SEGREDO_INTERNO e CHAVE_MESTRA (os mesmos do painel).
-  "observability": { "enabled": true }
+  // issues: erros viram "Issues" na Cloudflare, que avisam o Renato por e-mail (docs/OPERACAO.md).
+  "observability": { "enabled": true, "issues": { "enabled": true } },
+  "env": {
+    // AMBIENTE DE TESTES (ramo plataforma): programa aurora-motor-teste, banco aurora-agente-teste, segredos próprios.
+    // `npx wrangler deploy --env teste`. Nada aqui toca a Cecília real.
+    "teste": {
+      "durable_objects": { "bindings": [{ "name": "Conversa", "class_name": "Conversa" }] },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Conversa"] }],
+      "d1_databases": [{ "binding": "DB", "database_name": "aurora-agente-teste", "database_id": "16b38927-6fe8-4982-a3f5-e5f213b12f62" }],
+      "observability": { "enabled": true, "issues": { "enabled": true } }
+    }
+  }
 }

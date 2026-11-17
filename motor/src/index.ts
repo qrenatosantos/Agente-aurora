@@ -19,6 +19,7 @@
  * De propósito NÃO usa routeAgentRequest: as conversas não ficam abertas para a internet
  * (nada de WebSocket público). Só as rotas acima falam com elas.
  */
+import { WorkerEntrypoint } from "cloudflare:workers";
 import { getAgentByName } from "agents";
 import { conversaDoNegocioInterno, guardarAvisoInterno, marcarAvisoProcessadoInterno } from "../../painel/lib/banco/avisos.ts";
 import { ClienteCrm, variantesTelefone } from "../../painel/lib/nucleo/crm.ts";
@@ -27,9 +28,17 @@ import { segredoDosAvisos, segredosDoWebhook } from "./ambiente.ts";
 import { avisoVerdadeiro } from "./crm-avisos.ts";
 import { Conversa, type EntradaConversa } from "./conversa.ts";
 import type { Env } from "./env.ts";
+import { conferirSaude, type ItemSaude } from "./saude.ts";
 import { assinaturaValida, lerMensagens } from "./whatsapp.ts";
 
 export { Conversa };
+
+/** Teste de saúde (saude.ts). Ligação interna com entrypoint "Saude": só o vigia alcança; não tem endereço na internet. */
+export class Saude extends WorkerEntrypoint<Env> {
+  async conferir(): Promise<ItemSaude[]> {
+    return conferirSaude(this.env);
+  }
+}
 
 async function autorizado(req: Request, env: Env) {
   const recebido = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";

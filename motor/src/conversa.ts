@@ -246,6 +246,10 @@ export class Conversa extends Think<Env> {
     await this.addMessages(guardar, { broadcast: false });
 
     this.gravarEstado(r.estado);
+    // Falha da IA numa conversa real: o cliente já recebeu a mensagem de erro e foi passado para a equipe (núcleo).
+    // Este erro no registro vira um "Issue" na Cloudflare, que avisa o Renato por e-mail.
+    const falha = r.rastro.find((p) => p.nome === "Erro técnico");
+    if (falha && e.modo === "real") console.error(`[falha da IA] conversa ${this.name.slice(0, 7)}…: ${falha.detalhe ?? "sem detalhe"}`);
     return r;
   }
 

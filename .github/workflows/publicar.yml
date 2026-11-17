@@ -1,22 +1,32 @@
 # TESTAR E PUBLICAR na Cloudflare, sozinho, a cada atualização.
-# 1) roda os testes (banco, núcleo, tipos e padrão de código); 2) só se passarem, publica o motor e o painel
-#    e aplica as migrações novas do banco D1.
+# 1) roda os testes (banco, núcleo, motor, vigia, tipos e padrão de código); 2) só se passarem, publica.
+#
+# PARA ONDE VAI (Fase 0 da plataforma, docs/OPERACAO.md):
+#   ramo plataforma                    → AMBIENTE DE TESTES (aurora-*-teste, banco aurora-agente-teste)
+#   ramo claude/serene-faraday-w06f6u  → PRODUÇÃO (a Cecília real)
+#   (main também publica na produção, como antes; outros ramos não publicam)
+# Mudança só em docs/ não publica nada.
+#
 # Precisa do segredo CLOUDFLARE_API_TOKEN no GitHub (Settings ▸ Secrets and variables ▸ Actions).
-# Os segredos dos programas (CHAVE_MESTRA, CODIGO_INSTALACAO, SEGREDO_INTERNO) ficam na própria Cloudflare.
+# Os segredos dos programas (CHAVE_MESTRA, CODIGO_INSTALACAO, SEGREDO_INTERNO, VIGIA_SEGREDO) ficam na Cloudflare.
 name: Testar e publicar
 
 on:
   push:
-    branches: [main, claude/serene-faraday-w06f6u]
+    branches: [main, claude/serene-faraday-w06f6u, plataforma]
+    paths-ignore: ["docs/**"]
   workflow_dispatch:
 
 concurrency:
-  group: publicar
+  group: publicar-${{ github.ref_name == 'plataforma' && 'teste' || 'producao' }}
   cancel-in-progress: false
 
 env:
-  # Conta da Cloudflare do cliente (não é segredo). No molde (fase 5), vem de clientes/<cliente>/.
+  # Conta da Cloudflare do Renato (não é segredo).
   CLOUDFLARE_ACCOUNT_ID: 5a292fc980c65378451156ed927154d4
+  # "--env teste" no ramo plataforma; "--env=" (o principal, a produção) nos outros.
+  AMBIENTE: ${{ github.ref_name == 'plataforma' && 'teste' || '' }}
+  BANCO: ${{ github.ref_name == 'plataforma' && 'aurora-agente-teste' || 'aurora-agente' }}
 
 jobs:
   testar:
@@ -26,12 +36,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Regras do banco e do agente
+      - name: Regras do banco, do agente, do motor e do vigia
         run: |
           npm ci
           npm run test:banco
           npm run test:nucleo
           npm run test:motor
+          npm run test:vigia
       - name: Painel (tipos e padrão de código)
         working-directory: painel
         run: |
@@ -40,6 +51,11 @@ jobs:
           npm run lint
       - name: Motor (tipos)
         working-directory: motor
+        run: |
+          npm ci
+          npx tsc --noEmit
+      - name: Vigia (tipos)
+        working-directory: vigia
         run: |
           npm ci
           npx tsc --noEmit
@@ -56,6 +72,7 @@ jobs:
             echo "::error::Falta o segredo CLOUDFLARE_API_TOKEN no GitHub (Settings > Secrets and variables > Actions)."
             exit 1
           fi
+          echo "Publicando em: ${AMBIENTE:-produção} (banco $BANCO)"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -64,11 +81,16 @@ jobs:
         working-directory: motor
         run: |
           npm ci
-          npx wrangler deploy
+          npx wrangler deploy --env="$AMBIENTE"
       - name: Atualizar o banco e publicar o painel
         working-directory: painel
         run: |
           npm ci
-          npx wrangler d1 migrations apply aurora-agente --remote
+          npx wrangler d1 migrations apply "$BANCO" --remote --env="$AMBIENTE"
           npx opennextjs-cloudflare build
-          npx wrangler deploy
+          npx wrangler deploy --env="$AMBIENTE"
+      - name: Publicar o vigia (saúde a cada 5 min e cópia semanal)
+        working-directory: vigia
+        run: |
+          npm ci
+          npx wrangler deploy --env="$AMBIENTE"

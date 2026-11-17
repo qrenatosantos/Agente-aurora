@@ -1,0 +1,39 @@
+{
+  // VIGIA DO AGENTE: teste de saúde a cada 5 min e cópia semanal do banco no R2. Explicação: src/index.ts e docs/OPERACAO.md.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aurora-vigia",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  // global_fetch_strictly_public: para conferir o painel e o motor pelos endereços públicos (mesma conta).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // a cada 5 minutos (saúde) e segunda 06:17 UTC = 03:17 de Brasília (cópia)
+  "triggers": { "crons": ["*/5 * * * *", "17 6 * * 1"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "aurora-agente", "database_id": "0a0e06bd-2913-4230-9508-6fce4c6b3533" }],
+  "r2_buckets": [{ "binding": "COPIAS", "bucket_name": "aurora-copias" }],
+  // ligação interna com o motor, só na parte "Saude" (motor/src/saude.ts)
+  "services": [{ "binding": "MOTOR", "service": "aurora-motor", "entrypoint": "Saude" }],
+  "vars": {
+    "NOME_BANCO": "aurora-agente",
+    "PAINEL_URL": "https://aurora-agente-painel.q-renatosantos.workers.dev/login",
+    "MOTOR_URL": "https://aurora-motor.q-renatosantos.workers.dev/",
+    "EXIGIR": "banco,openai,whatsapp,crm"
+  },
+  // Segredo (wrangler secret put VIGIA_SEGREDO): só para as rotas manuais (/saude, /copiar, /provocar-erro).
+  "observability": { "enabled": true, "issues": { "enabled": true } },
+  "env": {
+    // AMBIENTE DE TESTES: confere os programas -teste a cada 30 min e copia o banco de testes.
+    "teste": {
+      "triggers": { "crons": ["*/30 * * * *", "17 6 * * 1"] },
+      "d1_databases": [{ "binding": "DB", "database_name": "aurora-agente-teste", "database_id": "16b38927-6fe8-4982-a3f5-e5f213b12f62" }],
+      "r2_buckets": [{ "binding": "COPIAS", "bucket_name": "aurora-copias" }],
+      "services": [{ "binding": "MOTOR", "service": "aurora-motor-teste", "entrypoint": "Saude" }],
+      "vars": {
+        "NOME_BANCO": "aurora-agente-teste",
+        "PAINEL_URL": "https://aurora-agente-painel-teste.q-renatosantos.workers.dev/login",
+        "MOTOR_URL": "https://aurora-motor-teste.q-renatosantos.workers.dev/",
+        "EXIGIR": "banco"
+      },
+      "observability": { "enabled": true, "issues": { "enabled": true } }
+    }
+  }
+}

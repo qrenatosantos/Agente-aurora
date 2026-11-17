@@ -22,5 +22,18 @@
 	//   CODIGO_INSTALACAO  cria o 1º gestor em /instalar
 	//   SEGREDO_INTERNO    o mesmo do motor (rotas /interno/*)
 	"keep_vars": true,
-	"observability": { "enabled": true }
+	// issues: erros viram "Issues" na Cloudflare, que avisam o Renato por e-mail (docs/OPERACAO.md).
+	"observability": { "enabled": true, "issues": { "enabled": true } },
+	"env": {
+		// AMBIENTE DE TESTES (ramo plataforma): programa aurora-agente-painel-teste, banco aurora-agente-teste,
+		// motor aurora-motor-teste e segredos próprios. `npx wrangler deploy --env teste`. Não toca a Cecília real.
+		"teste": {
+			"d1_databases": [
+				{ "binding": "DB", "database_name": "aurora-agente-teste", "database_id": "16b38927-6fe8-4982-a3f5-e5f213b12f62", "migrations_dir": "banco/migracoes" }
+			],
+			"services": [{ "binding": "MOTOR", "service": "aurora-motor-teste" }],
+			"keep_vars": true,
+			"observability": { "enabled": true, "issues": { "enabled": true } }
+		}
+	}
 }
