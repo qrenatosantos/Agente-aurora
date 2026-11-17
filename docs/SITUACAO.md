@@ -43,6 +43,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Outra condição de pagamento (entrada, parcelar, prazo): não negocia, transfere com o pedido.
 - Instruções v12 (`clientes/aurora/instrucoes-v12.md` + `exemplos-v12.json`) no ar desde 17/11 (config v12).
 - Modelo `gpt-6-luna:low` ("pensar antes", raciocínio baixo): ":esforço" no nome do modelo liga o raciocínio.
+- Simulador ▸ "Testes no WhatsApp" (só gestor): botão Zerar apaga a memória da Cecília com um número (o CRM não muda:
+  marque o pedido antigo como perdido antes). Link da proposta não sai mais duplicado (avisos aprovada+enviada juntos).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências

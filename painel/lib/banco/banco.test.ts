@@ -12,7 +12,7 @@ import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { conversaDoNegocioInterno, guardarAvisoInterno, ligarConversaInterno, listarAvisos, marcarAvisoProcessadoInterno } from "./avisos.ts";
+import { conversaDoNegocioInterno, guardarAvisoInterno, ligarConversaInterno, listarAvisos, listarConversasWhatsApp, marcarAvisoProcessadoInterno, zerarConversaWhatsApp } from "./avisos.ts";
 import type { Ator } from "./base.ts";
 import { lerConfig, listarVersoes, restaurarVersao, salvarConfig } from "./config.ts";
 import { alertasTexto, alterarConhecimento, excluirConhecimento, incluirConhecimento, listarConhecimento } from "./conhecimento.ts";
@@ -371,5 +371,17 @@ describe("pedido ligado à conversa do WhatsApp", () => {
     const a = (await listarAvisos(db, andre)).find((x) => x.id === 42)!;
     assert.ok(a.processado_em);
     assert.equal(a.dados._resultado, "link enviado");
+  });
+
+  test("zerar conversa (testes): só o gestor; desliga todos os pedidos daquele telefone e fica no registro", async () => {
+    await ligarConversaInterno(db, { negocioId: "neg-2", conversa: "wa-5534988887777", telefone: "5534988887777", ultimaDoCliente: null });
+    const lista = await listarConversasWhatsApp(db, renato);
+    assert.equal(lista.find((c) => c.conversa === "wa-5534988887777")?.pedidos, 2);
+    await recusa(listarConversasWhatsApp(db, bruna), /Só o gestor/);
+    await recusa(zerarConversaWhatsApp(db, bruna, "wa-5534988887777"), /Só o gestor/);
+    await recusa(zerarConversaWhatsApp(db, renato, "sim-123"), /Conversa inválida/);
+    assert.equal(await zerarConversaWhatsApp(db, renato, "wa-5534988887777"), 2);
+    assert.equal(await conversaDoNegocioInterno(db, "neg-1"), null);
+    assert.equal(qtd("select count(*) n from registro where acao = 'whatsapp.zerou'"), 1);
   });
 });
