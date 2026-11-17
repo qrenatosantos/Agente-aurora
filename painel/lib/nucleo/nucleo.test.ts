@@ -11,7 +11,7 @@ import { ClienteCrm, variantesTelefone } from "./crm.ts";
 import { faltamParaProposta, orientarAgenda } from "./ferramentas.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
-import { custoUsd } from "./openai.ts";
+import { custoUsd, separarModelo } from "./openai.ts";
 import { estadoInicial, type ConfigAgente } from "./tipos.ts";
 import { contemAlguma, dividirMensagens, separarPacotes, juntarEtapas, pediuParaParar, removerRepeticao, removerRespostaDupla, valoresEmReais, valoresMonetarios, valoresSemBase } from "./util.ts";
 
@@ -484,5 +484,15 @@ describe("pacotes em balões separados", () => {
   test("já separados ou só um pacote citado: não mexe", () => {
     const m = ["*Essencial* 🍋 Caipirinha.", "*Signature* 🍊 Aperol.", "Perfeito! O *Exclusive* inclui tudo."];
     assert.deepEqual(separarPacotes(m, ["Essencial", "Signature", "Reserve", "Exclusive"]), m);
+  });
+});
+
+describe("modelo com raciocínio", () => {
+  test("'gpt-6-luna:low' liga o raciocínio; nome sem sufixo ou de modelo ajustado não", () => {
+    assert.deepEqual(separarModelo("gpt-6-luna:low"), { modelo: "gpt-6-luna", esforco: "low" });
+    assert.deepEqual(separarModelo("gpt-6-luna@low"), { modelo: "gpt-6-luna", esforco: "low" });
+    assert.deepEqual(separarModelo("gpt-6-luna"), { modelo: "gpt-6-luna", esforco: undefined });
+    assert.deepEqual(separarModelo("ft:gpt-6-luna:aurora:abc123"), { modelo: "ft:gpt-6-luna:aurora:abc123", esforco: undefined });
+    assert.equal(custoUsd("gpt-6-luna:low", { entrada: 1_000_000, cache: 0, saida: 0 }), 0.1);
   });
 });

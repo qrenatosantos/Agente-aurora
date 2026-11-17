@@ -42,7 +42,7 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
   outra opção (motivo "Limite de capacidade em <data> às <hora>"). Proposta não sai para data sem vaga (trava).
 - Outra condição de pagamento (entrada, parcelar, prazo): não negocia, transfere com o pedido.
 - Instruções v12 (`clientes/aurora/instrucoes-v12.md` + `exemplos-v12.json`) no ar desde 17/11 (config v12).
-- Modelo `gpt-6-luna@low` ("pensar antes", raciocínio baixo): "@esforço" no nome do modelo liga o raciocínio.
+- Modelo `gpt-6-luna:low` ("pensar antes", raciocínio baixo): ":esforço" no nome do modelo liga o raciocínio.
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências

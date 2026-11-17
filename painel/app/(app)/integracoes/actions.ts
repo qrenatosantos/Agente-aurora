@@ -77,7 +77,7 @@ export async function salvarCrm(_a: EstadoAcao, formData: FormData): Promise<Est
 // ---------------------------------------------------------------- OpenAI
 const esquemaOpenAI = z.object({
   openai_chave: z.string().optional().default("").refine((v) => !v.trim() || /^sk-[A-Za-z0-9_-]{20,}$/.test(v.trim()), "A chave da OpenAI começa com sk-."),
-  modelo: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._:@-]{1,79}$/, "Nome de modelo inválido."),
+  modelo: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._:-]{1,79}$/, "Nome de modelo inválido."),
   limite_mensal_usd: z.coerce.number("Informe o limite em dólares.").min(1, "Mínimo de US$ 1.").max(10000, "Máximo de US$ 10.000."),
   alerta_pct: z.coerce.number().int().min(10, "Entre 10% e 100%.").max(100, "Entre 10% e 100%."),
   parar_no_limite: z.enum(["sim", "nao"]).transform((v) => v === "sim"),

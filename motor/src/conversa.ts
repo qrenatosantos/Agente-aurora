@@ -77,7 +77,7 @@ export class Conversa extends Think<Env> {
     return createOpenAI({ apiKey: chave, baseURL: base ? `${base}/v1` : undefined });
   }
 
-  /** "gpt-6-luna@low" = com raciocínio: só a API Responses aceita raciocínio junto com ferramentas. */
+  /** "gpt-6-luna:low" = com raciocínio: só a API Responses aceita raciocínio junto com ferramentas. */
   private modeloIA(chave: string, completo: string) {
     const { modelo, esforco } = separarModelo(completo);
     const pensa = Boolean(esforco && esforco !== "none" && !modelo.startsWith("gpt-4"));

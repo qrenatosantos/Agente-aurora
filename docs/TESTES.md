@@ -384,7 +384,7 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
   12/12 bloqueada → oferece outra → 19/12 21h livre → segue; 19/12 sem horário → pergunta o horário → 19h cheio → 21h segue.
 
 ## 17/11/2026 — "Pensar antes" (raciocínio baixo) na Cecília
-- Modelo no formato `gpt-6-luna@low`: núcleo usa a API Responses; motor (Think) usa `openai.responses()` com
+- Modelo no formato `gpt-6-luna:low` (o banco não aceita "@"): núcleo usa a API Responses; motor (Think) usa `openai.responses()` com
   `reasoningEffort: low`, `strictJsonSchema: false` e sem reenviar raciocínio antigo (store: false).
 - Qualidade (juiz, 12 cenários × 2, instruções v12): luna@low 4,58 · 19/24 (v11: 4,49 · 20/24); recomendação de
   pacote passou a acertar 2/2. US$ ~0,97/mês para 100 clientes.

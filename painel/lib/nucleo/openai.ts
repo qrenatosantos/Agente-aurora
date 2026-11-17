@@ -32,12 +32,10 @@ export const PRECOS: Record<string, { entrada: number; cache: number; saida: num
   "gpt-6.1-sol": { entrada: 2, cache: 0.1, saida: 10 },
 };
 
-const ESFORCOS = ["none", "low", "medium", "high", "xhigh"] as const;
-
-/** "gpt-6-luna@low" = modelo gpt-6-luna com raciocínio baixo. Sem "@" = sem raciocínio. */
+/** "gpt-6-luna:low" (ou "@low") = modelo gpt-6-luna com raciocínio baixo. Sem o sufixo = sem raciocínio. */
 export function separarModelo(m: string): { modelo: string; esforco: Esforco | undefined } {
-  const [modelo, e] = m.split("@");
-  return { modelo, esforco: (ESFORCOS as readonly string[]).includes(e ?? "") ? (e as Esforco) : undefined };
+  const x = /^(.+)[:@](none|low|medium|high|xhigh)$/.exec(m);
+  return x ? { modelo: x[1], esforco: x[2] as Esforco } : { modelo: m, esforco: undefined };
 }
 
 export function custoUsd(modeloCompleto: string, u: { entrada: number; cache: number; saida: number }): number | null {

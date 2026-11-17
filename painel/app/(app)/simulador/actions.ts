@@ -24,7 +24,7 @@ import type { MensagemSimulacao, SimulacaoLinha } from "@/lib/tipos";
 import { ehUuid } from "@/lib/validacao";
 
 const esquemaNova = z.object({
-  modelo: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._:@-]{1,79}$/, "Modelo inválido.").optional().or(z.literal("")),
+  modelo: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._:-]{1,79}$/, "Modelo inválido.").optional().or(z.literal("")),
   codigo: z
     .string()
     .trim()
