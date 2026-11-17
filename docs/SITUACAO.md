@@ -56,7 +56,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
   raciocínio, juntava os balões e cobrava as horas). Corrigido o avaliador (commits 1298c65 e 252c80f); a correção do
   prazo (02ea096) já estava no ar. **Nota de referência: 4,76 · 20/24** (config v13, `gpt-6-luna:low`, commit 252c80f).
   Reprovações que sobram são da Cecília: drinks soltos (grava um pacote no cadastro mesmo na proposta personalizada, 2/2),
-  pacote listado sem a gin tônica (1/2) e "o link anterior deixa de valer" sem o sistema dizer isso (1/2).
+  pacote listado sem a gin tônica (1/2). A reprovação "o link anterior deixa de valer" foi erro do juiz (é regra da
+  empresa, confirmada pelo Renato): na prática 21/24; o juiz já foi corrigido.
 - CRM: aprovar as regras de preço (Catálogo ▸ Calculadora) e confirmar condições (Configurações ▸ Propostas e agenda).
   Até lá, propostas vêm "Preço a definir" e o gestor põe o valor antes de aprovar.
 - CRM ▸ Configurações ▸ Propostas e agenda ▸ "WhatsApp que recebe os clientes pela proposta" = número da Cecília

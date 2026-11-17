@@ -416,5 +416,5 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
     252c80f: nova versão da proposta mantém o número, confere o status).
   - **Qualidade de referência** (config v13 exportada na hora, variante `gpt-6-luna:low`, commit 252c80f, 12 × 2):
     **4,76 · 20/24**, US$ 0,00057/resposta. Reprovadas: drinks soltos 2/2 (grava pacote no cadastro na personalizada),
-    erros e abreviações 1/2 (Reserve listado sem gin tônica), proposta recusada 1/2 ("link anterior deixa de valer").
+    erros e abreviações 1/2 (Reserve listado sem gin tônica), proposta recusada 1/2 ("link anterior deixa de valer": erro do JUIZ, é regra da empresa segundo o Renato; juiz corrigido; na prática 21/24).
     Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.
