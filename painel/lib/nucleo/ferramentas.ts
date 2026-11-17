@@ -146,7 +146,7 @@ export const DEFINICOES = [
     function: {
       name: "transferir_para_pessoa",
       description:
-        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada SÓ depois de oferecer outra data ou horário e o cliente dizer que não tem outra opção (motivo: 'Limite de capacidade em <data> às <hora>'); cliente pede outra condição de pagamento (outra entrada, parcelar, outro prazo: não negocie, diga que vai verificar com a equipe e ponha o pedido no motivo); cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta. NÃO use quando o cliente quer MUDAR a proposta (drinks, horas, convidados, vidraria): pergunte o que muda, grave, confirme e use preparar_proposta (se a proposta foi aprovada, enviada ou recusada, ela cria uma nova versão para a equipe aprovar). Só transfira mudança se a proposta ainda estiver aguardando aprovação (com a mudança no motivo) ou se já foi aceita.",
+        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada SÓ depois de oferecer outra data ou horário e o cliente dizer que não tem outra opção (motivo: 'Limite de capacidade em <data> às <hora>'); cliente pede outra condição de pagamento (outra entrada, parcelar, outro prazo: não negocie, diga que vai verificar com a equipe e ponha o pedido no motivo); cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta. NÃO use quando o cliente quer MUDAR a proposta (drinks, horas, convidados, vidraria): pergunte o que muda, grave, confirme e use preparar_proposta (se a proposta foi aprovada, enviada ou recusada, ela cria uma nova versão para a equipe aprovar). Só transfira MUDANÇA PEDIDA pelo cliente se a proposta ainda estiver aguardando aprovação (com a mudança no motivo) ou se já foi aceita. NUNCA transfira por PERGUNTA sobre a proposta (quanto tempo demora, quando chega o link, o que está incluído): responda você mesma (prazo: a regra das instruções).",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -415,7 +415,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
             preco = r.dados ?? preco;
           }
           ctx.estado.proposta = { id: null, numero: "(simulação)", status: "aguardando_aprovacao", simulada: true, total: preco.disponivel ? (preco.preco ?? null) : null, preco_pendente: !preco.disponivel };
-          return fim({ ok: true, numero: "(simulação)", status: "aguardando_aprovacao", preco_pendente: !preco.disponivel, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada." }, "simulada", { avancou: true });
+          return fim({ ok: true, numero: "(simulação)", status: "aguardando_aprovacao", preco_pendente: !preco.disponivel, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada. Se perguntarem quanto tempo demora, responda com a regra de prazo das instruções (não transfira)." }, "simulada", { avancou: true });
         }
         const id = await garantirNegocio(ctx);
         const criada = await ctx.crm.post<{ id: string; numero: string; total: number; preco_pendente: boolean }>(`/negocios/${id}/propostas`, {
@@ -428,7 +428,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         const sub = await ctx.crm.post<{ status: string }>(`/propostas/${criada.dados.id}/submeter`, { nota: args.recado_para_equipe });
         ctx.estado.proposta = { id: criada.dados.id, numero: criada.dados.numero, status: sub.dados?.status ?? "rascunho", simulada: false, total: criada.dados.total, preco_pendente: criada.dados.preco_pendente };
         return fim(
-          { ok: Boolean(sub.dados), numero: criada.dados.numero, status: ctx.estado.proposta.status, preco_pendente: criada.dados.preco_pendente, erro: sub.erro?.mensagem, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada." },
+          { ok: Boolean(sub.dados), numero: criada.dados.numero, status: ctx.estado.proposta.status, preco_pendente: criada.dados.preco_pendente, erro: sub.erro?.mensagem, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada. Se perguntarem quanto tempo demora, responda com a regra de prazo das instruções (não transfira)." },
           "gravacao",
           { avancou: true },
         );
@@ -437,6 +437,10 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       case "transferir_para_pessoa": {
         const motivo = String(args.motivo ?? "").trim() || "O agente pediu atendimento humano.";
         // Mudança na proposta: a Cecília resolve ou, pelo menos, entende a mudança antes de passar (regra por código)
+        // Pergunta de prazo ("demora quanto?", "quando chega?") se responde com a regra das instruções: nunca transfere
+        if (/\b(prazo|demora|quanto tempo|quando (chega|sai|recebo|vem|fica)|revis)/i.test(motivo) && !/\b(pagament|parcel|entrada|desconto|reclama|alter|mud|troc|drinks?|horas|convidados|vidraria|pessoa|humano|atendente|andr[eé])/i.test(motivo)) {
+          return fim({ erro: "Não transfira por pergunta de prazo. Responda você mesma com a regra de prazo das instruções (quando você manda o link por aqui) e siga a conversa." }, "nenhum");
+        }
         const prop = ctx.estado.proposta;
         const pagamento = /\b(pagament|parcel|entrada|prazo de pag|condi[cç])/i.test(motivo);
         if (prop && !pagamento && /\b(alter|mud|troc|ajust|refa[zç]|drinks?\b|vidraria|descart)/i.test(motivo)) {

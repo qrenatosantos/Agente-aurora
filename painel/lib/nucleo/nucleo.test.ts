@@ -425,6 +425,34 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.ok(!chamadasCrm.some((c) => c.caminho === "/negocios/n1/propostas"));
   });
 
+  test("pergunta de prazo logo depois da proposta (aguardando aprovação): NÃO transfere, responde o prazo", async () => {
+    // caso real (avaliação de 17/11): a IA quis transferir com este motivo; a pergunta é de prazo, não de mudança
+    const ev = { tipo: "15_anos", data: "2027-06-05", hora_inicio: "20:00", cidade: "Araxá", convidados: 120, pacote: "Reserve", duracao_horas: 5 };
+    const ia = iaFalsa([
+      ferramenta("transferir_para_pessoa", { motivo: "Cliente perguntou o prazo de revisão da proposta aguardando aprovação; informar que o link será enviado até o final do dia." }),
+      texto("A equipe está revisando e eu te mando o link por aqui até o final do dia 😊"),
+    ]);
+    const prop = { id: null, numero: "(simulação)", status: "aguardando_aprovacao", simulada: true, total: null, preco_pendente: true };
+    const r = await processarTurno(entrada(["E demora quanto tempo mais ou menos?"], { estado: estadoInicial({ evento: ev, contato: { nome: "Renata" }, proposta: prop }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    assert.match(JSON.stringify(r.rastro), /Não transfira por pergunta de prazo/);
+    assert.match(r.respostas.join(" "), /final do dia/);
+    // as instruções que a IA recebe deixam claro que pergunta sobre a proposta não é mudança
+    const op = ia.recebido[0] as { mensagens: { content: string }[] };
+    assert.match(op.mensagens[0].content, /PERGUNTAS sobre a proposta .* NÃO transfira/);
+  });
+
+  test("mudança pedida com proposta aguardando aprovação continua indo para a equipe (depois de perguntar)", async () => {
+    const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
+    const prop = { id: "pr9", numero: "P9", status: "aguardando_aprovacao", simulada: false, total: null, preco_pendente: true };
+    let ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer mudar para 4 horas de bar" }), texto("Quer 4 horas, certo?")]);
+    let r = await processarTurno(entrada(["Quero mudar para 4 horas"], { estado: estadoInicial({ evento: ev, proposta: prop }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer mudar para 4 horas de bar; revisar prazo" })]);
+    r = await processarTurno(entrada(["Isso, 4 horas"], { estado: r.estado, chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "humano");
+  });
+
   test("pedido de outra condição de pagamento: transfere na hora, mesmo com proposta enviada", async () => {
     const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
     const ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer mudar a entrada para 30% e parcelar o saldo" })]);
