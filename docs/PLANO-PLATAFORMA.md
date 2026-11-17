@@ -1,7 +1,7 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
 Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
-**Situação:** decisões tomadas (seção 10); faltam 2 confirmações curtas (seção 11). Nenhum código escrito ainda.
+**Situação:** decisões tomadas (seção 10); falta 1 confirmação (seção 11). Nenhum código escrito ainda.
 Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
 [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 
@@ -236,7 +236,7 @@ Como funciona, mês a mês:
 | 80% do limite | Aviso ao cliente (Portal; e-mail quando houver domínio) e a você: "está perto do limite". O Portal mostra o botão **"Autorizo o saldo extra"** (só o gestor do cliente), com o valor máximo do extra (0,3× o limite, a preço de custo) |
 | 90% e 95% | Lembrete, se ainda não autorizou |
 | 100%, **com** autorização | O agente continua; o excedente é contado e aparece no Portal e no Estúdio |
-| 100%, **sem** autorização | Conforme a confirmação E (seção 11) |
+| 100%, **sem** autorização | O agente pausa como no teto (mensagens vão para a equipe, com aviso ao contato); você e o cliente são avisados; se o cliente autorizar pelo Portal, o agente volta na hora |
 | 1,3× o limite | O agente pausa. As mensagens novas vão para a equipe do cliente com um aviso gentil ao contato (ninguém fica sem resposta). Só você libera, no Estúdio |
 | Virada do mês | Tudo zera; a autorização vale só para o mês em que foi dada |
 
@@ -340,10 +340,10 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 | 11 | No Portal, o cliente vê conversas, assume, devolve e vê resultados; **não edita** conhecimento nem a ficha |
 | 12 | Excedente só com **autorização do cliente** (pedida a partir de 80%), teto de **1,3× o limite**, pausa no teto |
 | 13 | Depois do WhatsApp, o próximo canal é o **chat do site** |
+| 14 | Sem autorização do extra, o agente pausa ao chegar a 100% (volta na hora se o cliente autorizar) |
 
 ## 11. Ainda falta confirmar (curto)
 
 | # | Pergunta | Minha recomendação |
 |---|---|---|
 | D | Enquanto a base é refeita (fases 1 a 3), a Cecília recebe **só correções**, sem novidades grandes? (Hoje outra sessão ainda está acrescentando novidades nela.) | Sim, a partir do início da Fase 1 |
-| E | O cliente **não autorizou** o extra e o gasto chegou a 100%. O que o agente faz? | Pausa como no teto: mensagens vão para a equipe do cliente, com aviso gentil ao contato; você e o cliente são avisados e o cliente ainda pode autorizar pelo Portal, o que religa o agente na hora |
