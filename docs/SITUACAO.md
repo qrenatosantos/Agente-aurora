@@ -1,14 +1,20 @@
-# Situação atual (leia primeiro) — atualizado em 17/11/2026
+# Situação atual (leia primeiro) — atualizado em 17/11/2026 (Fase 1 da plataforma)
 
 Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Detalhes: `PLANO-THINK.md` (decisões),
 `TESTES.md` (o que foi provado), `PEDIDOS-CRM.md` (CRM), `CLAUDE.md` (regras de trabalho).
 
 ## Próximo grande passo
 - Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md`. Duas faces: Estúdio (Renato) e Portal do cliente.
-  **Fase 0 feita no ramo `plataforma` (17/11)**: ambiente de testes, vigia (saúde a cada 5 min + cópia semanal no R2),
-  alertas por e-mail (Issues), fotografia da Cecília. Guia: `OPERACAO.md`. Em produção desde 17/11 16h37 (aprovado pelo Renato);
-  ramo principal do GitHub = `claude/serene-faraday-w06f6u`. Próximo: Fase 1, numa sessão nova, no ramo `plataforma`. **Decisão 16 (17/11): a plataforma não mexe na
-  Cecília nem traz os ajustes dela;** na plataforma ela é só demonstração (cópia de 17/11). Importação da versão final = etapa 9.4.
+  **Fase 0 feita (17/11)**: ambiente de testes, vigia, alertas por e-mail, fotografia da Cecília. Guia: `OPERACAO.md`.
+  **Fase 1 feita no ramo `plataforma` / ambiente de testes (17/11)**: multi-cliente (migração 0005: tabelas `clientes`
+  e `membros`, `cliente_id` em tudo, `agente_config` → `agentes`, `config_versoes` → `agente_versoes`), dono da
+  plataforma (Renato), Estúdio ▸ **Clientes** (criar, plano, limite, pausar, encerrar) e troca de cliente no topo,
+  marca por cliente, motor descobre o cliente pelo número do WhatsApp (Aurora mantém as conversas `wa-<tel>`), avisos do
+  CRM por cliente, saúde por cliente, **duas etapas** (Google Authenticator) obrigatórias para o dono. Testes em
+  `TESTES.md`; operação em `OPERACAO.md` seção 5. Falta do Renato: ligar as duas etapas no painel de testes e conferir.
+  Próximo: **Fase 2** (ficha do agente e modelos), numa sessão nova, no ramo `plataforma`.
+  **Decisão 16 (17/11): a plataforma não mexe na Cecília nem traz os ajustes dela;** na plataforma ela é só
+  demonstração (cópia de 17/11). Importação da versão final = etapa 9.4. Produção continua SEM a Fase 1.
   Base: `AVALIACAO-PLATAFORMA.md`. Guia de sessões: `COMO-USAR-O-CLAUDE.md`.
 
 ## No ar (conta Cloudflare do Renato, plano Workers Paid)
