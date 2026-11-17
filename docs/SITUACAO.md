@@ -4,7 +4,11 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 `TESTES.md` (o que foi provado), `PEDIDOS-CRM.md` (CRM), `CLAUDE.md` (regras de trabalho).
 
 ## Próximo grande passo
-- Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md` (plano fechado em 17/11; próximo passo: Fase 0, num ramo separado `plataforma`). Duas faces: Estúdio (Renato) e Portal do cliente.
+- Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md`. Duas faces: Estúdio (Renato) e Portal do cliente.
+  **Fase 0 feita no ramo `plataforma` (17/11)**: ambiente de testes, vigia (saúde a cada 5 min + cópia semanal no R2),
+  alertas por e-mail (Issues), fotografia da Cecília. Guia: `OPERACAO.md`. **Falta:** levar a Fase 0 à produção (o
+  motor ganha a ligação "Saude" e o aviso de falha da IA; sobe o `aurora-vigia`) com a aprovação do Renato, e trocar o
+  ramo principal do GitHub. Próximo: Fase 1, numa sessão nova, no ramo `plataforma` (trazer antes os ajustes da Cecília).
   Base: `AVALIACAO-PLATAFORMA.md`. Guia de sessões: `COMO-USAR-O-CLAUDE.md`.
 
 ## No ar (conta Cloudflare do Renato, plano Workers Paid)
@@ -12,7 +16,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Motor (Cecília): https://aurora-motor.q-renatosantos.workers.dev — webhook do WhatsApp `/whatsapp/webhook`,
   avisos do CRM `/crm/avisos`, rotas internas `/interno/*` (SEGREDO_INTERNO).
 - Banco D1 `aurora-agente` (região ENAM). Migrações 0001–0004.
-- Publicação: GitHub Actions (`.github/workflows/publicar.yml`) a cada push no ramo `claude/serene-faraday-w06f6u`.
+- Publicação: GitHub Actions (`.github/workflows/publicar.yml`): ramo `claude/serene-faraday-w06f6u` → produção;
+  ramo `plataforma` → ambiente de testes (`aurora-*-teste`, banco `aurora-agente-teste`). Só `docs/` não publica.
   Segredo no GitHub: CLOUDFLARE_API_TOKEN. Segredos dos Workers: CHAVE_MESTRA (painel e motor), SEGREDO_INTERNO.
 - CRM publicado (projeto `qrenatosantos/Aurora`, Supabase + Cloudflare), integrado: chave do agente, segredo dos avisos.
 - WhatsApp: número de TESTE da Meta (+1 555 142-3124); só entrega para destinatários cadastrados (Renato, André…).
@@ -48,6 +53,9 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
+- **Cecília (achado da fotografia de 17/11, config v13):** perguntou "demora quanto?" logo depois da proposta preparada →
+  ela **transferiu** em vez de dizer "até o final do dia" (2/2 na avaliação de qualidade; nota caiu de 4,58 para 4,18).
+  Conferir no chat da Cecília (`avaliacao/RESULTADO-QUALIDADE.md`, cenário "prazo").
 - CRM: aprovar as regras de preço (Catálogo ▸ Calculadora) e confirmar condições (Configurações ▸ Propostas e agenda).
   Até lá, propostas vêm "Preço a definir" e o gestor põe o valor antes de aprovar.
 - CRM ▸ Configurações ▸ Propostas e agenda ▸ "WhatsApp que recebe os clientes pela proposta" = número da Cecília

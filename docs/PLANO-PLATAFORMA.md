@@ -1,7 +1,7 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
 Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
-**Situação:** plano fechado (decisões na seção 10). Nenhum código escrito ainda. Próximo passo: Fase 0.
+**Situação:** Fase 0 feita em 17/11/2026 no ramo `plataforma` (ver `OPERACAO.md`); falta levá-la à produção com a aprovação do Renato. Próximo passo: Fase 1.
 Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
 [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 

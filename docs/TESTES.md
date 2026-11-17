@@ -391,3 +391,21 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
 - AI SDK com Responses + ferramentas em 2 turnos (Node, via repassar-openai): OK. Bateria no motor local não roda
   nesta nuvem (workerd não resolve DNS externo: "failed to lookup address"); conferir no Simulador/WhatsApp.
 - Testes: núcleo 45/45, motor 12/12, banco 38/38; tsc, lint, build OK; motor 1,34 MB.
+
+## 17/11/2026 — Fase 0 da plataforma (ramo `plataforma`)
+- Testes: banco 39/39, núcleo 46/46, motor 14/14 (2 novos: saúde), vigia 6/6 (novos: cópia e regra de alerta);
+  tsc (painel, motor, vigia) e lint ok.
+- **Ambiente de testes:** envio ao ramo `plataforma` publicou `aurora-motor-teste`, `aurora-agente-painel-teste` e
+  `aurora-vigia-teste` (GitHub, execução 52, verde); a produção ficou intocada (último envio dela: 14h17/14h21, do outro chat).
+- **Restauração:** export da produção → cópia no formato do vigia → restaurada no banco de testes → **123/123 linhas
+  iguais**. Depois, cópia feita pelo vigia no R2 (`aurora-copias/aurora-agente-teste/2026-11-17.sql`, 164 KB) → baixada
+  → restaurada → 115/115 iguais (sem segredos e sessões, apagados de propósito no teste).
+- **Saúde (vigia de testes):** painel, motor e banco ok; OpenAI/WhatsApp/CRM "não cadastrados" (não exigidos no teste).
+  Rotas manuais sem o segredo: 401.
+- **Alerta:** regra de e-mail criada (Issues); erro provocado em `aurora-vigia-teste/provocar-erro` às 15h42 UTC.
+  Falta o Renato confirmar se o e-mail chegou.
+- **Fotografia da Cecília** (config no ar v13, `gpt-6-luna:low`, CRM publicado em simulação):
+  - Bateria (`avaliar.ts`, 22 × 2): **42/44**. As 2 falhas são "data bloqueada 12/06/2027": o CRM publicado não tem a data
+    bloqueada e a regra mudou em 17/11 (sem vaga agora oferece outra data antes de transferir). US$ 0,00036/resposta.
+  - Qualidade (`qualidade.ts`, 12 × 2): **4,18 · 11/24** (v12 tinha 4,58 · 19/24). Pior cenário: "quanto tempo demora a
+    proposta" → transfere em vez de responder (2/2). Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.
