@@ -174,7 +174,12 @@ const CENARIOS: Cenario[] = [
     conferir: (c) => [
       transferiu(c) && "passou para a equipe",
       !c.estado.proposta || c.estado.proposta.numero === "PROP-2026-0099" ? "não montou a nova proposta" : null,
-      propostaArgs(c).length && !propostaArgs(c).some((a) => /aperol/i.test(a) && !/gin/i.test(a)) && "nova proposta sem a troca pedida",
+      c.ferramentas.some((f) => f.nome === "preparar_proposta") &&
+        !c.ferramentas.some((f) => {
+          const d = ((f.args as { drinks?: string[] })?.drinks ?? []).join(",");
+          return f.nome === "preparar_proposta" && /aperol/i.test(d) && !/gin/i.test(d);
+        }) &&
+        "nova proposta sem a troca pedida",
     ],
   },
   {
@@ -214,6 +219,39 @@ const variante = (s: string): Variante => {
 };
 
 const chave = process.env.OPENAI_CHAVE ?? "sk-sem-chave";
+
+/**
+ * O CRM limita a chave a 120 chamadas por minuto. No teste há muitas conversas ao mesmo tempo, então:
+ * o catálogo (igual em toda resposta) fica guardado, as chamadas ao CRM saem no máximo a ~90 por minuto,
+ * e um 429 do CRM espera e tenta de novo. (No uso real o volume é muito menor.)
+ */
+const fetchOriginal = globalThis.fetch;
+const cacheCrm = new Map<string, string>();
+let proximaCrm = 0;
+globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+  const u = String(url instanceof Request ? url.url : url);
+  if (!process.env.CRM_URL || !u.startsWith(process.env.CRM_URL)) return fetchOriginal(url, init);
+  const metodo = init?.method ?? "GET";
+  const guardavel = metodo === "GET" && /\/catalogo\//.test(u);
+  if (guardavel && cacheCrm.has(u)) return new Response(cacheCrm.get(u), { status: 200, headers: { "Content-Type": "application/json" } });
+  for (let i = 0; ; i++) {
+    const agora = Date.now();
+    const vez = Math.max(agora, proximaCrm);
+    proximaCrm = vez + 670;
+    if (vez > agora) await new Promise((r) => setTimeout(r, vez - agora));
+    const r = await fetchOriginal(url, init);
+    if (r.status === 429 && i < 6) {
+      await new Promise((ok) => setTimeout(ok, 5000 * (i + 1)));
+      continue;
+    }
+    if (guardavel && r.ok) {
+      const t = await r.text();
+      cacheCrm.set(u, t);
+      return new Response(t, { status: r.status, headers: r.headers });
+    }
+    return r;
+  }
+}) as typeof fetch;
 
 /** Limite de uso da OpenAI (429) ou falha passageira: espera e tenta de novo (até 5 vezes). */
 const chamarComCalma: typeof chamarModelo = async (o) => {
