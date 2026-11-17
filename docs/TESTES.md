@@ -375,3 +375,10 @@ Relatório completo: `avaliacao/RESULTADO-QUALIDADE.md`.
 
 Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da Luna atual. Ponto fraco de todos:
 "não sabe qual pacote" (recomendação). A rodada com as instruções v12 não rodou: créditos da OpenAI acabaram.
+
+## 17/11/2026 — Agenda com horário, 6 h padrão, pagamento e nova versão
+- `npm run test:nucleo` 45/45 (novos: agenda lotada/bloqueada/parcial; sem vaga não transfere na hora; proposta não
+  sai sem vaga; nova versão no modo real com drinks e sem_vidraria; outra condição de pagamento transfere).
+- Conversa de verdade (gpt-6-luna, simulação contra o CRM no ar, instruções v12), datas de teste do CRM:
+  28/11 20h lotada → oferece outra data → cliente insiste → transfere "Limite de capacidade"; 05/12 20h parcial → segue;
+  12/12 bloqueada → oferece outra → 19/12 21h livre → segue; 19/12 sem horário → pergunta o horário → 19h cheio → 21h segue.

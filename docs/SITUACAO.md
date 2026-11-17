@@ -1,4 +1,4 @@
-# Situação atual (leia primeiro) — atualizado em 16/11/2026
+# Situação atual (leia primeiro) — atualizado em 17/11/2026
 
 Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Detalhes: `PLANO-THINK.md` (decisões),
 `TESTES.md` (o que foi provado), `PEDIDOS-CRM.md` (CRM), `CLAUDE.md` (regras de trabalho).
@@ -22,7 +22,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Nome Cecília, "agente de atendimento da Aurora Bartenders"; NÃO oferece falar com pessoa (só se o cliente pedir);
   se perguntarem "é robô?", diz com sinceridade que é assistente virtual (decisão discutida com o Renato).
 - Mensagens em balões (um por parágrafo); pacotes um por mensagem com emoji; emojis equilibrados no resto.
-- Proposta só com: nome do cliente, tipo, data/mês, cidade, convidados, HORAS DE BAR e pacote (trava no código).
+- Proposta só com: nome do cliente, tipo, data/mês, cidade, convidados e pacote/drinks (trava no código). Não pergunta
+  as horas: 6 h é o padrão do CRM (só muda se o cliente pedir ou para baratear).
 - Preço menor: oferece diminuir horas ou copos descartáveis; só transfere se recusar e insistir.
 - Pedido do site: acha pelo "Ref. XXXX" (código do pedido no CRM) e continua de onde o site parou.
 - Proposta aprovada no CRM ("Só aprovar" ou "Aprovar e enviar") → Cecília manda o link, mesmo com a conversa em
@@ -33,9 +34,14 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Drinks soltos em vez de pacote: explica o pacote que cobre e oferece proposta personalizada (só os drinks
   escolhidos); nunca escolhe pelo cliente; confirma o resumo antes de preparar a proposta.
 - Equipe devolve a conversa ("Passar para o agente") → a Cecília responde as mensagens que ficaram sem resposta
-  (dentro das 24 h). Mudança na proposta: recusada = monta outra; enviada = pergunta o que muda antes de passar
-  (trava no código). Pedido C5 ao CRM: rota para o agente refazer proposta enviada.
+  (dentro das 24 h). Mudança em proposta aprovada, enviada ou recusada: a Cecília cria a nova versão
+  (`/propostas/:id/nova-versao`, volta para o André aprovar); aguardando aprovação = pergunta e passa; aceita = passa.
 - Pergunta sobre prazo da proposta: "até o final do dia"; depois das 19h, "até amanhã às 14h"; nunca transfere por isso (config v11).
+- Agenda (17/11): consulta com data + horário (o CRM soma a folga da equipe). Sem horário e dia cheio = pergunta o
+  horário. Sem vaga = não oferece, pergunta outra data/horário e consulta de novo; só transfere se o cliente não tiver
+  outra opção (motivo "Limite de capacidade em <data> às <hora>"). Proposta não sai para data sem vaga (trava).
+- Outra condição de pagamento (entrada, parcelar, prazo): não negocia, transfere com o pedido.
+- Instruções v12 (`clientes/aurora/instrucoes-v12.md` + `exemplos-v12.json`): PRONTAS, falta pôr no ar (painel ou D1).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
