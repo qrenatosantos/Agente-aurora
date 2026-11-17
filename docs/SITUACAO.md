@@ -48,6 +48,9 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Fase 3 restante: aviso ao André no WhatsApp (proposta para aprovar; transferência), caixa de entrada no painel,
   André assumindo pela conversa (coexistência). CRM "Leads novos do site vão para" = Agente quando o número for definitivo.
 - Fase 4: modelos da Meta (mensagens fora das 24 h), LGPD (apagar dados ao receber contato.dados_apagados), custos.
+- Teste de agenda com conflito (pedido do Renato, 17/11): no CRM, bloquear/lotar uma data e conversar no Simulador
+  pedindo essa data. Esperado: Cecília avisa e passa para a equipe. Já testado na cópia local (TESTES.md, fase 2);
+  falta no CRM de verdade. Leitura da agenda no ar confirmada em 17/11 (`/agenda/disponibilidade` responde).
 - Política de privacidade (S1) publicada antes de clientes reais.
 
 ## Testes locais nesta nuvem
