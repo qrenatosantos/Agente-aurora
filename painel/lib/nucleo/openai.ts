@@ -21,15 +21,15 @@ export type RespostaIA = {
 
 /**
  * Preços em US$ por 1 milhão de tokens (entrada, entrada em cache, saída).
- * Fontes: developers.openai.com/api/docs/pricing (11/2026) e páginas de cada modelo.
+ * Fontes: developers.openai.com/api/docs/pricing e help.openai.com/en/articles/20001415 (11/2026).
  * Sem preço de cache publicado → conta como entrada normal (estimativa para mais).
  */
 export const PRECOS: Record<string, { entrada: number; cache: number; saida: number }> = {
   "gpt-4o-mini": { entrada: 0.15, cache: 0.075, saida: 0.6 },
-  "gpt-6-luna": { entrada: 0.1, cache: 0.1, saida: 0.5 },
+  "gpt-6-luna": { entrada: 0.1, cache: 0.01, saida: 0.5 },
   "gpt-5.4-nano": { entrada: 0.2, cache: 0.02, saida: 1.25 },
   "gpt-6.1-terra": { entrada: 1, cache: 0.05, saida: 5 },
-  "gpt-6.1-sol": { entrada: 2, cache: 2, saida: 10 },
+  "gpt-6.1-sol": { entrada: 2, cache: 0.1, saida: 10 },
 };
 
 export function custoUsd(modelo: string, u: { entrada: number; cache: number; saida: number }): number | null {
