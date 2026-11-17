@@ -32,14 +32,15 @@ Criado em 17/11/2026. Vale para a Cecília (produção) e para o ambiente de tes
 
 | O quê | Como |
 |---|---|
-| Regra de aviso na Cloudflare | Notificações ▸ "Agente: erro nos programas (Issues)" (tipo `workers_observability_real_time_issue`), e-mail do Renato. Criada pela API em 17/11 (id 609c978e…) |
-| Fonte dos avisos | "Issues" ligado em todos os programas (`observability.issues.enabled`). Erro não tratado, resposta 5xx ou `console.error` vira um Issue |
+| **E-mail** | Regra de aviso "Agente: erro nos programas (Issues)" (Notificações, id 609c978e…), e-mail do Renato, ligada a duas **automações dos Issues** (criadas pela API em 17/11): "erro novo" (1ª ocorrência) e "erro voltou depois de 1 h". Valem para todos os programas da conta |
+| Issues | Ligado nos programas (`observability.issues.enabled`): erro não tratado, resposta 5xx ou `console.error` vira um Issue (Workers ▸ programa ▸ Issues). Sem automação, Issue **não** manda e-mail |
 | Falha da IA numa conversa real | O núcleo já manda a mensagem de erro e passa para a equipe. O motor agora também registra `console.error("[falha da IA] …")`, e isso vira Issue e e-mail |
 | Teste de saúde | O **vigia** (`vigia/`), a cada 5 min: painel e motor no ar (endereço público) e, pela ligação interna `Saude` do motor (`motor/src/saude.ts`): banco, OpenAI (lista modelos, sem custo), WhatsApp (lê o número na Meta; pega token vencido) e CRM (busca que não acha nada). Problema = `console.error("[alerta] …")` → e-mail |
 
 - No teste, o vigia só exige o banco (`EXIGIR=banco`). O que não está configurado lá não gera alerta.
-- O mesmo erro repetido fica num Issue só. Depois de consertar, marque o Issue como **Resolvido** no painel da Cloudflare
-  (Workers ▸ programa ▸ Issues); se voltar, chega e-mail de novo.
+- O mesmo erro repetido fica num Issue só (um e-mail). Se ele some por 1 h e volta, chega outro e-mail. Depois de
+  consertar, marque o Issue como **Resolvido** (Workers ▸ programa ▸ Issues); se voltar, chega e-mail de novo.
+- Teste feito em 17/11: erro provocado no vigia de produção às 16h47 UTC → e-mail enviado 20 s depois (histórico de Notificações).
 - **Provocar um alerta de propósito** (para conferir o e-mail):
   `curl -X POST -H "Authorization: Bearer <VIGIA_SEGREDO>" https://aurora-vigia.q-renatosantos.workers.dev/provocar-erro`.
   O VIGIA_SEGREDO só existe na Cloudflare; para trocar: `cd vigia && npx wrangler secret put VIGIA_SEGREDO [--env teste]`.

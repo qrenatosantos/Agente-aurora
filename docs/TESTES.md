@@ -402,8 +402,10 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
   → restaurada → 115/115 iguais (sem segredos e sessões, apagados de propósito no teste).
 - **Saúde (vigia de testes):** painel, motor e banco ok; OpenAI/WhatsApp/CRM "não cadastrados" (não exigidos no teste).
   Rotas manuais sem o segredo: 401.
-- **Alerta:** regra de e-mail criada (Issues); erro provocado em `aurora-vigia-teste/provocar-erro` às 15h42 UTC.
-  Falta o Renato confirmar se o e-mail chegou.
+- **Alerta:** a regra de e-mail sozinha não disparou (Issues precisa de automação). Criadas as automações "erro novo" e
+  "erro voltou depois de 1 h" → erro provocado no `aurora-vigia` às 16h47 UTC → e-mail enviado às 16h47:27 (histórico).
+- **Produção (com aprovação do Renato):** execução 54 verde; vigia de produção: painel, motor, banco, OpenAI, WhatsApp e
+  CRM ok; 1ª cópia do banco real no R2 (`aurora-agente/2026-11-17.sql`, 169 KB).
 - **Fotografia da Cecília** (config no ar v13, `gpt-6-luna:low`, CRM publicado em simulação):
   - Bateria (`avaliar.ts`, 22 × 2): **42/44**. As 2 falhas são "data bloqueada 12/06/2027": o CRM publicado não tem a data
     bloqueada e a regra mudou em 17/11 (sem vaga agora oferece outra data antes de transferir). US$ 0,00036/resposta.

@@ -6,9 +6,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 ## Próximo grande passo
 - Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md`. Duas faces: Estúdio (Renato) e Portal do cliente.
   **Fase 0 feita no ramo `plataforma` (17/11)**: ambiente de testes, vigia (saúde a cada 5 min + cópia semanal no R2),
-  alertas por e-mail (Issues), fotografia da Cecília. Guia: `OPERACAO.md`. **Falta:** levar a Fase 0 à produção (o
-  motor ganha a ligação "Saude" e o aviso de falha da IA; sobe o `aurora-vigia`) com a aprovação do Renato, e trocar o
-  ramo principal do GitHub. Próximo: Fase 1, numa sessão nova, no ramo `plataforma` (trazer antes os ajustes da Cecília).
+  alertas por e-mail (Issues), fotografia da Cecília. Guia: `OPERACAO.md`. Em produção desde 17/11 16h37 (aprovado pelo Renato);
+  ramo principal do GitHub = `claude/serene-faraday-w06f6u`. Próximo: Fase 1, numa sessão nova, no ramo `plataforma` (trazer antes os ajustes da Cecília).
   Base: `AVALIACAO-PLATAFORMA.md`. Guia de sessões: `COMO-USAR-O-CLAUDE.md`.
 
 ## No ar (conta Cloudflare do Renato, plano Workers Paid)
