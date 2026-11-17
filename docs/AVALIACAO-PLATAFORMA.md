@@ -131,13 +131,32 @@ WhatsApp oficial da Meta
 - **API do painel para mim:** criar cliente, preencher a ficha, subir conhecimento, rodar a bateria. Assim eu
   opero por dentro, sem mexer em código, e você só confere nas telas.
 
+## 6.1 Multicanal (requisito do Renato)
+
+O mesmo agente atende em **vários canais**: WhatsApp, Instagram Direct, Messenger do Facebook, chat no site e,
+depois, outros (Telegram, e-mail). Como fazer sem virar bagunça:
+
+- **Um cérebro, várias portas.** O núcleo do agente (ficha, travas, ferramentas, memória) **não sabe** de qual
+  canal veio a mensagem. Cada canal é um **adaptador**: recebe a mensagem, entrega ao núcleo e devolve a resposta
+  no formato do canal (balões, botões, áudio, limites de tamanho).
+- **Um cliente final = uma pessoa só.** Se a mesma pessoa falar no Instagram e depois no WhatsApp, o ideal é ligar
+  as duas conversas ao mesmo contato no CRM (pelo telefone ou e-mail, quando ela informar).
+- **Regras de cada canal no adaptador, não no prompt.** Exemplos: a janela de 24 h e os modelos aprovados da Meta
+  (WhatsApp, Instagram, Messenger), o tamanho máximo da mensagem e se aceita áudio. Na ficha só entra o
+  **estilo** por canal (por exemplo, "no site, respostas um pouco mais longas").
+- **Ordem sugerida:** WhatsApp (já existe) → Instagram e Messenger (são da Meta, mesma conta e lógica parecida) →
+  chat do site → os demais.
+- **Na bateria de testes:** as situações valem para todos os canais, mais algumas próprias de cada canal.
+- **Nova skill:** `conectar-canal`, um passo a passo por canal, que só termina quando recebe e responde uma
+  mensagem de teste. Ela substitui a `conectar-whatsapp`.
+
 ## 7. Skills (as receitas) e a ordem de construção
 
 | # | Skill | Faz | Só termina quando |
 |---|---|---|---|
 | 1 | `novo-cliente` | Entrevista você sobre o cliente e gera a ficha | a ficha passa na validação |
 | 2 | `montar-conhecimento` | Organiza o material do cliente (PDF, site, perguntas) na base | cada item tem título e fonte |
-| 3 | `conectar-whatsapp` | Passo a passo na Meta: número, token permanente, webhook | mandou e recebeu uma mensagem de teste |
+| 3 | `conectar-canal` | WhatsApp, Instagram, Messenger, chat do site...: credenciais e webhook | recebeu e respondeu uma mensagem de teste naquele canal |
 | 4 | `conectar-agenda` | Liga o Google Agenda do cliente | leu os horários livres e marcou e apagou um evento de teste |
 | 5 | `conectar-sistema` | Liga o CRM ou o sistema do cliente pela API | leu um dado de teste |
 | 6 | `testar-agente` | Roda a bateria (base + casos do cliente) | passou em 100% das travas |
