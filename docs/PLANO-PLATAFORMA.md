@@ -1,29 +1,45 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
-Escrito em 17/11/2026. **Ainda não aprovado**: falta o Renato responder as decisões da seção 9.
-Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção decidida), [`SITUACAO.md`](SITUACAO.md) (o que está
-no ar), [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
+Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
+**Situação:** decisões principais tomadas; faltam 4 confirmações curtas (seção 11). Nenhum código escrito ainda.
+Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
+[`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 
 ---
 
 ## 1. Em uma página
 
-**Objetivo:** a Cecília vira o primeiro agente de uma **plataforma** onde o Renato cria, testa e põe no ar agentes
-para qualquer cliente, pelo painel, sem mexer em código, com uma receita (skill) para cada etapa e um manual.
+São **duas faces do mesmo sistema**:
 
-**Como chegar lá sem derrubar a Cecília:** em 8 fases pequenas. Cada etapa termina com testes passando e a
-**bateria da Aurora (45/45)** passando de novo. A Aurora é o "cliente de prova": se ela piorar, a etapa não está pronta.
-
-| Fase | O que entrega | Para o Renato, na prática |
+| | **Estúdio** (só o Renato) | **Portal do cliente** (entregue a cada cliente) |
 |---|---|---|
-| 0 | Ambiente de testes separado e a "fotografia" da Cecília de hoje | Mudanças são testadas longe da Cecília real |
-| 1 | Banco e painel **multi-cliente** | Aparece a tela "Clientes"; a Aurora vira o cliente nº 1 |
-| 2 | **Ficha do agente** em camadas e conhecimento como consulta | A tela "Agente" vira um formulário em abas, sem textão |
-| 3 | **Peças de integração** (CRM da Aurora, CRM básico, Google Agenda) | Liga e desliga integrações por cliente |
-| 4 | **Canais** (WhatsApp, Messenger, Instagram, chat do site) e caixa de entrada | Conecta canais por cliente; vê todas as conversas num lugar |
-| 5 | **Bateria de testes por cliente** e "publicar" | Botão "Testar" e "Publicar"; nada vai ao ar sem passar |
-| 6 | **API da plataforma + 8 skills** | O Claude implanta um cliente por você, conferindo cada passo |
-| 7 | **Manual** e ensaio com um cliente fictício, depois o 1º cliente real | Você implanta um cliente seguindo o manual |
+| Para quê | O "meu GPT Maker": criar, configurar, testar, publicar e manter os agentes de todos os clientes, e acompanhar os clientes (contrato, plano, gasto) | O cliente acompanha o agente dele: conversas, assumir a conversa, resultados, equipe e horários |
+| Quem entra | Renato (com confirmação em duas etapas no login) | Equipe do cliente (gestor e atendentes) |
+| Pode mexer em | Tudo: ficha do agente, conhecimento, canais, integrações, testes, limites | **Só** equipe (quem recebe os contatos e a distribuição entre eles) e horários de atendimento. Ver conversas, assumir e devolver, ver resultados |
+| CRM | O "CRM" do Renato: os clientes dele | **Cliente sem CRM:** portal com um CRM simples (contatos e funil) + aba do agente. **Cliente com CRM:** o agente grava no CRM dele, e o portal mostra só o agente (conversas, resultados, equipe, horários) |
+
+**Por que no mesmo projeto, e não num projeto separado:** o Estúdio e o Portal usam o **mesmo agente, o mesmo banco e as
+mesmas conversas**. Separar em dois projetos duplicaria o agente e, cedo ou tarde, um ficaria diferente do outro (é aí
+que as coisas quebram). O que fica separado é o **endereço e o programa publicado**: o Portal é publicado como um
+programa à parte, que **não tem** as telas do Estúdio (não estão escondidas: não existem nele). Cada fase será feita
+numa **sessão (chat) nova**, como explica a seção 9.
+
+**Como chegar lá sem derrubar a Cecília:** em fases pequenas, num **ambiente de testes separado**. Cada etapa termina com
+os testes passando e a **bateria da Aurora (45/45)** passando de novo. A Cecília é o cliente nº 1 e a prova de que nada
+piorou. Ela só recebe a mudança quando o Renato aprova.
+
+| Fase | O que entrega |
+|---|---|
+| 0 | Ambiente de testes, alertas de erro, cópias de segurança e a "fotografia" da Cecília de hoje |
+| 1 | Base **multi-cliente** e a tela de clientes do Estúdio (a Aurora vira o cliente nº 1) |
+| 2 | **Ficha do agente** em camadas, **modelos de agente** prontos e conhecimento como consulta |
+| 3 | **Peças de integração** (CRM da Aurora, CRM simples, Google Agenda) |
+| 4 | **Canais** (WhatsApp, chat do site, Messenger, Instagram) |
+| 5 | **Testes por cliente** e "publicar só se passar" |
+| 6 | **Consumo e cobrança**: limite por cliente, avisos e excedente a preço de custo |
+| 7 | **Portal do cliente**: conversas, assumir, resultados, equipe, distribuição e horários |
+| 8 | **API do Estúdio + 8 skills** |
+| 9 | **Manual** e ensaio com um cliente fictício |
 
 ---
 
@@ -31,52 +47,63 @@ para qualquer cliente, pelo painel, sem mexer em código, com uma receita (skill
 
 | Peça | Onde | Situação |
 |---|---|---|
-| Painel (Next.js 16 no Cloudflare) | `painel/` | Login, equipe, Agente, Conhecimento, Transferência, Integrações, Registro e versões, Simulador, botão de emergência. **Só um cliente** (tabelas com "linha única") |
-| Motor (Worker + Durable Objects + Think) | `motor/` | WhatsApp oficial da Meta, avisos do CRM, lembretes da proposta. **Só um cliente** (lê "a" configuração) |
-| Núcleo do agente | `painel/lib/nucleo/` | Regras antes e depois da IA por código; ferramentas e prompt **misturam o genérico com o específico da Aurora** (pacotes, drinks, "festa", horas de bar) |
+| Painel (Next.js 16 no Cloudflare) | `painel/` | Login, equipe, Agente, Conhecimento, Transferência, Integrações, Registro e versões, Simulador, botão de emergência. **Só um cliente** |
+| Motor (Worker + Durable Objects + Think) | `motor/` | WhatsApp oficial da Meta, avisos do CRM, lembretes. **Só um cliente** |
+| Núcleo do agente | `painel/lib/nucleo/` | Travas antes e depois da IA por código; ferramentas e prompt **misturam o genérico com o específico da Aurora** (pacotes, drinks, "festa", horas de bar) |
 | Banco D1 | `painel/banco/migracoes/` 0001–0004 | Configuração, segredos cifrados, conhecimento, uso da IA, avisos |
-| Testes | `banco.test.ts`, `nucleo.test.ts`, testes do motor, `avaliacao/avaliar.ts` (15 situações × 3) e `avaliacao/qualidade.ts` | Bateria e qualidade **só da Aurora** |
-| Publicação | `.github/workflows/publicar.yml` | Cada push no ramo `claude/serene-faraday-w06f6u` testa e **publica direto na Cecília real** |
+| Testes | `banco.test.ts`, `nucleo.test.ts`, testes do motor, `avaliacao/avaliar.ts` (15 × 3), `avaliacao/qualidade.ts` | Só da Aurora |
+| Publicação | `.github/workflows/publicar.yml` | Cada envio ao ramo `claude/serene-faraday-w06f6u` testa e **publica direto na Cecília real** |
 
-**O que muda de fundo:** (1) tudo ganha um "dono" (o cliente); (2) o que é da Aurora sai do núcleo e vai para a
-ficha dela e para a peça "CRM da Aurora"; (3) o canal deixa de ser só WhatsApp.
+**O que muda de fundo:** (1) tudo ganha um dono (o cliente); (2) o que é da Aurora sai do núcleo e vai para a ficha
+dela e para a peça "CRM da Aurora"; (3) o canal deixa de ser só WhatsApp; (4) o painel vira duas faces (Estúdio e Portal).
 
 ---
 
 ## 3. Como vai ficar (o desenho)
 
 ```
- Canais (adaptadores)                 Motor (um só, para todos os clientes)              Peças de integração
- ────────────────────                 ─────────────────────────────────────              ───────────────────
- WhatsApp ─┐                          descobre o CLIENTE e o AGENTE pelo número/página    CRM da Aurora
- Messenger ┼─► Entrada (confere ──►   Conversa (1 Durable Object por conversa)     ◄──►  CRM básico da plataforma
- Instagram ┤   assinatura, ignora       1. travas ANTES da IA (código)                     Google Agenda
- Site ─────┘   repetida, agrupa)        2. IA + ferramentas das peças ligadas              (futuras: RD, Kommo, Pipedrive…)
-                                        3. travas DEPOIS da IA (código)
-                                        4. Saída no formato do canal (balões, limites, janela de 24 h)
+ Canais                     Motor (um só, para todos os clientes)                    Peças de integração
+ ──────                     ─────────────────────────────────────                    ───────────────────
+ WhatsApp ─┐                descobre o CLIENTE pelo número / página / site            CRM da Aurora
+ Site ─────┼─► Entrada ──►  Conversa (1 por pessoa, em fila: uma resposta por vez) ◄─► CRM simples do Portal
+ Messenger ┤   (confere      1. travas ANTES da IA (código)                            Google Agenda
+ Instagram ┘   assinatura,   2. IA + ferramentas das peças ligadas                     (futuras: RD, Kommo,
+               repetidas,    3. travas DEPOIS da IA (código)                            Pipedrive, HubSpot…)
+               agrupa)       4. distribui para a equipe quando passa para pessoa
+                             5. sai no formato do canal
 
- Painel (um só): Clientes ▸ [cliente] ▸ Agente (ficha) · Conhecimento · Canais · Integrações · Testes · Conversas · Registro
- API da plataforma (para o Claude): as mesmas operações do painel, com chave própria — as skills usam esta API
- Banco D1 (um só): tudo com "cliente_id"; segredos cifrados por cliente
+ Estúdio (Renato)   ── mesmo banco ──   Portal do cliente (cada cliente, só o que é dele)
+ API do Estúdio (para o Claude) ── as skills usam esta API
+ Banco D1 (um só): tudo com "cliente"; chaves cifradas por cliente
 ```
 
 ### As camadas do agente e onde cada uma mora
 
 | Camada | Onde mora | Quem edita |
 |---|---|---|
-| 1. Travas | Código, numa lista fixa; cada uma **liga/desliga** por agente | Ninguém edita o texto; o Renato liga/desliga |
-| 2. Identidade e objetivo | Ficha ▸ abas "Identidade" e "Objetivo" → topo do prompt | Renato (painel ou skill) |
-| 3. Regras de atendimento | Ficha ▸ "Regras" (lista numerada curta) e "Objeções" | Renato; o gestor do cliente, se você permitir |
-| 4. Conhecimento | Base de conhecimento do cliente; o agente **consulta por ferramenta**; só itens marcados "essencial" vão sempre no prompt | Renato e o gestor do cliente |
-| 5. Dados vivos | Sistema do cliente, lido a cada mensagem pela peça de integração | O próprio sistema |
-| 6. Ferramentas | Vêm das peças ligadas; cada uma com "quando usar" | Código (peça) |
+| 1. Travas | Código, numa lista fixa; cada uma liga/desliga por agente | Renato liga/desliga |
+| 2. Identidade e objetivo | Ficha ▸ "Identidade" e "Objetivo" → topo do prompt | Renato |
+| 3. Regras de atendimento | Ficha ▸ "Regras" (lista curta numerada) e "Objeções" | Renato |
+| 4. Conhecimento | Base do cliente; o agente **consulta por ferramenta**; só os itens "essenciais" vão sempre no prompt | Renato |
+| 5. Dados vivos | Sistema do cliente, lido a cada mensagem pela peça | O próprio sistema |
+| 6. Ferramentas | Vêm das peças ligadas, cada uma com "quando usar" | Código |
 | 7. Exemplos | Ficha ▸ "Exemplos" (3 a 5 conversas-modelo) | Renato |
 | 8. Situação atual | Montada a cada mensagem, no fim do prompt | Automático |
-| 9. Bateria | Casos comuns a todos + casos do cliente (tela "Testes") | Renato; a skill sugere casos |
+| 9. Bateria | Casos comuns + casos do cliente | Renato (a skill sugere) |
 
-A ficha segue as seções da avaliação: identidade, canal (estilo por canal), objetivo, regras, objeções, exemplos,
-política de ferramentas, passagem para humano, travas, modelo. **Números (preço, data, condição) nunca entram na
-ficha**: só vêm do sistema do cliente, e a trava de preço confere isso por código.
+Números (preço, data, condição) **nunca** entram na ficha: vêm do sistema do cliente, e a trava de preço confere por código.
+
+### Modelos de agente (o ponto de partida de cada cliente)
+
+Ao criar um cliente, o Renato escolhe um modelo, que já vem com objetivo, regras, travas, peças e casos de teste
+sugeridos. Depois ajusta.
+
+| Modelo | Objetivo | Termina quando | Exemplo |
+|---|---|---|---|
+| **Atendente que fecha** | Atender, montar e enviar proposta | Proposta preparada para a equipe aprovar | Aurora (Cecília) |
+| **SDR (qualificador)** | Fazer as perguntas de qualificação e passar o contato pronto para um vendedor ou corretor | Contato qualificado entregue à pessoa certa, com resumo | Imobiliária, loja de planejados |
+| **Agendador** | Tirar dúvidas e marcar horário | Horário marcado na agenda | Clínica, salão, consultoria |
+| **Suporte** | Responder dúvidas pela base de conhecimento | Dúvida resolvida ou passada para a equipe | Pós-venda |
 
 ---
 
@@ -86,187 +113,225 @@ Toda mudança é **migração nova** (`0005_...sql` em diante); nenhuma migraç�
 
 | Tabela | O que guarda | Novidade |
 |---|---|---|
-| `clientes` | nome, apelido curto (ex.: `aurora`), marca (cores, logo), fuso, situação (ativo/pausado) | Nova |
-| `membros` | quem da equipe acessa qual cliente e com que papel | Nova. Papéis: **dono da plataforma** (Renato: vê todos), **gestor** e **atendente** (só o próprio cliente) |
-| `agentes` | a ficha (por seção), modelo, limites de gasto, **versão rascunho e versão publicada** | Substitui `agente_config` (linha única) |
-| `agente_versoes` | histórico de cada publicação, com o resultado da bateria | Substitui `config_versoes` |
-| `canais` | tipo (whatsapp, messenger, instagram, site), identificador (número, página, conta), estilo, situação do último teste | Nova |
-| `pecas` | integrações ligadas por cliente (CRM da Aurora, CRM básico, Google Agenda…), configuração não secreta, último teste | Substitui `integracoes` (linha única) |
-| `segredos` | chaves cifradas, agora **por cliente e por peça/canal** | Ganha `cliente_id` |
-| `conhecimento` | + `cliente_id`, + "essencial", + índice de busca por palavras (FTS5 do D1) | Muda |
-| `contatos` e `conversas` | quem é a pessoa (telefone, e-mail, @) e em quais canais falou; ligação com o sistema do cliente | Nova (substitui `conversas_whatsapp`) |
-| `casos_teste` e `rodadas_teste` | casos da bateria do cliente e resultados | Nova |
-| `operacao`, `uso_ia`, `avisos_crm`, `simulacoes`, `registro` | + `cliente_id` (pausa, gasto e limite **por cliente**) | Muda |
+| `clientes` | nome, apelido curto (`aurora`), marca, fuso, situação, **plano contratado** (valor, limite de gasto da IA, dia de fechamento), contato do responsável | Nova. É o "CRM do Renato" |
+| `membros` | quem acessa qual cliente e com que papel | Nova. Papéis: **dono da plataforma** (Renato, só no Estúdio), **gestor** e **atendente** do cliente (só no Portal) |
+| `agentes` | a ficha (por seção), modelo de agente, modelo de IA, **rascunho e versão publicada** | Substitui `agente_config` (linha única) |
+| `agente_versoes` | cada publicação, com o resultado da bateria | Substitui `config_versoes` |
+| `canais` | tipo (whatsapp, site, messenger, instagram), identificador, estilo, último teste | Nova |
+| `pecas` | integrações ligadas por cliente, configuração não secreta, último teste | Substitui `integracoes` |
+| `segredos` | chaves cifradas, **por cliente e por peça/canal** | Ganha "cliente" |
+| `conhecimento` | + cliente, + "essencial", + busca por palavras (FTS5 do D1) | Muda |
+| `contatos`, `conversas` | a pessoa (telefone, e-mail, @), seus canais, etapa no funil (CRM simples), quem da equipe atende | Nova |
+| `distribuicao` | regra de distribuição (rodízio, só quem está no horário) e de quem é a vez | Nova |
+| `casos_teste`, `rodadas_teste` | bateria do cliente e resultados | Nova |
+| `consumo_mensal` | gasto da IA por cliente e mês, limite, excedente, avisos enviados | Nova |
+| `operacao`, `uso_ia`, `avisos_crm`, `simulacoes`, `registro` | + cliente | Muda |
 
-**Isolamento entre clientes (o risco número 1):** toda função de `painel/lib/banco/` passa a exigir o cliente e
-confere se a pessoa é membro dele. Para cada operação, um teste prova que **a equipe do cliente A não lê nem altera
-nada do cliente B**. Sem esse teste verde, a etapa não termina.
+**Isolamento entre clientes (o risco número 1):** toda função de `painel/lib/banco/` passa a exigir o cliente e confere
+se a pessoa é membro dele. Para **cada** operação, um teste prova que a equipe do cliente A não lê nem altera nada do
+cliente B, e que ninguém do Portal alcança as operações do Estúdio. Sem esse teste verde, a etapa não termina.
 
 ---
 
-## 5. As fases, etapa por etapa
+## 5. Confiabilidade e segurança (vale para todas as fases)
 
-Cada etapa = um pedaço pequeno, com commit, testes e prova. Legenda: **Faço** (Claude), **Prova** (como sabemos que
-deu certo), **Você** (o que o Renato faz; "nada" quando não precisa).
+O Renato pediu: "não quero coisa quebrando e deixando o cliente na mão". Nenhum sistema tem risco zero; o objetivo é
+**errar pouco, perceber na hora e consertar rápido**. O que entra:
 
-Regra de todas as etapas: `npm run test:banco`, `test:nucleo`, `test:motor`, `tsc`, `lint`, `build`; e, se mexer no
-comportamento do agente, **bateria da Aurora 45/45** e `qualidade.ts` sem piorar. `docs/TESTES.md` e
-`docs/SITUACAO.md` atualizados.
+| Proteção | Como funciona |
+|---|---|
+| Ambiente de testes | Toda mudança vai primeiro para cópias de teste (painel, motor, banco, número de WhatsApp de teste). A produção só recebe com a aprovação do Renato |
+| Testes automáticos | Antes de qualquer publicação: testes do banco (incluindo isolamento), do agente, do motor, tipos e padrão de código. Falhou = não publica |
+| Bateria com IA | Por cliente, antes de publicar mudanças no agente. Trava quebrada = não publica |
+| Voltar atrás | Cada versão do agente fica guardada; "voltar para a versão anterior" é um clique. O código também volta à versão anterior pela Cloudflare |
+| Cópias de segurança | O banco D1 guarda histórico de 30 dias e pode ser restaurado em qualquer ponto (Time Travel). Uma cópia semanal extra fica guardada no R2 |
+| Se a IA cair | O agente manda a mensagem de "erro" configurada, passa a conversa para a equipe e avisa o Renato. Ninguém fica sem resposta e sem aviso |
+| Alertas para o Renato | Por e-mail (e WhatsApp, quando houver número próprio): erros repetidos, canal desconectado, chave da Meta perto de vencer, gasto chegando no limite, conversa parada sem resposta |
+| Conferência automática | A cada 5 minutos, um "teste de saúde" confere motor, banco, OpenAI e canais de cada cliente |
+| Acesso | Senhas guardadas com hash; tentativas limitadas; **confirmação em duas etapas** (código no celular) para o Estúdio; o Portal não tem as telas do Estúdio |
+| Chaves | Cifradas no banco; nunca aparecem em tela, chat ou API, só os 4 últimos caracteres |
+| Registro | Toda alteração fica registrada: quem, quando, o quê |
+| Versões fixas | Bibliotecas com versão travada; atualizar só com testes e bateria passando |
 
-### Fase 0 — Preparar o terreno (protege a Cecília)
+---
+
+## 6. As fases, etapa por etapa
+
+Legenda: **Faço** (Claude), **Prova** (como sabemos que deu certo), **Você** (o que o Renato faz).
+Em toda etapa: testes do banco, do núcleo e do motor, tipos, padrão de código e build; se mexer no comportamento do
+agente, **bateria da Aurora 45/45** e qualidade sem piorar. `docs/TESTES.md` e `docs/SITUACAO.md` atualizados.
+
+### Fase 0 — Preparar o terreno
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 0.1 | Docs trazidos para este ramo; este plano | Arquivos no ramo | Ler e decidir a seção 9 |
-| 0.2 | **Ambiente de testes** na Cloudflare: painel, motor e banco D1 "-teste", com um número de teste do WhatsApp. O ramo `plataforma` publica no teste; o ramo da Cecília continua publicando na Cecília real. Só passa para o real quando você aprovar | Push no ramo de testes muda só o ambiente de testes | Aprovar (custo extra: zero no plano Workers Paid) |
-| 0.3 | "Fotografia" da Cecília: rodar bateria e qualidade hoje e guardar o resultado como referência; copiar a configuração atual para `clientes/aurora/` | `avaliacao/RESULTADO.md` com a data de hoje | Nada |
-| 0.4 | Trocar o ramo principal do GitHub para o ramo atual, para as sessões não abrirem no ramo velho | Sessão nova abre no ramo certo | Clicar em GitHub ▸ Settings ▸ Default branch (eu passo o caminho) |
+| 0.1 | Docs trazidos; este plano | Feito | Responder a seção 11 |
+| 0.2 | **Ambiente de testes**: painel, motor e banco "-teste" na sua conta. Um ramo novo, `plataforma`, publica só no teste; o ramo da Cecília continua publicando na real | Envio ao ramo `plataforma` muda só o teste | Nada (custo extra: zero no seu plano) |
+| 0.3 | **Alertas** por e-mail para você (erros do motor, falha da IA) e **teste de saúde** a cada 5 min | Erro provocado de propósito chega no seu e-mail | Confirmar o e-mail que a Cloudflare vai mandar |
+| 0.4 | **Cópia semanal** do banco no R2 e roteiro de restauração testado | Restaurar uma cópia no ambiente de testes | Nada |
+| 0.5 | "Fotografia" da Cecília: bateria e qualidade de hoje guardadas como referência | `avaliacao/RESULTADO.md` atualizado | Nada |
+| 0.6 | Trocar o ramo principal do GitHub para o atual | Sessão nova abre no ramo certo | Um clique no GitHub (eu passo o caminho) |
 
-### Fase 1 — Multi-cliente, sem mudar o comportamento
-
-| # | Faço | Prova | Você |
-|---|---|---|---|
-| 1.1 | Tabelas `clientes` e `membros`; papel "dono da plataforma"; a migração cria o cliente `aurora` e põe a equipe atual nele | Testes: dono vê todos; equipe da Aurora só a Aurora | Nada |
-| 1.2 | `cliente_id` em todas as tabelas; tabelas de "linha única" viram tabelas por cliente (copiando os dados da Aurora) | Migração aplicada numa cópia do banco real sem perder nada (conferência linha a linha) | Nada |
-| 1.3 | `lib/banco/` inteiro passa a exigir o cliente; teste de isolamento para cada operação | ~40 testes novos de "A não vê B" | Nada |
-| 1.4 | Painel: tela **Clientes** (lista, criar, pausar) e seletor de cliente no topo; a marca (cores, logo) vem do cliente, não do código | Navegador: criar "Cliente Teste", entrar como gestor dele, não ver a Aurora | Testar no ambiente de testes |
-| 1.5 | Motor: descobre o cliente pelo número do WhatsApp (`phone_number_id`) e carrega a configuração dele; nomes das conversas com o cliente na frente, **mantendo as conversas atuais da Cecília** | Bateria 45/45; mensagem real no número de teste | Mandar um "oi" para o número de teste |
-| 1.6 | Passar a fase 1 para a Cecília real | Cecília responde normal; Registro sem erros por 24 h | Aprovar a passagem e mandar uma mensagem de teste |
-
-### Fase 2 — A ficha do agente em camadas
+### Fase 1 — Multi-cliente (sem mudar o comportamento)
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 2.1 | Formato da ficha (seções da seção 3) com validação; "compilador" que monta o prompt na ordem certa (fixo primeiro, para o cache) | Testes: cada seção aparece no lugar certo; ficha inválida é recusada com mensagem clara | Nada |
-| 2.2 | Converter a configuração da Cecília (textão de Instruções) para a ficha, **e tirar do núcleo o que é da Aurora** (pacotes, drinks, festa) para a ficha dela e para a peça "CRM da Aurora" (fase 3.1) | Bateria 45/45 e qualidade igual ou melhor; prompt novo comparado com o antigo | Ler a ficha da Cecília e corrigir o que estiver estranho |
-| 2.3 | **Catálogo de travas** no código, cada uma com nome simples e liga/desliga por agente: não inventar preço, parar quando pedir, palavra-gatilho, sem avanço, prometeu transferir, aviso de atendimento automático, texto repetido, fora do assunto. As travas de uma peça (ex.: data lotada) vêm com a peça | Um teste por trava ligada e desligada | Nada |
-| 2.4 | **Conhecimento como consulta**: busca por palavras no D1 (FTS5) e ferramenta `consultar_conhecimento`; itens "essenciais" continuam sempre no prompt | Teste com 200 itens: acha a resposta certa; custo por mensagem não sobe | Marcar quais itens da Aurora são essenciais (eu sugiro) |
-| 2.5 | Tela **Agente** em abas (Identidade, Objetivo, Regras, Objeções, Exemplos, Passar para pessoa, Travas, Modelo), com **"ver como a IA recebe"** e **rascunho × publicado** (editar não muda o agente no ar até publicar) | Navegador: editar, ver o prompt, publicar, voltar versão | Testar a tela e dizer o que ficou confuso |
+| 1.1 | Tabelas `clientes` e `membros`; papel "dono da plataforma"; a Aurora vira o cliente `aurora` com a equipe atual | Testes: você vê todos; a equipe da Aurora só a Aurora | Nada |
+| 1.2 | "Cliente" em todas as tabelas; as de linha única viram por cliente (copiando os dados da Aurora) | Migração numa cópia do banco real, conferida linha a linha | Nada |
+| 1.3 | `lib/banco/` inteiro exige o cliente; teste de isolamento por operação | ~40 testes novos | Nada |
+| 1.4 | Estúdio: tela **Clientes** (lista, criar, pausar, plano contratado, limite de gasto) e troca de cliente no topo; a marca vem do cliente | Navegador: criar "Cliente Teste" e conferir que um não vê o outro | Testar no ambiente de testes |
+| 1.5 | Motor descobre o cliente pelo número do WhatsApp; nomes das conversas com o cliente, **mantendo as conversas atuais da Cecília** | Bateria 45/45; mensagem real no número de teste | Mandar um "oi" de teste |
+| 1.6 | Confirmação em duas etapas no login do Estúdio | Login pede o código do celular | Instalar um app de código (Google Authenticator ou similar) |
+| 1.7 | Passar a fase 1 para a Cecília real | Cecília normal; Registro sem erros por 24 h | Aprovar e mandar uma mensagem |
+
+### Fase 2 — Ficha do agente e modelos
+
+| # | Faço | Prova | Você |
+|---|---|---|---|
+| 2.1 | Formato da ficha com validação; "montador" do prompt na ordem certa (fixo primeiro, para o cache) | Testes por seção; ficha inválida recusada com mensagem clara | Nada |
+| 2.2 | Converter a Cecília para a ficha e **tirar do núcleo o que é da Aurora** (vai para a ficha e para a peça "CRM da Aurora", 3.1) | Bateria 45/45; qualidade igual ou melhor; prompt novo comparado com o antigo | Ler a ficha da Cecília |
+| 2.3 | **Catálogo de travas** no código (não inventar preço, parar quando pedir, palavra-gatilho, sem avanço, prometeu passar para pessoa, aviso de atendimento automático, texto repetido, fora do assunto), cada uma liga/desliga | Um teste por trava, ligada e desligada | Nada |
+| 2.4 | **Modelos de agente** (Atendente que fecha, SDR, Agendador, Suporte), cada um com ficha, travas e casos de teste iniciais | Criar um cliente de cada modelo no teste e conversar | Ler os modelos e dizer o que falta (ex.: perguntas típicas de SDR de imobiliária) |
+| 2.5 | **Conhecimento como consulta** (busca por palavras no D1) + "essenciais" sempre no prompt | 200 itens: acha a resposta certa; custo por mensagem não sobe | Conferir os essenciais da Aurora (eu sugiro) |
+| 2.6 | Tela **Agente** do Estúdio em abas, com "ver como a IA recebe" e **rascunho × publicado** | Navegador: editar, ver, publicar, voltar versão | Testar a tela |
 
 ### Fase 3 — Peças de integração
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 3.1 | Formato padrão de "peça": ferramentas, leitura a cada mensagem (situação atual), travas próprias, avisos recebidos e **teste de conexão**. O CRM da Aurora vira a primeira peça; os "dados coletados" deixam de ser "dados da festa" e passam a ser campos definidos na ficha | Bateria 45/45; teste de conexão no painel | Nada |
-| 3.2 | **CRM básico da plataforma**, para cliente sem sistema: guarda contato, resumo e o que a pessoa quer; avisa a equipe (e-mail ou WhatsApp) e mostra no painel | Conversa simulada termina com o contato salvo e o aviso enviado | Decidir se entra (seção 9) |
-| 3.3 | **Google Agenda**: ver horários livres, marcar, remarcar e cancelar, com regras na ficha (duração, antecedência, horário de atendimento). Trava em código: **só marca em horário que a agenda confirmou livre** e só depois de o cliente confirmar | Teste com agenda de teste: lê livres, marca, remarca e apaga um evento | Criar o projeto no Google Cloud e a "conta de robô" seguindo meu passo a passo (uma vez só) |
-| 3.4 | Tela **Integrações** por cliente: liga/desliga peças, cola chaves (cifradas), botão "testar conexão" | Navegador | Testar |
-| 3.5 | Modelo para peças futuras (RD Station, Kommo, Pipedrive, HubSpot, sistema próprio): cada uma é um arquivo novo + testes, feita **quando houver cliente que use** | — | Avisar qual sistema o próximo cliente usa |
+| 3.1 | Formato padrão de peça (ferramentas, leitura a cada mensagem, travas próprias, avisos, **teste de conexão**). O CRM da Aurora vira a 1ª peça; "dados da festa" viram "campos a coletar", definidos na ficha | Bateria 45/45 | Nada |
+| 3.2 | **CRM simples** (para cliente sem CRM): contatos, funil com etapas, resumo da conversa, quem atende | Conversa simulada termina com o contato no funil | Nada |
+| 3.3 | **Google Agenda** pelo "robô": o cliente compartilha a agenda com o e-mail do robô (sem senha nenhuma). Ver horários livres, marcar, remarcar, cancelar. Trava: só marca em horário confirmado livre e depois do "sim" do cliente | Agenda de teste: lê, marca, remarca e apaga | Criar o projeto no Google Cloud e o robô seguindo meu passo a passo (uma vez só, grátis) |
+| 3.4 | Tela **Integrações** do Estúdio: liga/desliga, chaves cifradas, "testar conexão" | Navegador | Testar |
+| 3.5 | Peças futuras (RD Station, Kommo, Pipedrive, HubSpot, sistema próprio do cliente): uma por vez, **quando houver cliente que use** | — | Avisar quando fechar um cliente |
 
 ### Fase 4 — Canais
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 4.1 | Formato padrão de "canal": receber, conferir assinatura, ignorar repetida, agrupar mensagens, enviar no formato do canal (balões, tamanho máximo, mídia), janela de 24 h. O WhatsApp atual vira o primeiro canal | Testes do motor; bateria 45/45 | Nada |
-| 4.2 | Um **endereço único da Meta** para todos os clientes, que descobre cliente e canal pelo número, página ou conta | Testes com avisos assinados de verdade e falsos | Nada |
-| 4.3 | **Messenger** (página do Facebook) | Recebeu e respondeu uma mensagem de teste numa página de teste | Pedir à Meta a permissão de mensagens (revisão do app) |
-| 4.4 | **Instagram Direct** | Idem, numa conta de teste | Idem, e ligar uma conta profissional de teste |
-| 4.5 | **Chat do site**: um código de 1 linha para colar no site do cliente; proteção contra robôs (Turnstile da Cloudflare) e limite por visitante; aparência pela marca do cliente | Página de teste conversa com o agente; robô bloqueado | Nada (no cliente: colar a linha no site) |
-| 4.6 | **Contato único**: mesma pessoa em dois canais = um contato (quando der o telefone ou e-mail) | Teste: Instagram + WhatsApp do mesmo telefone viram um contato | Nada |
-| 4.7 | **Caixa de entrada** no painel: todas as conversas do cliente, de todos os canais; assumir e devolver para o agente; aviso à equipe quando transferir (pendência antiga da Aurora) | Navegador + mensagem real | Testar com a equipe do André |
+| 4.1 | Formato padrão de canal (receber, conferir assinatura, repetidas, agrupar, enviar no formato do canal, janela de 24 h). WhatsApp vira o 1º | Testes; bateria 45/45 | Nada |
+| 4.2 | Endereço único da Meta para todos os clientes (descobre o cliente pelo número ou página) | Avisos verdadeiros e falsos testados | Nada |
+| 4.3 | **Chat do site**: uma linha de código para colar no site do cliente; proteção contra robôs (Turnstile); aparência da marca | Página de teste conversa; robô bloqueado | Nada |
+| 4.4 | **Messenger** | Recebe e responde numa página de teste | Pedir à Meta a permissão (depende da verificação da empresa, que pede domínio) |
+| 4.5 | **Instagram Direct** | Idem numa conta de teste | Idem |
+| 4.6 | **Contato único** em vários canais (pelo telefone ou e-mail informado) | Instagram + WhatsApp do mesmo telefone = 1 contato | Nada |
 
 ### Fase 5 — Testar antes de publicar
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 5.1 | Bateria em duas partes: **casos comuns** (fora do assunto, tentativa de mudar as regras, "é robô?", pediu pessoa, "parar", não inventar preço) e **casos do cliente** (guardados no banco). Roda pelo motor, com o cliente simulado e o avaliador que já existem | Bateria da Aurora migrada dá 45/45 | Nada |
-| 5.2 | Tela **Testes**: ver e criar casos ("quando o cliente disser X, o agente deve Y"), botão **Rodar**, relatório simples (passou/falhou e por quê), custo de cada rodada | Navegador | Criar um caso seu e rodar |
-| 5.3 | **Publicar só se passar**: travas 100%; o resto acima do mínimo que você definir. Cada publicação guarda o resultado, e dá para voltar à versão anterior | Tentar publicar uma ficha que quebra uma trava → bloqueado | Nada |
+| 5.1 | Bateria em duas partes: **casos comuns** (fora do assunto, tentar mudar as regras, "é robô?", pediu pessoa, "parar", preço inventado) + **casos do cliente** no banco; roda pelo motor | A bateria da Aurora migrada dá 45/45 | Nada |
+| 5.2 | Tela **Testes** no Estúdio: casos em linguagem simples, botão Rodar, relatório e custo | Navegador | Criar e rodar um caso seu |
+| 5.3 | **Publicar só se passar** (travas 100%); cada publicação guarda o resultado | Ficha que quebra trava → bloqueada | Nada |
 
-### Fase 6 — API da plataforma e skills
+### Fase 6 — Consumo e cobrança da IA
+
+Decisão do Renato: a OpenAI é paga por ele; cada cliente tem um limite mensal; **passou do limite, o agente continua**,
+e o excedente é cobrado do cliente **a preço de custo**, com aviso ao cliente e ao Renato.
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 6.1 | **API da plataforma** (para o Claude operar por dentro): criar cliente, ler/gravar ficha, conhecimento, casos de teste, rodar bateria, publicar, ver situação de canais e peças. **Chaves secretas nunca passam pela API nem pelo chat**: só pela tela do painel | Testes de permissão (chave errada, cliente errado) | Gerar a chave da API no painel e guardar no ambiente do Claude (pelo formulário seguro) |
-| 6.2 | `scripts/plataforma.mjs`: comando que as skills usam para falar com a API | Comando lista os clientes | Nada |
-| 6.3 | As **8 skills** (tabela abaixo), em `.claude/skills/` | Cada uma testada no cliente fictício | Nada |
+| 6.1 | Gasto por cliente e mês (já medimos por resposta; passa a ser por cliente) | Conta bate com o painel da OpenAI (diferença < 5%) | Nada |
+| 6.2 | Avisos: **80%** do limite (você e o cliente), **100%** (você e o cliente: "a partir daqui é excedente") e um **teto de segurança** (seção 11) | Relógio e gastos falsos nos testes | Nada |
+| 6.3 | Tela **Consumo** no Estúdio (todos os clientes) e no Portal (só o dele): gasto do mês, limite, excedente em reais | Navegador | Dizer a cotação do dólar a usar (fixa ou do dia) |
+| 6.4 | Fechamento do mês: relatório do excedente por cliente, para você cobrar (a cobrança em si continua com você) | Relatório de um mês simulado | Nada |
+
+Observação: aviso por e-mail para o **cliente** exige um domínio seu (o e-mail sai "de" você). Até lá, o cliente vê o
+aviso no Portal e você recebe por e-mail.
+
+### Fase 7 — Portal do cliente
+
+| # | Faço | Prova | Você |
+|---|---|---|---|
+| 7.1 | Programa separado (endereço próprio), com a marca do cliente e **sem** as telas do Estúdio | Teste: nenhuma rota do Estúdio responde no Portal | Nada |
+| 7.2 | **Equipe**: o gestor do cliente adiciona e tira pessoas (ex.: André e Poliana) e escolhe quem recebe contatos | Testes de permissão | Nada |
+| 7.3 | **Distribuição automática**: rodízio entre quem recebe contatos e está no horário; aviso para a pessoa da vez (WhatsApp ou e-mail) com o resumo | Teste: 4 contatos → 2 para cada | Nada |
+| 7.4 | **Horários de atendimento** da equipe | Navegador | Nada |
+| 7.5 | **Conversas**: ver todas (todos os canais), **assumir** e **devolver para o agente**, responder pelo Portal | Mensagem real: assumir, responder, devolver | Testar com o André |
+| 7.6 | **Resultados**: conversas, contatos novos, tempo da 1ª resposta, tempo de atendimento, **taxa de resolução** (chegou ao objetivo sem precisar de pessoa), transferências e motivos, propostas/agendamentos, horários de pico | Números conferidos contra conversas de teste | Dizer se falta algum número |
+| 7.7 | **CRM simples** no Portal (só para quem não tem CRM): funil em colunas, ficha do contato, histórico | Navegador | Nada |
+| 7.8 | Aurora passa a usar o Portal (ela tem CRM próprio: Portal só com a parte do agente) | André usando | Apresentar ao André |
+
+### Fase 8 — API do Estúdio e skills
+
+| # | Faço | Prova | Você |
+|---|---|---|---|
+| 8.1 | **API do Estúdio** para o Claude: clientes, ficha, conhecimento, casos de teste, rodar bateria, publicar, situação de canais e peças. Chaves secretas **nunca** passam pela API nem pelo chat | Testes de permissão | Gerar a chave da API no Estúdio e guardar no ambiente do Claude (formulário seguro) |
+| 8.2 | `scripts/plataforma.mjs`, o comando que as skills usam | Lista os clientes | Nada |
+| 8.3 | As **8 skills** (tabela abaixo), em `.claude/skills/` | Cada uma testada no cliente fictício | Nada |
 
 | Skill | O que faz | Só termina quando | O que pede a você |
 |---|---|---|---|
-| `/novo-cliente` | Entrevista sobre o negócio e cria o cliente, a marca e a 1ª ficha | O cliente existe e a ficha passa na validação | Respostas da entrevista; logo e cores |
-| `/montar-conhecimento` | Lê PDFs, site, perguntas frequentes e monta a base; marca os essenciais | Cada item tem título e fonte; perguntas de teste acham a resposta | Os materiais do cliente |
-| `/conectar-canal` | Passo a passo do canal escolhido (WhatsApp, Messenger, Instagram, site) | Recebeu **e** respondeu uma mensagem de teste naquele canal | Colar as chaves no painel; mandar a mensagem de teste |
-| `/conectar-agenda` | Liga o Google Agenda e define as regras de horário | Leu horários livres, marcou e apagou um evento de teste | O cliente compartilhar a agenda com o e-mail do robô |
-| `/conectar-sistema` | Liga o CRM/sistema do cliente (peça pronta ou nova) | Leu um dado de teste (e gravou, se a peça grava) | Chave do sistema no painel |
-| `/testar-agente` | Sugere casos do cliente e roda a bateria | Travas 100% e o resto acima do mínimo | Aprovar os casos sugeridos |
-| `/publicar` | Publica a ficha e confere o ar | Bateria verde, canais respondendo, uma conversa real ok | Mandar a mensagem final de conferência |
-| `/ajustar-agente` | Muda regra, tom, exemplo ou conhecimento a partir de uma reclamação | A bateria passou de novo e há um caso novo cobrindo o problema | Dizer o que estava errado (print da conversa ajuda) |
+| `/novo-cliente` | Entrevista sobre o negócio, escolhe o modelo de agente, cria cliente, marca, plano e 1ª ficha | Cliente criado e ficha válida | Respostas, logo e cores, plano contratado |
+| `/montar-conhecimento` | Organiza PDFs, site e perguntas frequentes; marca os essenciais | Cada item com título e fonte; perguntas de teste acham a resposta | Materiais do cliente |
+| `/conectar-canal` | Passo a passo do canal (WhatsApp, site, Messenger, Instagram) | Recebeu **e** respondeu uma mensagem de teste | Colar chaves no Estúdio; mandar a mensagem |
+| `/conectar-agenda` | Liga o Google Agenda e as regras de horário | Leu livres, marcou e apagou um evento de teste | O cliente compartilhar a agenda com o robô |
+| `/conectar-sistema` | Liga o CRM do cliente, ou o CRM simples | Leu (e gravou, se for o caso) um dado de teste | Chave do sistema no Estúdio |
+| `/testar-agente` | Sugere casos do cliente e roda a bateria | Travas 100% e o resto acima do mínimo | Aprovar os casos |
+| `/publicar` | Publica e confere o ar; cria o acesso do cliente ao Portal | Bateria verde, canais respondendo, conversa real ok, Portal abrindo | Mensagem final de conferência |
+| `/ajustar-agente` | Corrige regra, tom, exemplo ou conhecimento a partir de uma reclamação | Bateria passou de novo, com um caso novo cobrindo o problema | O que estava errado (print ajuda) |
 
-Toda skill começa conferindo onde o cliente está (o que já foi feito) e termina com um **relatório curto**: o que fez,
-a prova, e o próximo passo.
-
-### Fase 7 — Manual e primeiros clientes
+### Fase 9 — Manual e ensaio
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
-| 7.1 | `docs/MANUAL-NOVO-CLIENTE.md`: do contrato ao ar, passo a passo, com o que pedir ao cliente (lista de materiais e acessos), quanto tempo cada passo leva e o que fazer se algo falhar | — | Ler |
-| 7.2 | **Ensaio**: implantar um cliente fictício do zero (ex.: uma clínica com Google Agenda e chat do site) usando só o manual e as skills, no ambiente de testes. Tudo o que travar vira correção | Cliente fictício respondendo em 2 canais, bateria verde | Seguir o manual comigo e anotar o que confundiu |
-| 7.3 | Primeiro cliente real novo | No ar e acompanhado na 1ª semana | Trazer o cliente |
+| 9.1 | `docs/MANUAL-NOVO-CLIENTE.md`: do contrato ao ar, com a lista do que pedir ao cliente, tempo de cada passo e o que fazer se falhar | — | Ler |
+| 9.2 | **Ensaio**: um cliente fictício do zero (ex.: clínica com agenda e chat do site) só com o manual e as skills | Cliente fictício respondendo, bateria verde, Portal funcionando | Fazer o ensaio comigo |
+| 9.3 | Primeiro cliente real novo | No ar e acompanhado na 1ª semana | Trazer o cliente |
 
 ---
 
-## 6. O que fica de fora desta vez (de propósito)
+## 7. O que fica de fora desta vez (de propósito)
 
-- Construtor visual de fluxos, campanhas de disparo em massa e CRM completo (a plataforma avaliada tem; não é o foco).
-- Telegram, e-mail e ligações: o formato de canal fica pronto para eles, mas só entram quando houver cliente.
-- Busca "por significado" no conhecimento (Vectorize): só se a busca por palavras não der conta.
-- Botão "Conectar WhatsApp" com cadastro incorporado da Meta: depende de você virar **Provedor de Tecnologia** na Meta
-  (verificação da empresa). Até lá, conectamos o número de cada cliente pelo passo a passo da skill.
-- Cobrança automática dos clientes.
+- Construtor visual de fluxos e disparos em massa.
+- Telegram, e-mail e ligações (o formato de canal fica pronto; entram quando houver cliente).
+- Busca "por significado" no conhecimento (só se a busca por palavras não der conta).
+- Botão "Conectar WhatsApp" da Meta (exige você virar Provedor de Tecnologia; até lá, a skill guia a conexão).
+- Cobrança automática (boleto/Pix): a fase 6 entrega o relatório; cobrar continua com você.
 
-Pendências antigas da Aurora que **entram** no plano: aviso à equipe e caixa de entrada (fase 4.7), assumir/devolver
-(4.7). As que **continuam à parte**: modelos da Meta para fora das 24 h, LGPD (apagar dados) e política de
-privacidade. Elas passam a valer para todos os clientes e serão feitas uma vez só, depois da fase 4.
+Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase 7. Modelos da Meta (mensagens fora das
+24 h), LGPD (apagar dados) e política de privacidade entram depois da fase 4, valendo para todos os clientes.
 
-## 7. Custos e limites
+## 8. Custos e limites
 
-| Item | Hoje | Com a plataforma |
-|---|---|---|
-| Cloudflare | Workers Paid (US$ 5/mês) | O mesmo plano serve vários clientes no começo. Limite do Worker no plano pago: 10 MB (hoje: painel 2,57 MB, motor 1,32 MB) |
-| OpenAI | ~US$ 0,0008 por resposta | Gasto e limite **por cliente** no painel, com parada automática |
-| Bateria de testes | < US$ 0,05 por rodada | Igual, por cliente |
-| Meta | Mensagens dentro das 24 h sem custo | Igual; modelos fora das 24 h são cobrados (fase de LGPD/modelos) |
-| Google Agenda | — | Sem custo |
-
-## 8. Riscos e como reduzir
-
-| Risco | Como reduzir |
+| Item | Com a plataforma |
 |---|---|
-| Mexer na base e quebrar a Cecília | Ambiente de testes (0.2), bateria 45/45 em toda etapa, passagem para o real só com a sua aprovação |
-| Dado de um cliente aparecer para outro | Cliente obrigatório em toda função do banco + teste de isolamento por operação |
-| Tirar a Aurora do núcleo mudar o jeito da Cecília | Fotografia (0.3) e comparação do prompt antigo com o novo; qualidade não pode cair |
-| Revisão da Meta (Messenger/Instagram) demorar | Pedir cedo (na fase 1); fazer o chat do site antes, se a Meta atrasar |
-| Think é experimental | Versões fixas e plano B já existente (laço próprio) |
-| Plataforma crescer demais | Seção 6: só entra o que um cliente real pedir |
+| Cloudflare | O plano atual (Workers Paid, US$ 5/mês) serve vários clientes no começo. Limite por programa: 10 MB (hoje: painel 2,57 MB, motor 1,32 MB) |
+| OpenAI | Paga por você; ~US$ 0,0008 por resposta; limite e excedente por cliente (fase 6) |
+| Bateria de testes | < US$ 0,05 por rodada |
+| Domínio | ~R$ 60 a 80/ano quando você criar (pode ser comprado na própria Cloudflare) |
+| Meta | Mensagens dentro das 24 h sem custo; modelos fora das 24 h cobrados por mensagem |
+| Google Agenda | Sem custo |
 
----
+## 9. Como vamos trabalhar (sessões)
 
-## 9. O que o Renato precisa decidir
+- **Um projeto só** (este repositório), **uma sessão (chat) nova por fase**. Cada sessão termina salvando o que fez em
+  `docs/SITUACAO.md`, e a próxima começa dali.
+- Para abrir a próxima sessão: ambiente `Agente-aurora`, esforço alto, e o pedido:
+  > Trabalhe no ramo `claude/serene-faraday-w06f6u`. Leia `docs/SITUACAO.md` e `docs/PLANO-PLATAFORMA.md` e faça a
+  > Fase N. Só me chame quando precisar de algo meu ou ao terminar a fase.
+- Fases longas (1, 2 e 7) podem ocupar mais de uma sessão; a própria sessão avisa onde parou.
 
-| # | Decisão | Minha recomendação |
-|---|---|---|
-| 1 | **Uma plataforma para todos** (um painel, um motor, um banco, tudo separado por cliente) ou uma instalação separada por cliente? | **Uma para todos.** É mais simples para você, o app da Meta trabalha com um endereço principal para avisos, e cliente grande pode ganhar instalação própria depois |
-| 2 | **Quem paga a IA (OpenAI)?** A sua chave para todos, com limite por cliente e repasse no preço, ou a chave de cada cliente? | Sua chave (implantação mais rápida), com limite e custo por cliente visíveis no painel. O painel aceita as duas |
-| 3 | **Conta da Cloudflare:** tudo na sua conta? | Sim |
-| 4 | **Google Agenda:** o cliente compartilha a agenda com o e-mail de um "robô" seu, ou botão "Entrar com Google"? | Compartilhar com o robô para começar (sem revisão do Google). O botão exige verificação do Google, que leva semanas; fica para depois |
-| 5 | **CRM básico da plataforma** para clientes sem sistema? | Sim, simples (contato, resumo, aviso à equipe) |
-| 6 | **O que a equipe do cliente pode mexer no painel?** | Gestor do cliente: conhecimento, conversas, horários e equipe. Ficha, travas, canais e integrações: só você |
-| 7 | **Ambiente de testes separado** da Cecília real? | Sim |
-| 8 | **Qual canal depois do WhatsApp?** | Depende do próximo cliente. Sem cliente definido: chat do site (não depende da Meta) enquanto a revisão da Meta anda |
-| 9 | **Quem é o próximo cliente real** (ramo e sistema que usa)? | Define qual peça vem primeiro na fase 3 |
-| 10 | **Nome e endereço da plataforma** (ex.: `painel.suaempresa.com.br`) | Ter um domínio seu: o painel deixa de ter a cara da Aurora, e a Meta pede site com domínio para verificar a empresa |
-| 11 | **Novidades na Cecília ficam em espera** durante as fases 1 a 3? | Sim, só correções. Mudanças grandes na Cecília ao mesmo tempo atrasam e arriscam a migração |
+## 10. Decisões do Renato (17/11/2026)
 
-## 10. O que eu preciso de você, por fase (resumo)
-
-| Quando | O quê |
+| # | Decisão |
 |---|---|
-| Agora | Responder a seção 9 |
-| Fase 0 | Trocar o ramo principal no GitHub (eu passo o caminho) |
-| Fase 1 | Mandar mensagens de teste; aprovar a passagem para a Cecília real; **iniciar a revisão do app na Meta** (Messenger e Instagram) e a verificação da empresa |
-| Fase 2 | Revisar a ficha da Cecília e a tela nova |
-| Fase 3 | Projeto no Google Cloud + conta de robô (passo a passo meu); dizer o sistema do próximo cliente |
-| Fase 4 | Página do Facebook e conta do Instagram de teste; testar a caixa de entrada com o André |
-| Fase 5 | Criar e rodar um caso de teste seu |
-| Fase 6 | Gerar a chave da API no painel e guardar no ambiente do Claude |
-| Fase 7 | Fazer o ensaio comigo seguindo o manual; trazer o 1º cliente |
+| 1 | Duas faces: **Estúdio** (o "meu GPT Maker" + CRM dos meus clientes) e **Portal do cliente** (entregue a cada cliente). Precisa ser muito bem feito e seguro |
+| 2 | **OpenAI paga pelo Renato**, repassada no preço. Limite mensal por cliente; ao chegar no limite, o Renato e o cliente são avisados e o excedente é cobrado **a preço de custo** |
+| 3 | Tudo na conta da Cloudflare do Renato |
+| 4 | Google Agenda: o cliente compartilha a agenda com o **robô** do Renato |
+| 5 | Cliente sem CRM: Portal com **CRM simples** + aba do agente. Cliente com CRM: integra e o Portal mostra só o agente |
+| 6 | Equipe do cliente mexe **só em equipe e horários**. Ficha, conhecimento, canais e integrações: só o Renato. **Distribuição automática** entre várias pessoas (ex.: André e Poliana) |
+| 7 | Ambiente de testes separado: sim |
+| 8 | Modelos prontos de agente, incluindo **SDR que passa para vendedor/corretor** |
+| 9 | Ainda não há próximo cliente (prospecção começando): ensaio com cliente fictício |
+| 10 | Ainda não há domínio: seguir com os endereços da Cloudflare e trocar quando houver |
+
+## 11. Ainda falta confirmar (curto)
+
+| # | Pergunta | Minha recomendação |
+|---|---|---|
+| A | No Portal, o cliente **vê as conversas, assume e devolve** e vê os resultados, mas **não edita** conhecimento nem a ficha. É isso? | Sim |
+| B | Depois do limite, o agente continua (excedente). Quer um **teto de segurança** (ex.: 2× o limite) em que o agente pausa e só volta com a sua liberação, para evitar uma conta inesperada se algo der errado? | Sim, 2× o limite |
+| C | Depois do WhatsApp, qual canal construir primeiro: **chat do site** ou **Instagram/Messenger**? | Chat do site (Instagram e Messenger dependem da verificação da sua empresa na Meta, que pede domínio) |
+| D | Enquanto a base é refeita (fases 1 a 3), a Cecília recebe **só correções**, sem novidades grandes? | Sim |
