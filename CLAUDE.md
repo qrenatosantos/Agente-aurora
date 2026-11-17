@@ -30,6 +30,8 @@
 ## Agente (`painel/lib/nucleo/` e `motor/`)
 - O núcleo é TS puro (imports relativos com `.ts`, sem Next): o motor e o painel usam o mesmo.
   Regra nova do agente = teste em `nucleo.test.ts`; mudança de comportamento = rodar a bateria no motor.
+- **Regra de comportamento nova ou mudada no código = uma linha em `docs/REGRAS-NO-CODIGO.md`** (regra em português,
+  onde está, teste, data e commit), no mesmo commit.
 - **Regras só em `processarTurno` (agente.ts).** O laço da IA é trocável (`MotorIA` em `motor-ia.ts`): `motorOpenAI`
   (laço próprio, plano B) ou o Cloudflare Think (`motor/src/conversa.ts`). Nunca ponha regra dentro do laço.
 - `motor/` usa o Think (experimental): versões **fixas** no `package.json`. Atualizar só com `npm run test:nucleo` +
