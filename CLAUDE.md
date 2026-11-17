@@ -22,6 +22,10 @@
 - **Quem pode o quê mora em `painel/lib/banco/`** (uma função por operação, sempre recebendo o `Ator`). Regra nova
   ou mudada = teste em `painel/lib/banco/banco.test.ts` (`npm run test:banco`). Nunca consulte o banco direto de uma
   tela ou ação: passe por `lib/banco/`.
+- **Multi-cliente (ramo `plataforma`):** toda tabela de dados tem `cliente_id`; toda função de `lib/banco/` filtra por
+  `ator.cliente` (montado no servidor, nunca vindo de formulário) e as "interno" recebem o cliente. Operação nova =
+  teste de isolamento (o cliente A não lê nem altera o B) na seção "isolamento" do `banco.test.ts`. Estúdio (clientes,
+  planos) = só o dono (`exigirDono`).
 - Banco D1: mudança de estrutura = **arquivo novo** em `painel/banco/migracoes/` (`0002_...sql`). Nunca edite uma
   migração já aplicada.
 - Em `catch` de Server Component/Action, chame `unstable_rethrow(e)` antes de tratar o erro (senão o Next perde

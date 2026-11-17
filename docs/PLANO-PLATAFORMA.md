@@ -1,7 +1,8 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
 Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
-**Situação:** Fase 0 feita e em produção em 17/11/2026 (ver `OPERACAO.md`). Próximo passo: Fase 1.
+**Situação:** Fase 0 feita e em produção em 17/11/2026 (ver `OPERACAO.md`). **Fase 1 feita no ambiente de testes em
+17/11/2026** (multi-cliente, tela Clientes, duas etapas; ver `TESTES.md`). Próximo passo: Fase 2.
 Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
 [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 
@@ -182,7 +183,12 @@ agente, **bateria da Aurora 45/45** e qualidade sem piorar. `docs/TESTES.md` e `
 | 1.4 | Estúdio: tela **Clientes** (lista, criar, pausar, plano contratado, limite de gasto) e troca de cliente no topo; a marca vem do cliente | Navegador: criar "Cliente Teste" e conferir que um não vê o outro | Testar no ambiente de testes |
 | 1.5 | Motor descobre o cliente pelo número do WhatsApp; nomes das conversas com o cliente, **mantendo as conversas atuais da Cecília** | Bateria 45/45; mensagem real no número de teste | Mandar um "oi" de teste |
 | 1.6 | Confirmação em duas etapas no login do Estúdio | Login pede o código do celular | Instalar um app de código (Google Authenticator ou similar) |
-| 1.7 | Passar a fase 1 para a Cecília real | Cecília normal; Registro sem erros por 24 h | Aprovar e mandar uma mensagem |
+| 1.7 | ~~Passar a fase 1 para a Cecília real~~ — não se aplica desde a decisão 16 (a plataforma não mexe na Cecília real; ela entra na etapa 9.4) | — | — |
+
+**Feito em 17/11/2026 (ambiente de testes):** 1.1 a 1.6. Migração `0005_multi_cliente.sql` conferida numa cópia do banco
+real (1.050 valores iguais, 0 diferenças). A mensagem real no número de teste (1.5) fica para quando o ambiente de testes
+tiver um número próprio (o webhook da Meta aponta só para a produção). A bateria 45/45 não rodou nesta sessão (falta a
+cópia local do CRM); o núcleo não mudou.
 
 ### Fase 2 — Ficha do agente e modelos
 

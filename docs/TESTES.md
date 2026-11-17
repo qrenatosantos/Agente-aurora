@@ -418,3 +418,41 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
     **4,76 · 20/24**, US$ 0,00057/resposta. Reprovadas: drinks soltos 2/2 (grava pacote no cadastro na personalizada),
     erros e abreviações 1/2 (Reserve listado sem gin tônica), proposta recusada 1/2 ("link anterior deixa de valer": erro do JUIZ, é regra da empresa segundo o Renato; juiz corrigido; na prática 21/24).
     Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.
+
+## 17/11/2026 — Fase 1 da plataforma: multi-cliente (ramo `plataforma`)
+- Testes: **banco 69/69** (30 novos: clientes, isolamento, duas etapas, migração), núcleo 48/48, motor 14/14,
+  vigia 7/7 (novo: cliente ainda sendo configurado não gera alerta); tsc (painel, motor, vigia), lint e build ok.
+  Tamanho: painel **2,20 MB**, motor **1,31 MB** (compactados).
+- **Isolamento entre clientes** (`banco.test.ts`, seção "isolamento"), com um 2º cliente e equipe própria: a sessão só
+  abre clientes de que a pessoa é membro (o cliente pedido pelo navegador não vale); configuração, versões ("voltar para
+  a versão N" é a do próprio cliente), conhecimento, segredos, integrações, botão de emergência, simulações, gasto da IA,
+  registro, equipe (listar, alterar, remover, link de senha), avisos do CRM e conversas do WhatsApp: **um cliente não lê
+  nem altera nada do outro**. Ninguém da equipe de um cliente (gestor, atendente, desativado, visitante) alcança as
+  operações do Estúdio (listar, criar, alterar, pausar clientes). Um número de WhatsApp é de um cliente só.
+- **Migração 0005 numa cópia do banco real** (banco de testes = cópia da produção de 17/11, exportado agora):
+  14 tabelas, **1.050 valores iguais, 0 diferenças, 0 chaves estrangeiras quebradas**; tudo ficou no cliente `aurora`;
+  Renato virou o dono da plataforma. Também aplicada no D1 local (workerd) sobre um banco no formato antigo: ok.
+- **Duas etapas (TOTP):** códigos oficiais do RFC 6238 conferidos; código errado, repetido, anterior e depois de 5 erros
+  (bloqueio de 15 min) recusados; sessão sem o código não abre nada.
+- **Local de ponta a ponta** (painel e motor com `wrangler dev`, D1 local convertido pela 0005, "Meta de mentira"):
+
+| Passo | Resultado |
+|---|---|
+| Dono sem duas etapas entra → vai para `/seguranca`; `/agente` também leva para lá | Passou |
+| QR code → código do aplicativo → duas etapas ligadas → Visão geral da Aurora | Passou |
+| Sair e entrar de novo: pede o código (`/login/codigo`); sem o código, `/agente` volta para `/login` | Passou |
+| Clientes: criar "Clínica Sorriso" (apelido sugerido `clinica-sorriso`, plano R$ 350, limite US$ 12, cor própria) | Passou |
+| Abrir o cliente: topo e marca mudam; conhecimento vazio; troca de volta pelo seletor do topo | Passou |
+| Equipe da clínica: nova pessoa (Zélia) pelo link; a equipe da Aurora não mostra a Zélia | Passou |
+| Zélia entra: vê só a clínica, sem seletor; `/clientes` volta para a Visão geral; cookie "aurora" forçado: continua na clínica | Passou |
+| Celular (390 px): tela Clientes sem rolagem lateral | Passou |
+| WhatsApp, número da Aurora (conversão): resposta com o **token da Aurora**, conversa no nome antigo `wa-<tel>` (memória mantida) | Passou |
+| WhatsApp, número da clínica: resposta com o **token e a mensagem da clínica**, conversa `clinica-sorriso:wa-<tel>` | Passou |
+| Assinatura de outro cliente / errada | 401 |
+| Número sem cliente | 200, ignorado (como antes) |
+| Verificação do webhook (GET) com o token de cada cliente | Passou (os dois); token errado 403 |
+| Avisos do CRM: `/crm/avisos` acha o cliente pela assinatura; `/crm/avisos/<cliente>` só aceita a assinatura dele | Passou; errada 401 |
+
+- **Fora:** bateria da Aurora com IA (45/45) — precisa da cópia local do CRM (repositório do CRM), que esta sessão não
+  pôde abrir. O núcleo e o caminho do turno no motor não mudaram (núcleo 48/48). Mensagem real no número de teste: o
+  webhook da Meta aponta só para a produção (decisão 16: a Cecília real não é tocada).

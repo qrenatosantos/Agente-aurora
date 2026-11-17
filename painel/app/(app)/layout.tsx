@@ -44,7 +44,8 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
       <div className="md:pl-64 print:pl-0">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-borda bg-fundo/90 px-4 backdrop-blur sm:gap-3 sm:px-6 nao-imprimir">
           <LogoNegocio nome={marca.nome} logoUrl={marca.logoUrl} className="md:hidden" />
-          <p className="min-w-0 flex-1 truncate font-semibold text-texto md:font-medium md:text-texto-2">{marca.nome}</p>
+          {/* com a troca de cliente no topo, o nome já aparece nela */}
+          <p className={`min-w-0 flex-1 truncate font-semibold text-texto md:font-medium md:text-texto-2 ${clientes.length > 1 ? "invisible" : ""}`}>{marca.nome}</p>
           <TrocaCliente atual={ator?.cliente ?? null} opcoes={clientes.map((c) => ({ id: c.id, nome: c.nome, situacao: c.situacao }))} />
           {perfil?.ativo && operacao && !operacao.cliente_pausado && <BotaoEmergencia pausado={operacao.pausado} gestor={gestor} />}
           <TemaToggle />

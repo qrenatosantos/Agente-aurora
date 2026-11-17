@@ -85,3 +85,28 @@ A restauração devolve um "bookmark" que desfaz a própria restauração, se pr
    anterior (um clique); depois corrija com calma no ramo de testes.
 4. Cecília falando besteira depois de mudar Instruções: painel ▸ Registro ▸ versões ▸ voltar para a anterior.
 5. Emergência: botão de pausa do agente no painel (as mensagens vão para a equipe).
+
+## 5. Multi-cliente e duas etapas (Fase 1 da plataforma, 17/11/2026 — por enquanto só no ambiente de testes)
+
+- **Clientes:** cada empresa é um cliente (apelido curto, ex.: `aurora`). Tudo no banco tem `cliente_id`. O dono da
+  plataforma (Renato) vê todos em **Estúdio ▸ Clientes** e troca de cliente no topo. A equipe de um cliente só vê o dele.
+- **WhatsApp:** um endereço só (`/whatsapp/webhook`) para todos. O motor descobre o cliente pelo **número que recebeu a
+  mensagem** (Integrações ▸ WhatsApp ▸ Phone number ID de cada cliente) e confere a assinatura com o app secret dele.
+  Conversas: `<cliente>:wa-<telefone>`; a Aurora (convertida da instalação antiga) mantém `wa-<telefone>`.
+- **Avisos do CRM:** `POST /crm/avisos` (o motor acha o cliente pela assinatura) ou `POST /crm/avisos/<cliente>`.
+  Reprocessar um aviso: `POST /interno/aviso {"conversa":"avisos","cliente":"aurora","id":123}`.
+- **Saúde:** o vigia confere OpenAI, WhatsApp e CRM de cada cliente ativo (o detalhe começa com `[cliente]`). Cliente
+  sem número de WhatsApp ainda (sendo configurado) não gera alerta por chave faltando.
+- **Pausar um cliente** (Estúdio ▸ Clientes ▸ Pausar): o agente dele não responde ninguém. **Encerrar**: a equipe dele
+  perde o acesso. Nada é apagado.
+
+### Confirmação em duas etapas (dono da plataforma)
+- Obrigatória para o dono: sem ela, o painel abre direto a tela "Confirmação em duas etapas" (QR code para o Google
+  Authenticator). Depois, todo login pede o código de 6 números do celular.
+- **Perdeu o celular?** Desligue as duas etapas pelo banco e ligue de novo no próximo login (troque `--env teste` e o
+  nome do banco para a produção quando ela tiver a Fase 1):
+  ```
+  cd painel
+  npx wrangler d1 execute aurora-agente-teste --remote --env teste --command "update pessoas set totp_ativo = 0, totp_cifrado = null where dono = 1"
+  ```
+- O segredo do aplicativo fica cifrado com a `CHAVE_MESTRA` (se ela mudar, faça o mesmo comando e ligue de novo).
