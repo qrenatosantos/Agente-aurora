@@ -173,7 +173,7 @@ const CENARIOS: Cenario[] = [
     esperado: ["Pergunta o que mudar (não passa para a equipe).", "Monta uma nova proposta com caipirinha, caipiroska e Aperol Spritz (sem gin tônica), depois de confirmar."],
     conferir: (c) => [
       transferiu(c) && "passou para a equipe",
-      !c.estado.proposta || c.estado.proposta.numero === "PROP-2026-0099" ? "não montou a nova proposta" : null,
+      !c.estado.proposta || c.estado.proposta.status === "recusada" ? "não montou a nova proposta" : null, // a nova versão mantém o número (CRM)
       c.ferramentas.some((f) => f.nome === "preparar_proposta") &&
         !c.ferramentas.some((f) => {
           const d = ((f.args as { drinks?: string[] })?.drinks ?? []).join(",");
