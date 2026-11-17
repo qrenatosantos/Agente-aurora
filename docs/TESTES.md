@@ -418,3 +418,17 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
     **4,76 · 20/24**, US$ 0,00057/resposta. Reprovadas: drinks soltos 2/2 (grava pacote no cadastro na personalizada),
     erros e abreviações 1/2 (Reserve listado sem gin tônica), proposta recusada 1/2 ("link anterior deixa de valer": erro do JUIZ, é regra da empresa segundo o Renato; juiz corrigido; na prática 21/24).
     Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.
+
+## 17/11/2026 — Drinks soltos (pacote no cadastro) e dúvida de drink
+Config no ar v13 (gpt-6-luna:low), exportada na hora; `qualidade.ts --so drinks-soltos,digita-errado --rodadas 2`.
+| | drinks-soltos | digita-errado |
+|---|---|---|
+| Antes | ✔ 4,4 · ✘ 4,2 (pacote Exclusive gravado sem a cliente escolher) | ✘ 4,8 (Reserve sem gin tônica) · ✔ 4,6 |
+| Depois (só pacote) | ✔ 4,6 · ✔ 4,8 | ✔ 4,8 · ✘ 2,8 (transferiu dúvida "Moscow Mule é de vodka com gengibre?") |
+| Depois (final) | ✔ 4,8 · ✔ 5,0 | ✔ 5,0 · ✔ 4,6 |
+- Correções: na proposta personalizada o pacote anotado sai do cadastro (estado e CRM: PUT evento pacote null);
+  a ferramenta só grava pacote escolhido pelo cliente; o que leva cada drink dos pacotes vai nas instruções da IA
+  (dúvida de drink não transfere). Prazo conferido de novo: ✔ 4,6 · ✔ 5,0.
+- "Reserve sem gin tônica" NÃO é erro da Cecília: no catálogo do CRM o Reserve está cadastrado sem gin tônica
+  (Essencial e Signature têm; Exclusive tem). Confirmar com o André (pendência).
+- núcleo 49/49, banco 39/39, motor 14/14; tsc, lint, build OK.

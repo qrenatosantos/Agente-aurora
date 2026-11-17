@@ -52,6 +52,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
+- **Catálogo do CRM (André):** o pacote *Reserve* está cadastrado SEM gin tônica (Essencial, Signature e Exclusive têm).
+  Se os pacotes são cumulativos, falta a gin tônica no Reserve (CRM ▸ Catálogo). A Cecília repete o que está cadastrado.
 - **Cecília (fotografia de 17/11, refeita):** a nota 4,18 da 1ª rodada NÃO valia (o avaliador rodava a Luna sem
   raciocínio, juntava os balões e cobrava as horas). Corrigido o avaliador (commits 1298c65 e 252c80f); a correção do
   prazo (02ea096) já estava no ar. **Nota de referência: 4,76 · 20/24** (config v13, `gpt-6-luna:low`, commit 252c80f).

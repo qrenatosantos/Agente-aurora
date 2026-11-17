@@ -53,7 +53,7 @@ export const DEFINICOES = [
           uf: { type: "string", description: "Sigla do estado (ex.: MG)." },
           local: { type: "string", description: "Salão, chácara, residência…" },
           convidados: { type: "integer", description: "Número aproximado de convidados." },
-          pacote: { type: "string", description: "Nome do pacote de interesse, exatamente como no catálogo." },
+          pacote: { type: "string", description: "Nome do pacote, exatamente como no catálogo. SÓ quando o CLIENTE escolheu esse pacote. NÃO grave quando ele pediu drinks soltos, está comparando ou quer proposta personalizada." },
           linha: { type: "string", enum: ["tradicional", "premium"], description: "premium = quer drinks premium." },
           preferencias: { type: "array", items: { type: "string" }, description: "Ex.: 'opções sem álcool', 'drink personalizado com a cor da festa'." },
           observacoes: { type: "string", description: "Outros detalhes importantes para a equipe." },
@@ -394,6 +394,15 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
           if (ag?.situacao === "indisponivel" || ag?.situacao === "depende_do_horario") return fim({ ok: false, agenda: ag, orientacao: `Não prepare a proposta ainda. ${ag.orientacao}` }, "leitura");
         }
         const semVidraria = args.sem_vidraria === true ? true : undefined;
+        // Proposta personalizada: o pacote que a IA tenha anotado antes não fica no cadastro (o cliente escolheu drinks)
+        if (escolhidos && (ev.pacote || ev.pacote_id)) {
+          delete ev.pacote;
+          delete ev.pacote_id;
+          if (!sim && ctx.estado.negocio_id) {
+            const r = await ctx.crm.put(`/negocios/${ctx.estado.negocio_id}/evento`, { pacote: null, pacote_id: null });
+            ctx.rastro.push({ tipo: "ferramenta", nome: "tirar o pacote do cadastro (proposta personalizada)", efeito: "gravacao", resultado: r.dados ? { ok: true } : r.erro });
+          }
+        }
         if (novaVersao) {
           const pac = escolhidos ? null : pacotePorNome(ctx.pacotes, ev.pacote);
           const drinks = escolhidos?.ids ?? pac?.drinks.map((d) => d.id);
