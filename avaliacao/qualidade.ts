@@ -21,7 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { processarTurno } from "../painel/lib/nucleo/agente.ts";
 import { ClienteCrm } from "../painel/lib/nucleo/crm.ts";
-import { chamarModelo, custoUsd, type Esforco } from "../painel/lib/nucleo/openai.ts";
+import { chamarModelo, custoUsd, type Esforco, separarModelo } from "../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento } from "../painel/lib/nucleo/tipos.ts";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -213,9 +213,10 @@ const CENARIOS: Cenario[] = [
 
 // ------------------------------------------------------------ peças
 type Variante = { rotulo: string; modelo: string; esforco: Esforco };
+// "gpt-6-luna:low" (como no banco) e "gpt-6-luna@low" (forma antiga) ligam o raciocínio; sem sufixo = sem raciocínio.
 const variante = (s: string): Variante => {
-  const [modelo, esforco] = s.split("@");
-  return { rotulo: s, modelo, esforco: (esforco as Esforco) ?? "none" };
+  const { modelo, esforco } = separarModelo(s.replace("@", ":"));
+  return { rotulo: s, modelo, esforco: esforco ?? "none" };
 };
 
 const chave = process.env.OPENAI_CHAVE ?? "sk-sem-chave";
@@ -325,7 +326,8 @@ type Avaliacao = { notas: Record<string, number>; erros_graves: string[]; coment
 const CRITERIOS = ["compreensao", "conducao", "resolucao", "naturalidade", "fidelidade"];
 
 async function avaliar(cen: Cenario, conv: Conversa, cfg: ConfigAgente): Promise<Avaliacao> {
-  const transcricao = conv.falas.map((f) => `${f.quem === "cliente" ? "CLIENTE" : "CECÍLIA"}: ${f.texto}`).join("\n\n");
+  // cada balão do WhatsApp é uma mensagem separada (a Cecília responde em vários balões)
+  const transcricao = conv.falas.flatMap((f) => (f.quem === "cliente" ? [`CLIENTE: ${f.texto}`] : f.texto.split("\n\n").map((b) => `CECÍLIA: ${b}`))).join("\n\n");
   const acoes = conv.ferramentas.map((f) => `- ${f.nome} ${JSON.stringify(f.args)} → ${JSON.stringify(f.resultado ?? null).slice(0, 300)}`).join("\n") || "(nenhuma)";
   const r = await chamarComCalma({
     chave,
@@ -336,8 +338,8 @@ async function avaliar(cen: Cenario, conv: Conversa, cfg: ConfigAgente): Promise
       {
         role: "system",
         content: `Você é gerente comercial de uma empresa de bar para festas e avalia o atendimento da Cecília (agente de WhatsApp da Aurora Bartenders) com rigor e justiça.
-Como o sistema funciona: gravar a data (registrar_dados_da_festa) já consulta a agenda e devolve a disponibilidade; o modo é de teste, então as gravações aparecem como simuladas.
-Regras da empresa que ela deve seguir: não inventar preço, data ou condição (só o que o sistema informa); não oferecer falar com uma pessoa por conta própria (só se o cliente pedir ou nos casos de transferência); mensagens curtas de WhatsApp, pacotes um por mensagem; pedir nome do cliente e horas de bar antes da proposta; confirmar o resumo antes de preparar a proposta; nunca escolher o pacote pelo cliente; responder dúvidas com o conhecimento; só falar da Aurora; passar para a equipe quando o cliente pede uma pessoa, serviço fora dos pacotes, ou insiste em desconto depois de ouvir as formas de economizar.
+Como o sistema funciona: gravar a data (registrar_dados_da_festa) já consulta a agenda e devolve a disponibilidade; o modo é de teste, então as gravações aparecem como simuladas. Cada linha \"CECÍLIA:\" é um balão separado no WhatsApp. O serviço tem duração padrão de 6 horas: a Cecília não pergunta as horas, mas se o CLIENTE pedir outra duração ela registra a que o cliente pediu (isso é correto, não é erro). A data fica confirmada quando o cliente aceita a proposta (é o CRM que confirma): dizer isso não é inventar condição.
+Regras da empresa que ela deve seguir: não inventar preço, data ou condição (só o que o sistema informa); não oferecer falar com uma pessoa por conta própria (só se o cliente pedir ou nos casos de transferência); mensagens curtas de WhatsApp, pacotes um por mensagem; pedir o nome do cliente antes da proposta; confirmar o resumo antes de preparar a proposta; nunca escolher o pacote pelo cliente; responder dúvidas com o conhecimento; só falar da Aurora; passar para a equipe quando o cliente pede uma pessoa, serviço fora dos pacotes, ou insiste em desconto depois de ouvir as formas de economizar.
 Instruções do gestor (resumo do que está configurado): ${cfg.instrucoes.slice(0, 2500)}
 
 Dê notas de 1 (péssimo) a 5 (excelente):
@@ -452,7 +454,7 @@ async function main() {
           l.av?.erros_graves.length ? `Erros graves (avaliador): ${l.av.erros_graves.join("; ")}` : "",
           l.av ? `Avaliador: ${l.av.comentario} (${CRITERIOS.map((c) => `${c} ${l.av!.notas[c] ?? "?"}`).join(", ")})` : "",
           "",
-          ...(l.conv?.falas ?? []).map((f) => `- ${f.quem === "cliente" ? "👤" : "🤖"} ${f.texto.replace(/\n+/g, " ⏎ ")}`),
+          ...(l.conv?.falas ?? []).flatMap((f) => (f.quem === "cliente" ? [`- 👤 ${f.texto.replace(/\n+/g, " ⏎ ")}`] : f.texto.split("\n\n").map((b) => `- 🤖 ${b.replace(/\n+/g, " ⏎ ")}`))),
           "",
         ]
           .filter((x, i) => x !== "" || i > 4)
