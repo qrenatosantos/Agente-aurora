@@ -1,7 +1,7 @@
 # Plano: a plataforma de agentes (da Cecília para qualquer cliente)
 
 Escrito em 17/11/2026. Revisado no mesmo dia com as respostas do Renato (seção 10).
-**Situação:** decisões principais tomadas; faltam 4 confirmações curtas (seção 11). Nenhum código escrito ainda.
+**Situação:** decisões tomadas (seção 10); falta 1 confirmação (seção 11). Nenhum código escrito ainda.
 Base: [`AVALIACAO-PLATAFORMA.md`](AVALIACAO-PLATAFORMA.md) (direção), [`SITUACAO.md`](SITUACAO.md) (o que está no ar),
 [`PLANO-THINK.md`](PLANO-THINK.md) (motor na Cloudflare) e o código atual (`painel/`, `motor/`, `avaliacao/`).
 
@@ -226,13 +226,24 @@ agente, **bateria da Aurora 45/45** e qualidade sem piorar. `docs/TESTES.md` e `
 
 ### Fase 6 — Consumo e cobrança da IA
 
-Decisão do Renato: a OpenAI é paga por ele; cada cliente tem um limite mensal; **passou do limite, o agente continua**,
-e o excedente é cobrado do cliente **a preço de custo**, com aviso ao cliente e ao Renato.
+Decisão do Renato: a OpenAI é paga por ele; cada cliente tem um limite mensal; o excedente é cobrado do cliente
+**a preço de custo**, **só se o cliente autorizar**, e vai no máximo até **1,3× o limite**.
+
+Como funciona, mês a mês:
+
+| Gasto do mês | O que acontece |
+|---|---|
+| 80% do limite | Aviso ao cliente (Portal; e-mail quando houver domínio) e a você: "está perto do limite". O Portal mostra o botão **"Autorizo o saldo extra"** (só o gestor do cliente), com o valor máximo do extra (0,3× o limite, a preço de custo) |
+| 90% e 95% | Lembrete, se ainda não autorizou |
+| 100%, **com** autorização | O agente continua; o excedente é contado e aparece no Portal e no Estúdio |
+| 100%, **sem** autorização | O agente pausa como no teto (mensagens vão para a equipe, com aviso ao contato); você e o cliente são avisados; se o cliente autorizar pelo Portal, o agente volta na hora |
+| 1,3× o limite | O agente pausa. As mensagens novas vão para a equipe do cliente com um aviso gentil ao contato (ninguém fica sem resposta). Só você libera, no Estúdio |
+| Virada do mês | Tudo zera; a autorização vale só para o mês em que foi dada |
 
 | # | Faço | Prova | Você |
 |---|---|---|---|
 | 6.1 | Gasto por cliente e mês (já medimos por resposta; passa a ser por cliente) | Conta bate com o painel da OpenAI (diferença < 5%) | Nada |
-| 6.2 | Avisos: **80%** do limite (você e o cliente), **100%** (você e o cliente: "a partir daqui é excedente") e um **teto de segurança** (seção 11) | Relógio e gastos falsos nos testes | Nada |
+| 6.2 | Avisos e regras da tabela acima: 80/90/95%, botão de autorização no Portal (registrado: quem autorizou e quando), pausa no teto de 1,3× e liberação por você | Relógio e gastos falsos nos testes, cada linha da tabela | Nada |
 | 6.3 | Tela **Consumo** no Estúdio (todos os clientes) e no Portal (só o dele): gasto do mês, limite, excedente em reais | Navegador | Dizer a cotação do dólar a usar (fixa ou do dia) |
 | 6.4 | Fechamento do mês: relatório do excedente por cliente, para você cobrar (a cobrança em si continua com você) | Relatório de um mês simulado | Nada |
 
@@ -326,12 +337,13 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 | 8 | Modelos prontos de agente, incluindo **SDR que passa para vendedor/corretor** |
 | 9 | Ainda não há próximo cliente (prospecção começando): ensaio com cliente fictício |
 | 10 | Ainda não há domínio: seguir com os endereços da Cloudflare e trocar quando houver |
+| 11 | No Portal, o cliente vê conversas, assume, devolve e vê resultados; **não edita** conhecimento nem a ficha |
+| 12 | Excedente só com **autorização do cliente** (pedida a partir de 80%), teto de **1,3× o limite**, pausa no teto |
+| 13 | Depois do WhatsApp, o próximo canal é o **chat do site** |
+| 14 | Sem autorização do extra, o agente pausa ao chegar a 100% (volta na hora se o cliente autorizar) |
 
 ## 11. Ainda falta confirmar (curto)
 
 | # | Pergunta | Minha recomendação |
 |---|---|---|
-| A | No Portal, o cliente **vê as conversas, assume e devolve** e vê os resultados, mas **não edita** conhecimento nem a ficha. É isso? | Sim |
-| B | Depois do limite, o agente continua (excedente). Quer um **teto de segurança** (ex.: 2× o limite) em que o agente pausa e só volta com a sua liberação, para evitar uma conta inesperada se algo der errado? | Sim, 2× o limite |
-| C | Depois do WhatsApp, qual canal construir primeiro: **chat do site** ou **Instagram/Messenger**? | Chat do site (Instagram e Messenger dependem da verificação da sua empresa na Meta, que pede domínio) |
-| D | Enquanto a base é refeita (fases 1 a 3), a Cecília recebe **só correções**, sem novidades grandes? | Sim |
+| D | Enquanto a base é refeita (fases 1 a 3), a Cecília recebe **só correções**, sem novidades grandes? (Hoje outra sessão ainda está acrescentando novidades nela.) | Sim, a partir do início da Fase 1 |
