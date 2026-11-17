@@ -38,7 +38,7 @@ export const DEFINICOES = [
     function: {
       name: "registrar_dados_da_festa",
       description:
-        "Grava no sistema os dados da festa assim que o cliente informar (só os campos que ele disse). Se informar a data, devolve também a disponibilidade da agenda nesse dia.",
+        "Grava no sistema os dados da festa assim que o cliente informar (só os campos que ele disse). Quando houver data, devolve também a disponibilidade da agenda (com o horário, se já souber).",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -48,7 +48,7 @@ export const DEFINICOES = [
           data: { type: "string", description: "Data da festa no formato AAAA-MM-DD." },
           mes_previsto: { type: "string", description: "Mês previsto (AAAA-MM), quando ainda não há data." },
           hora_inicio: { type: "string", description: "Horário de início do bar, HH:MM." },
-          duracao_horas: { type: "number", description: "Quantas horas de bar." },
+          duracao_horas: { type: "number", description: "Horas de bar. NÃO pergunte: o serviço tem duração padrão. Só grave se o cliente pedir outra duração ou para baratear." },
           cidade: { type: "string" },
           uf: { type: "string", description: "Sigla do estado (ex.: MG)." },
           local: { type: "string", description: "Salão, chácara, residência…" },
@@ -78,12 +78,13 @@ export const DEFINICOES = [
     type: "function" as const,
     function: {
       name: "consultar_agenda",
-      description: "Consulta se uma data está livre, com vagas, lotada ou bloqueada. A agenda do sistema é a ÚNICA fonte de disponibilidade.",
+      description:
+        "Consulta se a equipe está livre numa data e horário (a conta já inclui a folga da equipe antes e depois de cada festa). A agenda do sistema é a ÚNICA fonte de disponibilidade. Use para conferir outra data ou horário que o cliente sugerir.",
       parameters: {
         type: "object",
         additionalProperties: false,
         required: ["data"],
-        properties: { data: { type: "string", description: "AAAA-MM-DD" }, hora_inicio: { type: "string", description: "HH:MM" }, duracao_horas: { type: "number" } },
+        properties: { data: { type: "string", description: "AAAA-MM-DD" }, hora_inicio: { type: "string", description: "HH:MM. Sem horário, usa o da festa registrada." }, duracao_horas: { type: "number", description: "Só se não for a duração padrão." } },
       },
     },
   },
@@ -104,12 +105,13 @@ export const DEFINICOES = [
       parameters: {
         type: "object",
         additionalProperties: false,
-        required: ["convidados", "duracao_horas"],
+        required: ["convidados"],
         properties: {
           pacote: { type: "string", description: "Nome do pacote. Ou use drinks para uma proposta personalizada." },
           drinks: { type: "array", items: { type: "string" }, description: "Proposta personalizada: nomes dos drinks escolhidos (do catálogo), no lugar do pacote." },
           convidados: { type: "integer" },
-          duracao_horas: { type: "number" },
+          duracao_horas: { type: "number", description: "Só se não for a duração padrão." },
+          sem_vidraria: { type: "boolean", description: "true = copos descartáveis no lugar da vidraria." },
           linha: { type: "string", enum: ["tradicional", "premium"] },
           outra_cidade: { type: "boolean", description: "true se a festa não for em Araxá." },
         },
@@ -121,7 +123,7 @@ export const DEFINICOES = [
     function: {
       name: "preparar_proposta",
       description:
-        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: nome do cliente, tipo, data (ou mês), cidade, convidados, quantas horas de bar e o que vai no bar: um pacote que o CLIENTE escolheu, ou os drinks que ele escolheu (proposta personalizada, em drinks). Se faltar algo, PERGUNTE ao cliente antes. Nunca escolha o pacote pelo cliente. O cliente só recebe o link depois que a equipe aprovar.",
+        "Monta a proposta com os dados registrados e envia para a APROVAÇÃO da equipe. Use quando souber: nome do cliente, tipo, data (ou mês), cidade, convidados e o que vai no bar: um pacote que o CLIENTE escolheu, ou os drinks que ele escolheu (proposta personalizada, em drinks). Se faltar algo, PERGUNTE ao cliente antes. Nunca escolha o pacote pelo cliente. O cliente só recebe o link depois que a equipe aprovar. Se a proposta anterior já foi aprovada, enviada ou recusada e o cliente quer mudar algo (grave antes os dados novos), esta ferramenta cria uma NOVA VERSÃO, que volta para a equipe aprovar.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -134,6 +136,7 @@ export const DEFINICOES = [
             items: { type: "string" },
             description: "SÓ para proposta personalizada que o cliente CONFIRMOU: os nomes exatos dos drinks do catálogo que ele escolheu. Vazio = usa os drinks do pacote registrado.",
           },
+          sem_vidraria: { type: "boolean", description: "true = o cliente escolheu copos descartáveis no lugar da vidraria." },
         },
       },
     },
@@ -143,7 +146,7 @@ export const DEFINICOES = [
     function: {
       name: "transferir_para_pessoa",
       description:
-        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta. NÃO use quando o cliente quer MUDAR a proposta (drinks, horas, convidados): primeiro pergunte o que muda e confirme; se a proposta estiver recusada, monte outra com preparar_proposta; só transfira depois de saber a mudança, se a proposta ainda estiver aguardando aprovação, aprovada ou enviada.",
+        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada SÓ depois de oferecer outra data ou horário e o cliente dizer que não tem outra opção (motivo: 'Limite de capacidade em <data> às <hora>'); cliente pede outra condição de pagamento (outra entrada, parcelar, outro prazo: não negocie, diga que vai verificar com a equipe e ponha o pedido no motivo); cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta. NÃO use quando o cliente quer MUDAR a proposta (drinks, horas, convidados, vidraria): pergunte o que muda, grave, confirme e use preparar_proposta (se a proposta foi aprovada, enviada ou recusada, ela cria uma nova versão para a equipe aprovar). Só transfira mudança se a proposta ainda estiver aguardando aprovação (com a mudança no motivo) ou se já foi aceita.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -238,6 +241,33 @@ function dataValida(v: unknown, hoje: string) {
   return null;
 }
 
+type Disponibilidade = { data?: string; hora_inicio?: string | null; hora_fim?: string | null; situacao?: string; motivo_bloqueio?: string | null; vagas?: number };
+
+/** O que a IA lê da agenda: a situação e o que fazer (sem detalhes das outras festas nem número de vagas). */
+export function orientarAgenda(d: Disponibilidade | null | undefined, estado: EstadoConversa): unknown {
+  if (!d?.situacao) return d ?? undefined;
+  const base = { data: d.data, hora_inicio: d.hora_inicio ?? null, hora_fim: d.hora_fim ?? null };
+  const proximo = "Só se o cliente não tiver outra opção, transfira para a equipe com o motivo 'Limite de capacidade em <data> às <hora>'.";
+  if (d.situacao === "bloqueada") {
+    estado.agenda_cheia = String(d.data);
+    return { ...base, situacao: "indisponivel", orientacao: `A equipe não está disponível nessa data. NÃO ofereça a data e não transfira agora: diga com delicadeza que essa data já está comprometida e pergunte se há outra data possível (consulte de novo). ${proximo}` };
+  }
+  if (d.situacao === "lotada") {
+    if (!d.hora_inicio) return { ...base, situacao: "depende_do_horario", orientacao: "Sem o horário não dá para saber se cabe. Pergunte o horário de início da festa e consulte de novo. NÃO diga que a data está cheia." };
+    estado.agenda_cheia = `${d.data} ${d.hora_inicio}`;
+    return { ...base, situacao: "indisponivel", orientacao: `Nesse dia e horário a equipe já está comprometida (a conta inclui deslocamento e montagem). NÃO ofereça esse horário e não transfira agora: diga que nesse horário a agenda já está comprometida e pergunte se dá para outro horário ou outra data (consulte de novo). ${proximo}` };
+  }
+  return { ...base, situacao: "tem_vaga", orientacao: "Tem vaga. Siga, sem prometer nem garantir a data e sem dizer quantas vagas restam." };
+}
+
+function consultaAgenda(ctx: ContextoFerramentas, data: unknown, hora?: unknown, duracao?: unknown) {
+  const q = new URLSearchParams({ data: String(data) });
+  if (hora) q.set("hora_inicio", String(hora));
+  if (duracao) q.set("duracao_horas", String(duracao));
+  if (ctx.estado.negocio_id) q.set("negocio_id", ctx.estado.negocio_id);
+  return ctx.crm.get<Disponibilidade>(`/agenda/disponibilidade?${q}`);
+}
+
 /** Quais dados mínimos faltam para montar a proposta. */
 export function faltamParaProposta(evento: Record<string, unknown>, contato: { nome?: string | null } = {}, personalizada = false) {
   const f: string[] = [];
@@ -247,7 +277,6 @@ export function faltamParaProposta(evento: Record<string, unknown>, contato: { n
   if (!evento.data && !evento.mes_previsto) f.push("data ou mês previsto");
   if (!evento.cidade) f.push("cidade");
   if (!evento.convidados) f.push("número de convidados");
-  if (!evento.duracao_horas) f.push("quantas horas de bar (o preço depende disso)");
   if (!personalizada && !evento.pacote && !evento.pacote_id && !evento.quer_ajuda_pacote) f.push("pacote (ou o pedido de ajuda para escolher)");
   return f;
 }
@@ -277,12 +306,11 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       case "consultar_agenda": {
         const erro = dataValida(args.data, ctx.hoje);
         if (erro) return fim({ erro }, "nenhum");
-        const q = new URLSearchParams({ data: String(args.data) });
-        if (args.hora_inicio) q.set("hora_inicio", String(args.hora_inicio));
-        if (args.duracao_horas) q.set("duracao_horas", String(args.duracao_horas));
-        if (ctx.estado.negocio_id) q.set("negocio_id", ctx.estado.negocio_id);
-        const r = await ctx.crm.get(`/agenda/disponibilidade?${q}`);
-        return fim(r.dados ?? { erro: r.erro?.mensagem }, "leitura");
+        const ev = ctx.estado.evento;
+        const mesmaData = args.data === ev.data;
+        const hora = args.hora_inicio ?? (mesmaData ? ev.hora_inicio : undefined);
+        const r = await consultaAgenda(ctx, args.data, hora, args.duracao_horas ?? ev.duracao_horas);
+        return fim(r.dados ? orientarAgenda(r.dados, ctx.estado) : { erro: r.erro?.mensagem }, "leitura");
       }
 
       case "ver_drinks": {
@@ -296,7 +324,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         if (escolhidos && "erro" in escolhidos) return fim({ erro: escolhidos.erro }, "nenhum");
         const p = escolhidos ? null : pacotePorNome(ctx.pacotes, args.pacote);
         if (!escolhidos && !p) return fim({ erro: `Pacote "${String(args.pacote ?? "")}" não existe. Pacotes: ${ctx.pacotes.map((x) => x.nome).join(", ")}.` }, "nenhum");
-        const corpo = { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: args.convidados, duracao_horas: args.duracao_horas, linha: args.linha, outra_cidade: args.outra_cidade };
+        const corpo = { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: args.convidados, duracao_horas: args.duracao_horas ?? ctx.estado.evento.duracao_horas, sem_vidraria: args.sem_vidraria, linha: args.linha, outra_cidade: args.outra_cidade };
         const r = await ctx.crm.post<Record<string, unknown>>("/precos/calcular", corpo);
         const d = r.dados;
         // A IA recebe só o necessário: os "motivos" internos da calculadora não vão para o cliente.
@@ -326,14 +354,16 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         if (sim) {
           Object.assign(ctx.estado.evento, dados);
           let disponibilidade: unknown = undefined;
-          if (dados.data) disponibilidade = (await ctx.crm.get(`/agenda/disponibilidade?data=${dados.data}`)).dados;
+          const ev = ctx.estado.evento;
+          if (ev.data && (dados.data || dados.hora_inicio || dados.duracao_horas)) disponibilidade = orientarAgenda((await consultaAgenda(ctx, ev.data, ev.hora_inicio, ev.duracao_horas)).dados, ctx.estado);
           return fim({ gravado: true, evento: ctx.estado.evento, disponibilidade }, "simulada", { avancou: novo });
         }
         const id = await garantirNegocio(ctx);
         const r = await ctx.crm.put<{ evento: Record<string, unknown>; disponibilidade?: unknown }>(`/negocios/${id}/evento`, dados);
         if (!r.dados) return fim({ erro: r.erro?.mensagem }, "gravacao");
         ctx.estado.evento = r.dados.evento ?? { ...ctx.estado.evento, ...dados };
-        return fim({ gravado: true, evento: r.dados.evento, disponibilidade: r.dados.disponibilidade }, "gravacao", { avancou: novo });
+        const disponibilidade = dados.data || dados.hora_inicio || dados.duracao_horas ? orientarAgenda(r.dados.disponibilidade as Disponibilidade | undefined, ctx.estado) : undefined;
+        return fim({ gravado: true, evento: r.dados.evento, disponibilidade }, "gravacao", { avancou: novo });
       }
 
       case "registrar_dados_do_cliente": {
@@ -348,18 +378,40 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       }
 
       case "preparar_proposta": {
-        if (ctx.estado.proposta && ["aguardando_aprovacao", "ajustes_solicitados", "aprovada", "enviada", "aceita"].includes(ctx.estado.proposta.status)) {
-          return fim({ erro: `Já existe a proposta ${ctx.estado.proposta.numero ?? ""} (${ctx.estado.proposta.status}). Aguarde a equipe.` }, "nenhum");
+        const anterior = ctx.estado.proposta;
+        if (anterior && ["aguardando_aprovacao", "ajustes_solicitados"].includes(anterior.status)) {
+          return fim({ erro: `A proposta ${anterior.numero ?? ""} já está com a equipe para aprovar. Se o cliente quer mudar algo, pergunte o que muda, confirme e transfira com a mudança no motivo.` }, "nenhum");
         }
+        if (anterior?.status === "aceita") return fim({ erro: "A proposta já foi aceita: mudanças agora são com a equipe. Transfira com a mudança no motivo." }, "nenhum");
+        const novaVersao = Boolean(anterior && ["aprovada", "enviada", "recusada"].includes(anterior.status));
         const escolhidos = await drinksPorNome(ctx, args.drinks);
         if (escolhidos && "erro" in escolhidos) return fim({ erro: escolhidos.erro }, "nenhum");
         const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato, Boolean(escolhidos));
         if (faltam.length) return fim({ ok: false, faltam, orientacao: "Pergunte ao cliente o que falta antes de preparar a proposta." }, "nenhum");
+        const ev = ctx.estado.evento;
+        if (ev.data) {
+          const ag = orientarAgenda((await consultaAgenda(ctx, ev.data, ev.hora_inicio, ev.duracao_horas)).dados, ctx.estado) as { situacao?: string; orientacao?: string } | undefined;
+          if (ag?.situacao === "indisponivel" || ag?.situacao === "depende_do_horario") return fim({ ok: false, agenda: ag, orientacao: `Não prepare a proposta ainda. ${ag.orientacao}` }, "leitura");
+        }
+        const semVidraria = args.sem_vidraria === true ? true : undefined;
+        if (novaVersao) {
+          const pac = escolhidos ? null : pacotePorNome(ctx.pacotes, ev.pacote);
+          const drinks = escolhidos?.ids ?? pac?.drinks.map((d) => d.id);
+          const nota = [escolhidos ? `Drinks escolhidos: ${escolhidos.nomes.join(", ")}.` : "", String(args.recado_para_equipe ?? "")].filter(Boolean).join(" ");
+          if (sim || !anterior!.id) {
+            ctx.estado.proposta = { ...anterior!, status: "aguardando_aprovacao", simulada: true };
+            return fim({ ok: true, nova_versao: true, numero: anterior!.numero, status: "aguardando_aprovacao", orientacao: "Avise o cliente que a nova versão foi para a equipe revisar e que você manda o link novo assim que for aprovada." }, "simulada", { avancou: true });
+          }
+          const r = await ctx.crm.post<{ id: string; numero: string; versao?: number; status?: string; total: number | null; preco_pendente: boolean | null }>(`/propostas/${anterior!.id}/nova-versao`, { drinks, sem_vidraria: semVidraria, nota });
+          if (!r.dados) return fim({ erro: r.erro?.mensagem }, "gravacao");
+          ctx.estado.proposta = { id: r.dados.id, numero: r.dados.numero, status: r.dados.status ?? "aguardando_aprovacao", simulada: false, total: r.dados.total, preco_pendente: r.dados.preco_pendente };
+          return fim({ ok: true, nova_versao: true, numero: r.dados.numero, versao: r.dados.versao, status: ctx.estado.proposta.status, orientacao: "Avise o cliente que a nova versão foi para a equipe revisar e que você manda o link novo assim que for aprovada." }, "gravacao", { avancou: true });
+        }
         if (sim) {
           const p = pacotePorNome(ctx.pacotes, ctx.estado.evento.pacote);
           let preco: { disponivel: boolean; preco?: number } = { disponivel: false };
-          if ((p || escolhidos) && ctx.estado.evento.convidados && ctx.estado.evento.duracao_horas) {
-            const r = await ctx.crm.post<{ disponivel: boolean; preco?: number }>("/precos/calcular", { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: ctx.estado.evento.convidados, duracao_horas: ctx.estado.evento.duracao_horas });
+          if ((p || escolhidos) && ctx.estado.evento.convidados) {
+            const r = await ctx.crm.post<{ disponivel: boolean; preco?: number }>("/precos/calcular", { ...(escolhidos ? { drinks: escolhidos.ids } : { pacote_id: p!.id }), convidados: ctx.estado.evento.convidados, duracao_horas: ctx.estado.evento.duracao_horas, sem_vidraria: semVidraria });
             preco = r.dados ?? preco;
           }
           ctx.estado.proposta = { id: null, numero: "(simulação)", status: "aguardando_aprovacao", simulada: true, total: preco.disponivel ? (preco.preco ?? null) : null, preco_pendente: !preco.disponivel };
@@ -372,6 +424,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
           ...(escolhidos ? { drinks: escolhidos.ids } : {}),
         });
         if (!criada.dados) return fim({ erro: criada.erro?.mensagem }, "gravacao");
+        if (semVidraria) await ctx.crm.patch(`/propostas/${criada.dados.id}`, { sem_vidraria: true });
         const sub = await ctx.crm.post<{ status: string }>(`/propostas/${criada.dados.id}/submeter`, { nota: args.recado_para_equipe });
         ctx.estado.proposta = { id: criada.dados.id, numero: criada.dados.numero, status: sub.dados?.status ?? "rascunho", simulada: false, total: criada.dados.total, preco_pendente: criada.dados.preco_pendente };
         return fim(
@@ -385,14 +438,21 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         const motivo = String(args.motivo ?? "").trim() || "O agente pediu atendimento humano.";
         // Mudança na proposta: a Cecília resolve ou, pelo menos, entende a mudança antes de passar (regra por código)
         const prop = ctx.estado.proposta;
-        if (prop && /\b(alter|mud|troc|ajust|refa[zç]|drinks?\b)/i.test(motivo)) {
-          if (prop.status === "recusada") {
-            return fim({ erro: "Não transfira: a proposta anterior foi recusada. Pergunte o que o cliente quer mudar, grave, confirme o resumo e monte uma nova com preparar_proposta." }, "nenhum");
+        const pagamento = /\b(pagament|parcel|entrada|prazo de pag|condi[cç])/i.test(motivo);
+        if (prop && !pagamento && /\b(alter|mud|troc|ajust|refa[zç]|drinks?\b|vidraria|descart)/i.test(motivo)) {
+          if (["aprovada", "enviada", "recusada"].includes(prop.status)) {
+            return fim({ erro: "Não transfira: você mesma faz essa mudança. Pergunte o que o cliente quer mudar, grave, confirme o resumo e use preparar_proposta: ela cria uma nova versão que volta para a equipe aprovar." }, "nenhum");
           }
-          if (ctx.estado.mudanca_perguntada !== prop.id) {
+          if (prop.status !== "aceita" && ctx.estado.mudanca_perguntada !== prop.id) {
             ctx.estado.mudanca_perguntada = prop.id;
             return fim({ erro: "Ainda não transfira. Pergunte ao cliente exatamente o que ele quer mudar (drinks, horas, convidados…) e confirme. Depois disso, transfira com a mudança no motivo." }, "nenhum");
           }
+        }
+        // Agenda cheia: primeiro oferece outra data ou horário; só transfere se o cliente não tiver outra opção
+        const cheia = ctx.estado.agenda_cheia;
+        if (cheia && /\b(lotad|bloquead|cheia|capacidade|agenda|indispon|vaga)/i.test(motivo) && ctx.estado.alternativa_perguntada !== cheia) {
+          ctx.estado.alternativa_perguntada = cheia;
+          return fim({ erro: "Ainda não transfira. Diga ao cliente que nesse dia/horário a agenda já está comprometida e pergunte se dá para outro horário ou outra data. Se ele disser que não tem outra opção, aí transfira com o motivo 'Limite de capacidade em <data> às <hora>'." }, "nenhum");
         }
         if (!sim && ctx.estado.negocio_id) {
           const r = await ctx.crm.post(`/negocios/${ctx.estado.negocio_id}/transferir-humano`, { motivo });

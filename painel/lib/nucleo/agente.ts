@@ -65,8 +65,8 @@ async function lerContexto(crm: ClienteCrm, estado: EstadoConversa, modo: Modo, 
       if (n.dados.status !== "aberto") estado.atendimento = "humano";
       // a proposta também vem do CRM (a equipe pode ter recusado, aprovado ou mudado)
       if (modo === "real" && n.dados.propostas?.length) {
-        const vivas = n.dados.propostas.filter((p) => !["recusada", "cancelada", "expirada"].includes(p.status));
-        const p = vivas.at(-1) ?? n.dados.propostas.at(-1)!;
+        const vivas = n.dados.propostas.filter((p) => !["recusada", "cancelada", "expirada", "substituida"].includes(p.status));
+        const p = vivas.at(-1) ?? n.dados.propostas.filter((x) => x.status !== "substituida").at(-1) ?? n.dados.propostas.at(-1)!;
         estado.proposta = { id: p.id, numero: p.numero, status: p.status, simulada: false, total: p.total, preco_pendente: p.preco_pendente };
       }
       rastro.push({ tipo: "ferramenta", nome: "ler pedido no CRM", efeito: "leitura", resultado: { codigo: n.dados.codigo, etapa, atendimento: n.dados.atendimento, status: n.dados.status } });
@@ -112,16 +112,6 @@ export function prometeuTransferir(texto: string) {
   return /\b(vou|irei|vamos|já vou)\s+(te\s+)?(passar|transferir|encaminhar)\b|\bvou chamar algu[eé]m\b|\bpass(ar|ando|ei) (a |sua |essa |esta )?conversa\b|algu[eé]m da (nossa )?equipe (vai|ir[aá]|já vai) (te )?(responder|atender|chamar|falar|entrar em contato)/i.test(texto);
 }
 
-/** Alguma consulta deste turno mostrou a data da festa lotada ou bloqueada? */
-function dataSemVaga(rastro: PassoRastro[]): string | null {
-  for (const p of rastro) {
-    const r = p.resultado as { situacao?: string; data?: string; disponibilidade?: { situacao?: string; data?: string } } | undefined;
-    const sit = r?.situacao ?? r?.disponibilidade?.situacao;
-    if (sit === "lotada" || sit === "bloqueada") return r?.data ?? r?.disponibilidade?.data ?? "";
-  }
-  return null;
-}
-
 export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
   const agora = e.agora ?? new Date();
   const estado: EstadoConversa = structuredClone(e.estado);
@@ -137,7 +127,6 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
   if (estado.optout) return sair("Este cliente pediu para não receber mensagens.");
 
   let transferir: string | null = null;
-  let respostasPrefixo = "";
   const respostas: string[] = [];
 
   const transferirAgora = async (motivo: string, ctx: ContextoFerramentas | null) => {
@@ -227,20 +216,11 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
           }
         }
       }
-      // Rede de segurança 1: data lotada/bloqueada → passa para a equipe (que pode ver alternativas).
-      let prefixo = "";
-      const semVaga = !transferir ? dataSemVaga(rastro) : null;
-      if (semVaga !== null) {
-        rastro.push({ tipo: "regra", nome: "Data sem vaga na agenda", detalhe: "A agenda do CRM mostrou a data lotada ou bloqueada: a conversa passou para a equipe." });
-        await transferirAgora(`Data ${semVaga} lotada ou bloqueada na agenda.`, ctx);
-        prefixo = "Infelizmente a nossa agenda já está cheia nessa data. ";
-      }
-      // Rede de segurança 2: a IA disse que ia passar para a equipe, mas não passou.
+      // Rede de segurança: a IA disse que ia passar para a equipe, mas não passou.
       if (!transferir && final && prometeuTransferir(final)) {
         rastro.push({ tipo: "regra", nome: "Promessa de transferência", detalhe: "A IA disse que ia passar a conversa, mas não chamou a ferramenta. O sistema transferiu de verdade." });
         await transferirAgora("O agente disse ao cliente que passaria para a equipe.", ctx);
       }
-      if (prefixo) respostasPrefixo = prefixo;
       if (!transferir && !final) {
         rastro.push({ tipo: "aviso", nome: "Resposta vazia", detalhe: "A IA não produziu texto. Conversa passada para a equipe." });
         await transferirAgora("O agente não conseguiu responder.", ctx);
@@ -260,7 +240,7 @@ export async function processarTurno(e: EntradaTurno): Promise<ResultadoTurno> {
   if (transferir) {
     estado.atendimento = "humano";
     estado.transferido_motivo = transferir;
-    respostas.push(respostasPrefixo + mensagemTransferencia(e.cfg, agora));
+    respostas.push(mensagemTransferencia(e.cfg, agora));
   }
 
   // 7. aviso de atendimento automático na primeira resposta (exceto quando já transferiu)

@@ -58,6 +58,10 @@ export type EstadoConversa = {
   transferido_motivo: string | null;
   /** Proposta (id) sobre a qual a Cecília já perguntou o que o cliente quer mudar. */
   mudanca_perguntada?: string | null;
+  /** Última data (e horário) que a agenda mostrou sem vaga. */
+  agenda_cheia?: string | null;
+  /** Data sem vaga para a qual a Cecília já perguntou se o cliente tem outra opção. */
+  alternativa_perguntada?: string | null;
 };
 
 export const estadoInicial = (parcial: Partial<EstadoConversa> = {}): EstadoConversa => ({

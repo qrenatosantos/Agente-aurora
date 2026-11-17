@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import { processarTurno, prometeuTransferir, referenciaDoSite, type EntradaTurno } from "./agente.ts";
 import { ClienteCrm, variantesTelefone } from "./crm.ts";
-import { faltamParaProposta } from "./ferramentas.ts";
+import { faltamParaProposta, orientarAgenda } from "./ferramentas.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd } from "./openai.ts";
@@ -122,13 +122,20 @@ function respostaCrm(metodo: string, caminho: string, corpo?: unknown): unknown 
   if (metodo === "POST" && caminho === "/negocios/n1/propostas") return { id: "pr1", numero: "PROP-1", total: 0, preco_pendente: true };
   if (caminho === "/propostas/pr1/submeter") return { status: "aguardando_aprovacao" };
   if (caminho === "/catalogo/condicoes") return { empresa: {}, condicoes: { entrada_pct: null }, agenda: { capacidade_simultanea: 3 }, precos_aprovados: false, condicoes_confirmadas: false };
-  if (caminho.startsWith("/agenda/disponibilidade")) return { situacao: disponibilidade, vagas: disponibilidade === "lotada" ? 0 : 3 };
+  if (caminho.startsWith("/agenda/disponibilidade")) {
+    const q = new URLSearchParams(caminho.split("?")[1]);
+    return { data: q.get("data"), hora_inicio: q.get("hora_inicio"), situacao: disponibilidade, vagas: disponibilidade === "lotada" ? 0 : 3 };
+  }
+  if (metodo === "POST" && caminho === "/propostas/pr9/nova-versao") return { id: "pr10", numero: "P9", versao: 2, status: "aguardando_aprovacao", total: null, preco_pendente: true };
   if (caminho === "/precos/calcular") return { disponivel: false, motivos: ["sem regra"] };
   if (metodo === "GET" && caminho.startsWith("/negocios/")) return negocioCrm;
   if (metodo === "GET" && caminho === "/negocios?codigo=XK4A") return { negocios: [{ id: "n9", codigo: "XK4A", contato: { id: "c9", nome: "Carla", telefone: null } }] };
   if (metodo === "GET" && caminho.startsWith("/negocios?")) return { negocios: [] };
   if (metodo === "POST" && caminho === "/negocios") return { id: "n1", codigo: "AB12CD", contato: { id: "c1" }, evento: (corpo as { evento?: unknown })?.evento };
-  if (metodo === "PUT" && caminho.endsWith("/evento")) return { evento: corpo, disponibilidade: { situacao: disponibilidade } };
+  if (metodo === "PUT" && caminho.endsWith("/evento")) {
+    const c = corpo as { data?: string; hora_inicio?: string };
+    return { evento: corpo, disponibilidade: { situacao: disponibilidade, data: c.data, hora_inicio: c.hora_inicio ?? null } };
+  }
   if (caminho.endsWith("/transferir-humano")) return { transferido: true, atendimento: "humano" };
   return {};
 }
@@ -195,10 +202,9 @@ function entrada(novas: string[], extra: Partial<EntradaTurno> = {}): EntradaTur
 }
 
 describe("dados mínimos da proposta", () => {
-  test("sem as horas de bar, a proposta não sai (o preço depende disso)", () => {
+  test("a duração não é pergunta obrigatória: sem horas, a proposta sai (o CRM usa a duração padrão)", () => {
     const base = { tipo: "casamento", data: "2027-07-10", cidade: "Araxá", convidados: 50, pacote: "Signature" };
-    assert.ok(faltamParaProposta(base, { nome: "Carla" }).some((f) => f.includes("horas de bar")));
-    assert.deepEqual(faltamParaProposta({ ...base, duracao_horas: 5 }, { nome: "Carla" }), []);
+    assert.deepEqual(faltamParaProposta(base, { nome: "Carla" }), []);
   });
   test("sem o nome do cliente, a proposta não sai (nem com o nome genérico do WhatsApp)", () => {
     const base = { tipo: "casamento", data: "2027-07-10", cidade: "Araxá", convidados: 50, pacote: "Signature", duracao_horas: 5 };
@@ -311,12 +317,37 @@ describe("regras garantidas por código", () => {
     assert.equal(r.estado.atendimento, "humano");
   });
 
-  test("data lotada na agenda: o sistema transfere mesmo se a IA só perguntar", async () => {
+  test("agenda: lotada sem horário = pergunta o horário; com horário ou bloqueada = indisponível; parcial = tem vaga", () => {
+    const est = estadoInicial();
+    const sit = (d: Record<string, unknown>) => (orientarAgenda(d, est) as { situacao: string }).situacao;
+    assert.equal(sit({ data: "2026-12-19", hora_inicio: null, situacao: "lotada" }), "depende_do_horario");
+    assert.equal(est.agenda_cheia ?? null, null);
+    assert.equal(sit({ data: "2026-12-19", hora_inicio: "19:00", situacao: "lotada" }), "indisponivel");
+    assert.equal(est.agenda_cheia, "2026-12-19 19:00");
+    assert.equal(sit({ data: "2026-12-12", hora_inicio: "20:00", situacao: "bloqueada" }), "indisponivel");
+    assert.equal(sit({ data: "2026-12-05", hora_inicio: "20:00", situacao: "parcial", vagas: 1 }), "tem_vaga");
+    assert.ok(!("vagas" in (orientarAgenda({ data: "2026-12-05", situacao: "parcial", vagas: 1 }, est) as object)));
+  });
+
+  test("data sem vaga: não transfere na hora; oferece outra data; só transfere se o cliente não tiver outra opção", async () => {
     disponibilidade = "bloqueada";
-    const ia = iaFalsa([ferramenta("registrar_dados_da_festa", { data: "2027-06-12" }), texto("A agenda está cheia. Posso passar para a equipe?")]);
-    const r = await processarTurno(entrada(["Casamento dia 12/6/2027"], { chamar: ia.fn }));
+    let ia = iaFalsa([ferramenta("registrar_dados_da_festa", { data: "2027-06-12", hora_inicio: "20:00" }), ferramenta("transferir_para_pessoa", { motivo: "Data lotada" }), texto("Essa data já está comprometida. Tem outra data?")]);
+    let r = await processarTurno(entrada(["Casamento dia 12/6/2027 às 20h"], { chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    assert.match(JSON.stringify(r.rastro), /indisponivel/);
+    assert.match(JSON.stringify(r.rastro), /Ainda não transfira/);
+    ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Limite de capacidade em 2027-06-12 às 20:00; cliente não tem outra data" })]);
+    r = await processarTurno(entrada(["Não, tem que ser nesse dia"], { estado: r.estado, chamar: ia.fn }));
     assert.equal(r.estado.atendimento, "humano");
-    assert.match(r.respostas[0], /agenda já está cheia.*\[TRANSFERIDO\]/);
+  });
+
+  test("proposta não sai para data sem vaga", async () => {
+    disponibilidade = "lotada";
+    const ev = { tipo: "casamento", data: "2027-06-12", hora_inicio: "19:00", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "ok" }), texto("Esse horário está comprometido.")]);
+    const r = await processarTurno(entrada(["Pode mandar"], { estado: estadoInicial({ evento: ev, contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.proposta, null);
+    assert.match(JSON.stringify(r.rastro), /Não prepare a proposta/);
   });
 
   test("erro da IA: mensagem de erro e conversa vai para a equipe", async () => {
@@ -381,7 +412,27 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.match(JSON.stringify(r.rastro), /Não estão no catálogo/);
   });
 
-  test("mudança na proposta: recusada = não transfere; enviada = só depois de perguntar o que muda", async () => {
+  test("mudança em proposta enviada (modo real): cria nova versão no CRM, sem transferir", async () => {
+    const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
+    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Proposta" }, evento: ev, contato: { id: "c1", nome: "Ana" }, propostas: [{ id: "pr9", numero: "P9", status: "enviada", total: null, preco_pendente: true }] };
+    const ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer trocar os drinks" }), ferramenta("preparar_proposta", { recado_para_equipe: "Trocar por Moscow Mule", drinks: ["Moscow Mule"], sem_vidraria: true }), texto("Pronto! A nova versão foi para a equipe.")]);
+    const r = await processarTurno(entrada(["Quero só Moscow Mule e copo descartável"], { modo: "real", estado: estadoInicial({ negocio_id: "n1", contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    const nv = chamadasCrm.find((c) => c.caminho === "/propostas/pr9/nova-versao");
+    assert.deepEqual((nv?.corpo as { drinks: string[] }).drinks, ["d5"]);
+    assert.equal((nv?.corpo as { sem_vidraria: boolean }).sem_vidraria, true);
+    assert.equal(r.estado.proposta?.id, "pr10");
+    assert.ok(!chamadasCrm.some((c) => c.caminho === "/negocios/n1/propostas"));
+  });
+
+  test("pedido de outra condição de pagamento: transfere na hora, mesmo com proposta enviada", async () => {
+    const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
+    const ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer mudar a entrada para 30% e parcelar o saldo" })]);
+    const r = await processarTurno(entrada(["Dá pra dar 30% de entrada e parcelar?"], { estado: estadoInicial({ evento: ev, proposta: { id: "pr9", numero: "P9", status: "enviada", simulada: false, total: 1, preco_pendente: false } }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "humano");
+  });
+
+  test("mudança na proposta: recusada/enviada = não transfere; aguardando aprovação = só depois de perguntar o que muda", async () => {
     const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, duracao_horas: 5, pacote: "Essencial" };
     const prop = (status: string) => ({ id: "pr9", numero: "P9", status, simulada: false, total: 1, preco_pendente: false });
     const tentar = () => ferramenta("transferir_para_pessoa", { motivo: "Cliente quer alterar os drinks" });
@@ -390,6 +441,9 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.equal(r.estado.atendimento, "agente");
     ia = iaFalsa([tentar(), texto("Quais drinks você quer?")]);
     r = await processarTurno(entrada(["Quero alterar os drinks"], { estado: estadoInicial({ evento: ev, proposta: prop("enviada") }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    ia = iaFalsa([tentar(), texto("Quais drinks você quer?")]);
+    r = await processarTurno(entrada(["Quero alterar os drinks"], { estado: estadoInicial({ evento: ev, proposta: prop("aguardando_aprovacao") }), chamar: ia.fn }));
     assert.equal(r.estado.atendimento, "agente");
     ia = iaFalsa([tentar()]);
     r = await processarTurno(entrada(["Tira o gin, põe Aperol"], { estado: r.estado, chamar: ia.fn }));
