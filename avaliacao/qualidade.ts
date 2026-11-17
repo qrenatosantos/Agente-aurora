@@ -40,7 +40,7 @@ function carregar(): { cfg: ConfigAgente; conhecimento: ItemConhecimento[] } {
     tom: c.tom,
     saudacao: c.saudacao,
     instrucoes: process.env.INSTRUCOES ? readFileSync(process.env.INSTRUCOES, "utf8") : c.instrucoes,
-    exemplos: j(c.exemplos),
+    exemplos: process.env.EXEMPLOS ? JSON.parse(readFileSync(process.env.EXEMPLOS, "utf8")) : j(c.exemplos),
     gatilhos_palavras: j(c.gatilhos_palavras),
     gatilhos_temas: j(c.gatilhos_temas),
     max_msgs_sem_avanco: c.max_msgs_sem_avanco,
@@ -72,7 +72,8 @@ const propostaArgs = (c: Conversa) => c.ferramentas.filter((f) => f.nome === "pr
 const transferiu = (c: Conversa) => c.estado.atendimento === "humano";
 const PACOTES = ["Essencial", "Signature", "Reserve", "Exclusive"];
 /** Pacotes apresentados todos numa mensagem só (o cliente pediu um por mensagem). */
-const pacotesEmBloco = (c: Conversa) => c.falas.some((f) => f.quem === "cecilia" && PACOTES.filter((p) => f.texto.includes(`*${p}*`)).length >= 3);
+const pacotesEmBloco = (c: Conversa) =>
+  c.falas.some((f) => f.quem === "cecilia" && f.texto.split("\n\n").some((balao) => PACOTES.filter((p) => balao.includes(`*${p}*`)).length >= 3));
 
 const CENARIOS: Cenario[] = [
   {
@@ -173,7 +174,12 @@ const CENARIOS: Cenario[] = [
     conferir: (c) => [
       transferiu(c) && "passou para a equipe",
       !c.estado.proposta || c.estado.proposta.numero === "PROP-2026-0099" ? "não montou a nova proposta" : null,
-      propostaArgs(c).length && !propostaArgs(c).some((a) => /aperol/i.test(a) && !/gin/i.test(a)) && "nova proposta sem a troca pedida",
+      c.ferramentas.some((f) => f.nome === "preparar_proposta") &&
+        !c.ferramentas.some((f) => {
+          const d = ((f.args as { drinks?: string[] })?.drinks ?? []).join(",");
+          return f.nome === "preparar_proposta" && /aperol/i.test(d) && !/gin/i.test(d);
+        }) &&
+        "nova proposta sem a troca pedida",
     ],
   },
   {
@@ -213,10 +219,56 @@ const variante = (s: string): Variante => {
 };
 
 const chave = process.env.OPENAI_CHAVE ?? "sk-sem-chave";
+
+/**
+ * O CRM limita a chave a 120 chamadas por minuto. No teste há muitas conversas ao mesmo tempo, então:
+ * o catálogo (igual em toda resposta) fica guardado, as chamadas ao CRM saem no máximo a ~90 por minuto,
+ * e um 429 do CRM espera e tenta de novo. (No uso real o volume é muito menor.)
+ */
+const fetchOriginal = globalThis.fetch;
+const cacheCrm = new Map<string, string>();
+let proximaCrm = 0;
+globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+  const u = String(url instanceof Request ? url.url : url);
+  if (!process.env.CRM_URL || !u.startsWith(process.env.CRM_URL)) return fetchOriginal(url, init);
+  const metodo = init?.method ?? "GET";
+  const guardavel = metodo === "GET" && /\/catalogo\//.test(u);
+  if (guardavel && cacheCrm.has(u)) return new Response(cacheCrm.get(u), { status: 200, headers: { "Content-Type": "application/json" } });
+  for (let i = 0; ; i++) {
+    const agora = Date.now();
+    const vez = Math.max(agora, proximaCrm);
+    proximaCrm = vez + 670;
+    if (vez > agora) await new Promise((r) => setTimeout(r, vez - agora));
+    const r = await fetchOriginal(url, init);
+    if (r.status === 429 && i < 6) {
+      await new Promise((ok) => setTimeout(ok, 5000 * (i + 1)));
+      continue;
+    }
+    if (guardavel && r.ok) {
+      const t = await r.text();
+      cacheCrm.set(u, t);
+      return new Response(t, { status: r.status, headers: r.headers });
+    }
+    return r;
+  }
+}) as typeof fetch;
+
+/** Limite de uso da OpenAI (429) ou falha passageira: espera e tenta de novo (até 5 vezes). */
+const chamarComCalma: typeof chamarModelo = async (o) => {
+  for (let i = 0; ; i++) {
+    try {
+      return await chamarModelo(o);
+    } catch (e) {
+      const st = (e as { status?: number }).status ?? 0;
+      if (i >= 5 || !(st === 429 || st === 0 || st >= 500)) throw e;
+      await new Promise((r) => setTimeout(r, 2000 * 2 ** i));
+    }
+  }
+};
 let custoApoio = 0; // cliente simulado + avaliador
 
 async function falaDoCliente(cen: Cenario, conv: Conversa): Promise<string | null> {
-  const r = await chamarModelo({
+  const r = await chamarComCalma({
     chave,
     modelo: CLIENTE,
     maxTokens: 200,
@@ -252,7 +304,7 @@ async function conversar(cen: Cenario, v: Variante, base: { cfg: ConfigAgente; c
       modelo: v.modelo,
       modo: "simulacao",
       agora: AGORA,
-      chamar: (o) => chamarModelo({ ...o, esforco: v.esforco }),
+      chamar: (o) => chamarComCalma({ ...o, esforco: v.esforco }),
     });
     conv.ms += Date.now() - t0;
     conv.estado = r.estado;
@@ -275,7 +327,7 @@ const CRITERIOS = ["compreensao", "conducao", "resolucao", "naturalidade", "fide
 async function avaliar(cen: Cenario, conv: Conversa, cfg: ConfigAgente): Promise<Avaliacao> {
   const transcricao = conv.falas.map((f) => `${f.quem === "cliente" ? "CLIENTE" : "CECÍLIA"}: ${f.texto}`).join("\n\n");
   const acoes = conv.ferramentas.map((f) => `- ${f.nome} ${JSON.stringify(f.args)} → ${JSON.stringify(f.resultado ?? null).slice(0, 300)}`).join("\n") || "(nenhuma)";
-  const r = await chamarModelo({
+  const r = await chamarComCalma({
     chave,
     modelo: AVALIADOR,
     esforco: "low",
@@ -345,7 +397,7 @@ async function main() {
             l.erro = e instanceof Error ? e.message : String(e);
           }
           const media = l.av ? CRITERIOS.reduce((s, c) => s + (l.av!.notas[c] ?? 0), 0) / CRITERIOS.length : 0;
-          console.log(`${l.erro ? "!" : l.objetivas.length || l.av?.erros_graves.length ? "✘" : "✔"} ${cen.id} · ${v.rotulo} · nota ${media.toFixed(1)}${l.objetivas.length ? ` — ${l.objetivas.join("; ")}` : ""}${l.erro ? ` — erro: ${l.erro}` : ""}`);
+          console.log(`${l.erro ? "!" : l.objetivas.length || l.av?.erros_graves.length ? "✘" : "✔"} ${cen.id} · ${v.rotulo} · nota ${media.toFixed(1)}${l.objetivas.length ? ` — ${l.objetivas.join("; ")}` : ""}${l.conv?.estado.transferido_motivo ? ` [motivo: ${l.conv.estado.transferido_motivo.slice(0, 160)}]` : ""}${l.erro ? ` — erro: ${l.erro}` : ""}`);
           linhas.push(l);
         }
     }),
