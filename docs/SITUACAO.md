@@ -3,6 +3,10 @@
 Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Detalhes: `PLANO-THINK.md` (decisões),
 `TESTES.md` (o que foi provado), `PEDIDOS-CRM.md` (CRM), `CLAUDE.md` (regras de trabalho).
 
+## Próximo grande passo
+- Plataforma de agentes para vários clientes: `PLANO-PLATAFORMA.md` (aguardando as decisões do Renato, seção 9).
+  Base: `AVALIACAO-PLATAFORMA.md`. Guia de sessões: `COMO-USAR-O-CLAUDE.md`.
+
 ## No ar (conta Cloudflare do Renato, plano Workers Paid)
 - Painel: https://aurora-agente-painel.q-renatosantos.workers.dev (login e-mail/senha; gestor: Renato).
 - Motor (Cecília): https://aurora-motor.q-renatosantos.workers.dev — webhook do WhatsApp `/whatsapp/webhook`,
