@@ -318,7 +318,7 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 
 - **Um projeto só** (este repositório), **uma sessão (chat) nova por fase**. Cada sessão termina salvando o que fez em
   `docs/SITUACAO.md`, e a próxima começa dali.
-- Para abrir a próxima sessão: ambiente `Agente-aurora`, esforço **médio** (como no guia `COMO-USAR-O-CLAUDE.md`; **alto** só nas Fases 1 e 2, que mexem na base e no isolamento entre clientes), e o pedido:
+- Para abrir a próxima sessão: ambiente `Agente-aurora` e o pedido:
   > Trabalhe no ramo `claude/serene-faraday-w06f6u`. Leia `docs/SITUACAO.md` e `docs/PLANO-PLATAFORMA.md` e faça a
   > Fase N. Só me chame quando precisar de algo meu ou ao terminar a fase.
 - Fases longas (1, 2 e 7) podem ocupar mais de uma sessão; a própria sessão avisa onde parou.
