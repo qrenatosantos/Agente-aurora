@@ -9,6 +9,8 @@
    fica sem acesso e não consegue publicar nada.
 4. Escolha o esforço: **alto** para planejar e **médio** para executar.
 5. Escreva o pedido. Não precisa colar resumo nenhum: o Claude lê sozinho o `CLAUDE.md` e os documentos de `docs/`.
+   **Enquanto o ramo principal do GitHub não for trocado**, comece o pedido com: "Trabalhe no ramo
+   `claude/serene-faraday-w06f6u` e leia `docs/SITUACAO.md` primeiro." Sem isso, a sessão abre num ramo antigo.
 
 ## O que já vem automático em toda sessão
 

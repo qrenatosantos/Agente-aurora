@@ -2,6 +2,11 @@
 
 Escrito em 17/11/2026. Código lido: a versão pública de 02/08/2026 (4 commits, licença MIT).
 
+> **Atenção:** esta avaliação foi feita olhando o ramo antigo (`claude/new-session-vdr8pz`). O projeto atual
+> (Cecília no ar, motor na Cloudflare, banco D1) está no ramo `claude/serene-faraday-w06f6u`, e o estado dele
+> está em `docs/SITUACAO.md`. A conclusão não muda. Ao planejar, use o estado atual: o passo 1 da seção 7
+> ("terminar o agente no Think") já está em grande parte feito.
+
 ---
 
 ## 1. Resposta curta
@@ -32,7 +37,7 @@ Agenda como referência.
 |---|---|
 | Licença | MIT: pode usar, copiar e vender, inclusive comercialmente |
 | Autor e histórico | Um autor; 4 commits, todos de 01 e 02/08/2026. Publicada como "edição educacional" |
-| Tamanho | ~152 mil linhas de Python + ~89 mil de TypeScript (o seu agente inteiro tem ~1.200) |
+| Tamanho | ~152 mil linhas de Python + ~89 mil de TypeScript (o seu agente é bem menor) |
 | Onde roda | Servidor próprio (VPS) com Python 3.12, PostgreSQL, Redis e Celery, ligado 24h |
 | Telas | React: dashboard, CRM em Kanban, chat, criador de agentes, fluxos, campanhas, agenda, integrações |
 | IA | OpenAI (Agents SDK + LangChain + módulos "legados", tudo junto) |
