@@ -353,3 +353,11 @@ Em nenhuma das 90 conversas os dois modelos citaram preço sem base.
   transferir por mudança de proposta; prompt e ferramenta explicam o caminho.
 - Núcleo 41/41, banco, motor 12/12, tsc e lint ok. IA de verdade (gpt-6-luna, CRM publicado em simulação):
   antes 1/6 sem transferir; depois 6/6 perguntam o que mudar.
+
+## 17/11/2026 — Luna x Terra (decisão de modelo)
+- Uso real até agora (WhatsApp): 27 respostas, 387 mil tokens de entrada (206 mil em cache), 2,4 mil de saída.
+  Recalculado com a tabela atual: Luna ≈ US$ 0,021; Terra ≈ US$ 0,20; Sol ≈ US$ 0,41.
+- Bateria completa (22 situações × 2 rodadas, IA de verdade, CRM publicado em simulação): Luna 41/44, Terra 42/44.
+  As 2 falhas de "data bloqueada" nos dois são do ambiente (o CRM publicado não tem a data 2027-06-12 bloqueada).
+  Luna errou 1 vez em "negociação" (transferiu antes de oferecer as opções). Custo por resposta na bateria:
+  Luna US$ 0,0013, Terra US$ 0,0032; tempo 3,0 s x 3,6 s.
