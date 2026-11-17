@@ -194,6 +194,7 @@ agente, **bateria da Aurora 45/45** e qualidade sem piorar. `docs/TESTES.md` e `
 | 2.4 | **Modelos de agente** (Atendente que fecha, SDR, Agendador, Suporte), cada um com ficha, travas e casos de teste iniciais | Criar um cliente de cada modelo no teste e conversar | Ler os modelos e dizer o que falta (ex.: perguntas típicas de SDR de imobiliária) |
 | 2.5 | **Conhecimento como consulta** (busca por palavras no D1) + "essenciais" sempre no prompt | 200 itens: acha a resposta certa; custo por mensagem não sobe | Conferir os essenciais da Aurora (eu sugiro) |
 | 2.6 | Tela **Agente** do Estúdio em abas, com "ver como a IA recebe" e **rascunho × publicado** | Navegador: editar, ver, publicar, voltar versão | Testar a tela |
+| 2.7 | **Exportar / Importar agente**: um arquivo único (pacote) com a ficha inteira: identidade, regras, exemplos, conhecimento, travas ligadas, peças usadas (sem as chaves) e casos de teste. Importar confere o formato, mostra o que muda e roda a bateria antes de publicar | Exportar a Cecília de demonstração e importar num cliente de teste: mesma bateria, mesmo resultado; pacote com chave secreta é recusado | Nada |
 
 ### Fase 3 — Peças de integração
 
@@ -288,7 +289,7 @@ aviso no Portal e você recebe por e-mail.
 |---|---|---|---|
 | 9.1 | `docs/MANUAL-NOVO-CLIENTE.md`: do contrato ao ar, com a lista do que pedir ao cliente, tempo de cada passo e o que fazer se falhar | — | Ler |
 | 9.2 | **Ensaio**: um cliente fictício do zero (ex.: clínica com agenda e chat do site) só com o manual e as skills | Cliente fictício respondendo, bateria verde, Portal funcionando | Fazer o ensaio comigo |
-| 9.4 | **Importar a versão final da Cecília** (indicada pelo Renato): instruções e exemplos viram a ficha; regras novas do código dela viram travas ou regras da peça "CRM da Aurora" | Bateria da Cecília final rodando na plataforma com o mesmo resultado do ramo dela | Dizer qual versão é a final |
+| 9.4 | **Importar a versão final da Cecília** (indicada pelo Renato): instruções e exemplos viram a ficha (pelo importador da etapa 2.7); as regras novas do código dela, listadas em `docs/REGRAS-NO-CODIGO.md` do ramo da Cecília, viram travas ou regras da peça "CRM da Aurora" | Bateria da Cecília final rodando na plataforma com o mesmo resultado do ramo dela | Dizer qual versão é a final |
 | 9.3 | Primeiro cliente real novo | No ar e acompanhado na 1ª semana | Trazer o cliente |
 
 ---
@@ -344,6 +345,7 @@ Pendências antigas da Aurora: assumir/devolver e aviso à equipe entram na fase
 | 12 | Excedente só com **autorização do cliente** (pedida a partir de 80%), teto de **1,3× o limite**, pausa no teto |
 | 13 | Depois do WhatsApp, o próximo canal é o **chat do site** |
 | 14 | Sem autorização do extra, o agente pausa ao chegar a 100% (volta na hora se o cliente autorizar) |
+| 17 | (17/11) **Agente = pacote**: exportar e importar a ficha inteira num arquivo (etapa 2.7). O chat da Cecília anota cada regra nova que puser no código em `docs/REGRAS-NO-CODIGO.md` (no ramo dela), para facilitar a importação final |
 | 16 | (17/11, substitui a parte de sincronizar da decisão 15) **Plataforma e Cecília separadas.** Na plataforma, a Cecília é só um agente de **demonstração** (cópia congelada de 17/11, ramo `plataforma`). Nenhuma sessão da plataforma mexe na Cecília real nem no ramo dela; nenhuma traz os ajustes dela a cada sessão. No fim, o Renato indica a versão final da Cecília e ela é **importada** para a plataforma (etapa 9.4) |
 | 15 | A Cecília **continua recebendo ajustes** em outros chats, no ramo dela, durante toda a construção. A plataforma é feita num ramo separado (`plataforma`) e, **no início de cada sessão da plataforma**, os ajustes novos da Cecília são trazidos para lá e conferidos com a bateria. Instruções editadas no painel (dados, não código) vêm junto quando a Aurora vira o cliente nº 1 |
 
