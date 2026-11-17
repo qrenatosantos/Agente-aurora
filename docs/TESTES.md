@@ -409,5 +409,12 @@ Conclusão: Luna com raciocínio baixo empata com a Terra pelo mesmo preço da L
 - **Fotografia da Cecília** (config no ar v13, `gpt-6-luna:low`, CRM publicado em simulação):
   - Bateria (`avaliar.ts`, 22 × 2): **42/44**. As 2 falhas são "data bloqueada 12/06/2027": o CRM publicado não tem a data
     bloqueada e a regra mudou em 17/11 (sem vaga agora oferece outra data antes de transferir). US$ 0,00036/resposta.
-  - Qualidade (`qualidade.ts`, 12 × 2): **4,18 · 11/24** (v12 tinha 4,58 · 19/24). Pior cenário: "quanto tempo demora a
-    proposta" → transfere em vez de responder (2/2). Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.
+  - Qualidade, 1ª rodada: 4,18 · 11/24, **inválida**: o avaliador lia `gpt-6-luna:low` como "sem raciocínio" (split "@"),
+    juntava os balões numa mensagem para o juiz e cobrava "horas de bar". Achado real dela: prazo → transferia (corrigido
+    no chat da Cecília, 02ea096).
+  - Avaliador corrigido (1298c65: `separarModelo`, um "CECÍLIA:" por balão, juiz com 6 h padrão e data confirmada no aceite;
+    252c80f: nova versão da proposta mantém o número, confere o status).
+  - **Qualidade de referência** (config v13 exportada na hora, variante `gpt-6-luna:low`, commit 252c80f, 12 × 2):
+    **4,76 · 20/24**, US$ 0,00057/resposta. Reprovadas: drinks soltos 2/2 (grava pacote no cadastro na personalizada),
+    erros e abreviações 1/2 (Reserve listado sem gin tônica), proposta recusada 1/2 ("link anterior deixa de valer").
+    Relatórios: `avaliacao/RESULTADO.md` e `RESULTADO-QUALIDADE.md`.

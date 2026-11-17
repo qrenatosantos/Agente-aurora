@@ -52,9 +52,11 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
-- **Cecília (achado da fotografia de 17/11, config v13):** perguntou "demora quanto?" logo depois da proposta preparada →
-  ela **transferiu** em vez de dizer "até o final do dia" (2/2 na avaliação de qualidade; nota caiu de 4,58 para 4,18).
-  Conferir no chat da Cecília (`avaliacao/RESULTADO-QUALIDADE.md`, cenário "prazo").
+- **Cecília (fotografia de 17/11, refeita):** a nota 4,18 da 1ª rodada NÃO valia (o avaliador rodava a Luna sem
+  raciocínio, juntava os balões e cobrava as horas). Corrigido o avaliador (commits 1298c65 e 252c80f); a correção do
+  prazo (02ea096) já estava no ar. **Nota de referência: 4,76 · 20/24** (config v13, `gpt-6-luna:low`, commit 252c80f).
+  Reprovações que sobram são da Cecília: drinks soltos (grava um pacote no cadastro mesmo na proposta personalizada, 2/2),
+  pacote listado sem a gin tônica (1/2) e "o link anterior deixa de valer" sem o sistema dizer isso (1/2).
 - CRM: aprovar as regras de preço (Catálogo ▸ Calculadora) e confirmar condições (Configurações ▸ Propostas e agenda).
   Até lá, propostas vêm "Preço a definir" e o gestor põe o valor antes de aprovar.
 - CRM ▸ Configurações ▸ Propostas e agenda ▸ "WhatsApp que recebe os clientes pela proposta" = número da Cecília
