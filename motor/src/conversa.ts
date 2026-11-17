@@ -485,6 +485,31 @@ export class Conversa extends Think<Env> {
     // aurora_recebidas fica (só ids da Meta, sem conteúdo): impede reprocessar um aviso antigo reenviado
   }
 
+  /**
+   * Aviso do CRM: a equipe devolveu a conversa para a Cecília. Se o cliente escreveu enquanto estava com uma pessoa
+   * e ninguém respondeu, a Cecília responde agora (só dentro da janela grátis de 24 h).
+   */
+  async retomarAtendimento(): Promise<string> {
+    this.tabelasWhatsApp();
+    const canal = this.sql<{ ultima_em: string }>`select ultima_em from aurora_canal where id = 1`[0];
+    if (!canal) return "conversa sem WhatsApp";
+    if (Date.now() - new Date(canal.ultima_em).getTime() > 23.5 * 3600 * 1000) return "cliente sem responder há mais de 24 h: não escreve";
+    const ultimas: typeof this.messages = [];
+    for (const m of [...this.messages].reverse()) {
+      if (m.role === "assistant" && textoDe(m)) break;
+      if (m.role === "user") ultimas.unshift(m);
+    }
+    const textos = ultimas.map((m) => textoDe(m)).filter((t): t is string => Boolean(t?.trim()));
+    if (!textos.length) return "nada pendente do cliente";
+    // as mensagens voltam para a fila e são respondidas como se tivessem acabado de chegar
+    await this.session.deleteMessages(ultimas.map((m) => m.id));
+    for (const [i, t] of textos.entries()) {
+      this.sql`insert or replace into aurora_pendentes (wamid, tipo, texto, midia, em) values (${`retomada-${Date.now()}-${i}`}, 'texto', ${t}, ${null}, ${new Date().toISOString()})`;
+    }
+    await this.schedule(1, "responderPendentes");
+    return `respondendo ${textos.length} mensagem(ns) que ficaram sem resposta`;
+  }
+
   async ler() {
     return { estado: this.lerEstado(), historico: this.historico() };
   }

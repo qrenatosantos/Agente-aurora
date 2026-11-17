@@ -381,6 +381,21 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.match(JSON.stringify(r.rastro), /Não estão no catálogo/);
   });
 
+  test("mudança na proposta: recusada = não transfere; enviada = só depois de perguntar o que muda", async () => {
+    const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, duracao_horas: 5, pacote: "Essencial" };
+    const prop = (status: string) => ({ id: "pr9", numero: "P9", status, simulada: false, total: 1, preco_pendente: false });
+    const tentar = () => ferramenta("transferir_para_pessoa", { motivo: "Cliente quer alterar os drinks" });
+    let ia = iaFalsa([tentar(), texto("Quais drinks você quer?")]);
+    let r = await processarTurno(entrada(["Quero alterar os drinks"], { estado: estadoInicial({ evento: ev, proposta: prop("recusada") }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    ia = iaFalsa([tentar(), texto("Quais drinks você quer?")]);
+    r = await processarTurno(entrada(["Quero alterar os drinks"], { estado: estadoInicial({ evento: ev, proposta: prop("enviada") }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    ia = iaFalsa([tentar()]);
+    r = await processarTurno(entrada(["Tira o gin, põe Aperol"], { estado: r.estado, chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "humano");
+  });
+
   test("transferência pela IA no modo real chama o CRM", async () => {
     negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: {}, contato: null };
     const ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Reclamação" })]);

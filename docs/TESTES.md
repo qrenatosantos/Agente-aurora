@@ -345,3 +345,11 @@ Em nenhuma das 90 conversas os dois modelos citaram preço sem base.
 - Núcleo 38/38 (2 testes novos), banco 38/38, motor 12/12, tsc e lint ok.
 - Bateria (IA de verdade, CRM publicado só leitura, gpt-6-luna, 2 rodadas): drinks-avulsos, drinks-personalizada,
   caminho-feliz, pacotes = 8/8 (US$ 0,04).
+
+## 17/11/2026 — Conversa devolvida e mudança na proposta (caso Poliana)
+- Problemas: (1) com a proposta recusada e a conversa devolvida, "Quero alterar os drinks" foi transferido na hora;
+  (2) mensagens escritas enquanto estava com uma pessoa ficavam sem resposta depois do "Passar para o agente".
+- Mudanças: aviso atendimento.encaminhado_agente → Cecília responde as pendentes (24 h); trava no código para
+  transferir por mudança de proposta; prompt e ferramenta explicam o caminho.
+- Núcleo 41/41, banco, motor 12/12, tsc e lint ok. IA de verdade (gpt-6-luna, CRM publicado em simulação):
+  antes 1/6 sem transferir; depois 6/6 perguntam o que mudar.

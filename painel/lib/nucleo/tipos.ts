@@ -56,6 +56,8 @@ export type EstadoConversa = {
   /** Valores em reais que o CRM informou nesta conversa (o agente só pode citar estes). */
   valores_do_crm: number[];
   transferido_motivo: string | null;
+  /** Proposta (id) sobre a qual a Cecília já perguntou o que o cliente quer mudar. */
+  mudanca_perguntada?: string | null;
 };
 
 export const estadoInicial = (parcial: Partial<EstadoConversa> = {}): EstadoConversa => ({

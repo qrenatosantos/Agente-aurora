@@ -143,7 +143,7 @@ export const DEFINICOES = [
     function: {
       name: "transferir_para_pessoa",
       description:
-        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta.",
+        "Passa a conversa para uma pessoa da equipe e você PARA de responder. Use: cliente pediu uma pessoa; cliente INSISTE em desconto ou negociação DEPOIS de VOCÊ já ter oferecido, nesta conversa, as formas de economizar das instruções e ele recusar (se você ainda não ofereceu as opções, NÃO transfira: ofereça agora, mesmo que a conversa já tenha passado pela equipe antes); reclamação; pedido que nem os pacotes nem uma proposta personalizada com drinks do catálogo atendem; data lotada ou bloqueada; cliente insiste em saber preço ou condição que o sistema ainda não tem; você não sabe responder; tema de transferência. NÃO use só porque o preço não está cadastrado: nesse caso siga e monte a proposta. NÃO use quando o cliente quer MUDAR a proposta (drinks, horas, convidados): primeiro pergunte o que muda e confirme; se a proposta estiver recusada, monte outra com preparar_proposta; só transfira depois de saber a mudança, se a proposta ainda estiver aguardando aprovação, aprovada ou enviada.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -383,6 +383,17 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
 
       case "transferir_para_pessoa": {
         const motivo = String(args.motivo ?? "").trim() || "O agente pediu atendimento humano.";
+        // Mudança na proposta: a Cecília resolve ou, pelo menos, entende a mudança antes de passar (regra por código)
+        const prop = ctx.estado.proposta;
+        if (prop && /\b(alter|mud|troc|ajust|refa[zç]|drinks?\b)/i.test(motivo)) {
+          if (prop.status === "recusada") {
+            return fim({ erro: "Não transfira: a proposta anterior foi recusada. Pergunte o que o cliente quer mudar, grave, confirme o resumo e monte uma nova com preparar_proposta." }, "nenhum");
+          }
+          if (ctx.estado.mudanca_perguntada !== prop.id) {
+            ctx.estado.mudanca_perguntada = prop.id;
+            return fim({ erro: "Ainda não transfira. Pergunte ao cliente exatamente o que ele quer mudar (drinks, horas, convidados…) e confirme. Depois disso, transfira com a mudança no motivo." }, "nenhum");
+          }
+        }
         if (!sim && ctx.estado.negocio_id) {
           const r = await ctx.crm.post(`/negocios/${ctx.estado.negocio_id}/transferir-humano`, { motivo });
           return fim(r.dados ? { transferido: true } : { erro: r.erro?.mensagem }, "gravacao", { transferir: motivo });

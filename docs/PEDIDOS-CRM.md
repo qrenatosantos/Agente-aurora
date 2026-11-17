@@ -93,3 +93,9 @@ responder sem o CRM publicado (catálogo, agenda e preços vêm só dele). Pedid
 3. Criar a **chave do agente** (Integrações ▸ chaves) com as permissões padrão (sem `atendimento.devolver`).
 4. Depois (fase 3 do agente): segunda chave, só para o painel, com `negocios.ler`, `mensagens.ler` e
    `atendimento.devolver`; e o aviso (webhook) apontando para o motor.
+
+## C5 — Agente refazer proposta já enviada (17/11/2026)
+Hoje o agente só monta proposta nova se não houver uma aguardando aprovação, aprovada ou enviada. Quando o cliente
+pede para trocar drinks/horas de uma proposta ENVIADA, a Cecília precisa passar para a equipe.
+Pedido: uma rota para o agente criar uma NOVA VERSÃO de uma proposta enviada/aprovada (ex.: `POST /propostas/:id/nova-versao`
+com `drinks`, `sem_vidraria` e `nota`), que volta para a aprovação do gestor e invalida o link anterior.

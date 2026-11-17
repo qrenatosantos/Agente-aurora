@@ -98,6 +98,9 @@ async function processarAviso(env: Env, aviso: { id: number; tipo: string; negoc
       else if (aviso.tipo === "proposta.aprovada" || aviso.tipo === "proposta.enviada") resultado = await c.enviarPropostaAprovada({ propostaId: aviso.proposta_id, negocioId: aviso.negocio_id });
       else if (aviso.tipo === "proposta.visualizada") resultado = await c.propostaAberta(aviso.proposta_id);
       else resultado = await c.propostaEncerrada(aviso.proposta_id);
+    } else if (aviso.tipo === "atendimento.encaminhado_agente" && aviso.negocio_id) {
+      const c = await conversaDoPedido(env, aviso.negocio_id);
+      resultado = c ? await c.retomarAtendimento() : "pedido sem conversa no WhatsApp";
     }
   } catch (e) {
     resultado = `erro: ${e instanceof Error ? e.message : String(e)}`;

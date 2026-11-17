@@ -28,6 +28,9 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Pacotes num parágrafo só são separados por código (um balão por pacote; util.ts separarPacotes).
 - Drinks soltos em vez de pacote: explica o pacote que cobre e oferece proposta personalizada (só os drinks
   escolhidos); nunca escolhe pelo cliente; confirma o resumo antes de preparar a proposta.
+- Equipe devolve a conversa ("Passar para o agente") → a Cecília responde as mensagens que ficaram sem resposta
+  (dentro das 24 h). Mudança na proposta: recusada = monta outra; enviada = pergunta o que muda antes de passar
+  (trava no código). Pedido C5 ao CRM: rota para o agente refazer proposta enviada.
 - Pergunta sobre prazo da proposta: "até o final do dia"; depois das 19h, "até amanhã às 14h"; nunca transfere por isso (config v11).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
