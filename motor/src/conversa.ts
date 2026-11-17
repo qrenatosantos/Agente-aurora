@@ -21,6 +21,7 @@ import { ErroIA, separarModelo } from "../../painel/lib/nucleo/openai.ts";
 import { estadoInicial, type ConfigAgente, type EstadoConversa, type ItemConhecimento, type MensagemConversa, type ResultadoTurno } from "../../painel/lib/nucleo/tipos.ts";
 import { ligarConversaInterno } from "../../painel/lib/banco/avisos.ts";
 import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
+import { clienteDaConversaInterno } from "../../painel/lib/banco/clientes.ts";
 import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
 import { quandoMandar } from "./lembretes.ts";
@@ -70,6 +71,19 @@ export class Conversa extends Think<Env> {
   private textosEtapas: string[] = [];
   /** Fila: uma resposta por vez, mesmo se duas chamadas chegarem juntas. */
   private fila: Promise<unknown> = Promise.resolve();
+  private clienteDaConversa: string | null = null;
+
+  /**
+   * De qual cliente é esta conversa do WhatsApp: vem do NOME ("<cliente>:wa-<telefone>"; o nome antigo "wa-<telefone>"
+   * é do cliente convertido da instalação antiga). Tudo o que a conversa lê do banco é só deste cliente.
+   */
+  private async cliente(): Promise<string> {
+    if (this.clienteDaConversa) return this.clienteDaConversa;
+    const c = await clienteDaConversaInterno(this.env.DB, this.name);
+    if (!c) throw new Error(`conversa ${this.name.slice(0, 12)}… sem cliente`);
+    this.clienteDaConversa = c;
+    return c;
+  }
 
   // ------------------------------------------------------------------ modelo
   private openai(chave: string) {
@@ -292,7 +306,7 @@ export class Conversa extends Think<Env> {
     if (estado.atendimento !== "agente" || estado.optout) return { nova: true };
     this.ctx.waitUntil(
       (async () => {
-        const amb = await carregarAmbiente(this.env);
+        const amb = await carregarAmbiente(this.env, await this.cliente());
         if (!amb.pausado) await this.whatsapp(amb)?.digitando(m.wamid);
       })().catch((e) => console.error("[digitando]", e)),
     );
@@ -300,7 +314,7 @@ export class Conversa extends Think<Env> {
   }
 
   private async esperaSegundos() {
-    const r = await this.env.DB.prepare("select espera_segundos from agente_config where id = 1").first<{ espera_segundos: number }>();
+    const r = await this.env.DB.prepare("select espera_segundos from agentes where cliente_id = ?").bind(await this.cliente()).first<{ espera_segundos: number }>();
     return Math.min(Math.max(Number(r?.espera_segundos ?? 8), 2), 30);
   }
 
@@ -320,7 +334,7 @@ export class Conversa extends Think<Env> {
     if (!pendentes.length) return;
     for (const p of pendentes) this.sql`delete from aurora_pendentes where wamid = ${p.wamid}`;
 
-    const amb = await carregarAmbiente(this.env);
+    const amb = await carregarAmbiente(this.env, await this.cliente());
     const wa = this.whatsapp(amb);
     if (!wa) return console.error("[whatsapp] sem token ou número configurado no painel");
 
@@ -383,12 +397,12 @@ export class Conversa extends Think<Env> {
     }
     // guarda qual conversa atende este pedido (para os avisos do CRM, como "proposta aprovada")
     if (r.estado.negocio_id) {
-      await ligarConversaInterno(this.env.DB, { negocioId: r.estado.negocio_id, conversa: this.name, telefone: canal.telefone, ultimaDoCliente: canal.ultima_em }).catch((e) =>
+      await ligarConversaInterno(this.env.DB, amb.cliente, { negocioId: r.estado.negocio_id, conversa: this.name, telefone: canal.telefone, ultimaDoCliente: canal.ultima_em }).catch((e) =>
         console.error("[ligar conversa]", e),
       );
     }
     if (r.uso.chamadas) {
-      await registrarUsoAgente(this.env.DB, { modelo: r.uso.modelo, entrada: r.uso.entrada, cache: r.uso.cache, saida: r.uso.saida, custo: Number((r.uso.custo_usd ?? 0).toFixed(6)) });
+      await registrarUsoAgente(this.env.DB, amb.cliente, { modelo: r.uso.modelo, entrada: r.uso.entrada, cache: r.uso.cache, saida: r.uso.saida, custo: Number((r.uso.custo_usd ?? 0).toFixed(6)) });
     }
   }
 
@@ -423,7 +437,7 @@ export class Conversa extends Think<Env> {
   }
 
   private async mandarLink(d: { propostaId: string }, estado: EstadoConversa, telefone: string, liberar: (m: string) => string): Promise<string> {
-    const amb = await carregarAmbiente(this.env);
+    const amb = await carregarAmbiente(this.env, await this.cliente());
     const wa = this.whatsapp(amb);
     if (!wa || !amb.crm) return liberar("WhatsApp ou CRM não configurados");
     const crm = new ClienteCrm(amb.crm.endereco, amb.crm.chave);
@@ -454,7 +468,7 @@ export class Conversa extends Think<Env> {
     if (!linha) return "proposta não foi enviada por esta conversa";
     if (linha.aberta_em) return "já tinha sido aberta";
     this.sql`update aurora_propostas set aberta_em = ${new Date().toISOString()} where proposta_id = ${propostaId}`;
-    const amb = await carregarAmbiente(this.env);
+    const amb = await carregarAmbiente(this.env, await this.cliente());
     await this.schedule(amb.lembretes.abertaMin * 60, "lembreteProposta", { propostaId, tipo: "aberta" });
     return `cliente abriu; lembrete em ${amb.lembretes.abertaMin} min se não responder`;
   }
@@ -491,7 +505,7 @@ export class Conversa extends Think<Env> {
       await this.schedule(decisao.em, "lembreteProposta", p);
       return console.log(`[lembrete ${p.tipo}] reagendado para ${decisao.em.toISOString()} (fora do horário)`);
     }
-    const amb = await carregarAmbiente(this.env);
+    const amb = await carregarAmbiente(this.env, await this.cliente());
     const wa = this.whatsapp(amb);
     if (!wa || amb.pausado) return motivo("WhatsApp não configurado ou agente pausado");
     const nome = this.nomeParaMensagem(estado);

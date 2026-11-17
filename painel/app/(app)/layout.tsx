@@ -15,26 +15,38 @@ import { obterOperacao } from "@/lib/dados";
 import { obterMarca } from "@/lib/marca-servidor";
 import { SUBTITULO_MENU } from "@/lib/navegacao";
 import { ehGestor, obterPerfil } from "@/lib/perfil";
+import { GuardaCliente } from "@/components/shell/guarda-cliente";
+import { TrocaCliente } from "@/components/shell/troca-cliente";
+import { clientesDoAtor, faltaDuasEtapas } from "@/lib/banco/pessoas.ts";
+import { atorAtual, banco } from "@/lib/servidor";
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const [marca, { perfil, erro: erroPerfil }] = await Promise.all([obterMarca(), obterPerfil()]);
   // Segunda barreira (a primeira é o proxy.ts): sem sessão válida, volta para o login.
   if (!perfil && !erroPerfil) redirect("/login");
+  const db = await banco();
+  const ator = await atorAtual();
+  // Dono da plataforma: o Estúdio só abre com a confirmação em duas etapas ligada.
+  if (await faltaDuasEtapas(db, ator)) redirect("/seguranca");
+  const clientes = await clientesDoAtor(db, ator);
   const email = perfil?.email ?? "";
-  const operacao = perfil?.ativo ? await obterOperacao() : null;
+  const operacao = perfil?.ativo && ator?.cliente ? await obterOperacao() : null;
   const bloqueado = perfil !== null && !perfil.ativo;
   const gestor = ehGestor(perfil);
+  const dono = Boolean(ator?.dono);
   const dadosMarca = { nome: marca.nome, subtitulo: SUBTITULO_MENU, logoUrl: marca.logoUrl };
 
   return (
     <>
-      <Sidebar marca={dadosMarca} gestor={gestor} />
+      <GuardaCliente cliente={ator?.cliente ?? null} />
+      <Sidebar marca={dadosMarca} gestor={gestor} dono={dono} />
 
       <div className="md:pl-64 print:pl-0">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-borda bg-fundo/90 px-4 backdrop-blur sm:gap-3 sm:px-6 nao-imprimir">
           <LogoNegocio nome={marca.nome} logoUrl={marca.logoUrl} className="md:hidden" />
           <p className="min-w-0 flex-1 truncate font-semibold text-texto md:font-medium md:text-texto-2">{marca.nome}</p>
-          {perfil?.ativo && operacao && <BotaoEmergencia pausado={operacao.pausado} gestor={gestor} />}
+          <TrocaCliente atual={ator?.cliente ?? null} opcoes={clientes.map((c) => ({ id: c.id, nome: c.nome, situacao: c.situacao }))} />
+          {perfil?.ativo && operacao && !operacao.cliente_pausado && <BotaoEmergencia pausado={operacao.pausado} gestor={gestor} />}
           <TemaToggle />
           <MenuUsuario email={email} nome={perfil?.nome} gestor={gestor} />
         </header>
@@ -65,7 +77,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      <BottomNav marca={dadosMarca} gestor={gestor} />
+      <BottomNav marca={dadosMarca} gestor={gestor} dono={dono} />
     </>
   );
 }

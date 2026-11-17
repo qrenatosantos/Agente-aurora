@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 
 const MAX_ITENS = 4;
 
-export function BottomNav({ marca, gestor }: { marca: DadosMarcaShell; gestor: boolean }) {
-  const NAVEGACAO = menuPara(gestor);
+export function BottomNav({ marca, gestor, dono = false }: { marca: DadosMarcaShell; gestor: boolean; dono?: boolean }) {
+  const NAVEGACAO = menuPara(gestor, dono);
   const caminho = usePathname();
   const [maisAberto, setMaisAberto] = useState(false);
   const dialogo = useRef<HTMLDialogElement>(null);

@@ -124,7 +124,7 @@ export function CartaoCrm({ integ, chaves }: { integ: IntegracoesLinha; chaves: 
   const { onSubmit, erros, pendente } = useAcao(salvarCrm, { aoSucesso: (_e, f) => f?.querySelectorAll<HTMLInputElement>("input[type=password]").forEach((i) => (i.value = "")) });
   return (
     <Cartao>
-      <Titulo icone={KeyRound} titulo="CRM da Aurora" teste={integ.teste_crm} />
+      <Titulo icone={KeyRound} titulo="CRM do cliente" teste={integ.teste_crm} />
       <p className="mb-4 text-sm text-texto-2">
         No CRM, abra <b>Integrações ▸ Nova chave</b>, dê o nome “Agente SDR” e marque todas as permissões. A chave aparece uma
         única vez: copie e cole aqui.

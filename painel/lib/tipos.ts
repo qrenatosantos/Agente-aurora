@@ -27,7 +27,7 @@ export type ResultadoTeste = ResultadoBanco;
 export type IntegracoesLinha = Integracoes;
 export type NomeSegredo = NomeBanco;
 export type SituacaoSegredo = SituacaoBanco;
-export type OperacaoLinha = Operacao;
+export type OperacaoLinha = Operacao & { cliente_pausado?: boolean };
 export type RegistroLinha = LinhaRegistro;
 
 export type MensagemSimulacao = {

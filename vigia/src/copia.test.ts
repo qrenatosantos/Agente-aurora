@@ -20,9 +20,9 @@ test("cópia: valores viram SQL seguro (aspas, nulo, números, binário)", () =>
 
 test("cópia: restaurar num banco com as mesmas migrações deixa todas as linhas iguais", async () => {
   const origem = bancoDeTeste([...migracoes, iniciais]);
-  origem.sqlite.exec("insert into registro (ator_nome, acao, detalhes) values ('Renato', 'teste', json_object('t', 'texto com ''aspas'' e' || char(10) || 'quebra'))");
+  origem.sqlite.exec("insert into registro (cliente_id, ator_nome, acao, detalhes) values ('aurora', 'Renato', 'teste', json_object('t', 'texto com ''aspas'' e' || char(10) || 'quebra'))");
   const { sql, tabelas } = await gerarCopia(origem);
-  assert.ok(Object.keys(tabelas).includes("agente_config"));
+  assert.ok(Object.keys(tabelas).includes("agentes") && Object.keys(tabelas).includes("clientes"));
   assert.ok(!Object.keys(tabelas).includes("d1_migrations"));
 
   // destino já tem dados diferentes: a cópia apaga e regrava

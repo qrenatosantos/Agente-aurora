@@ -75,7 +75,7 @@ export function FormTransferencia({ config, podeEditar }: { config: AgenteConfig
           <div>
             <h2 className="text-lg font-semibold text-texto">Horário da equipe</h2>
             <p className="text-sm text-texto-2">
-              Quando uma pessoa da Aurora responde. Fora deste horário, o cliente transferido recebe a mensagem “fora do horário”.
+              Quando uma pessoa da equipe responde. Fora deste horário, o cliente transferido recebe a mensagem “fora do horário”.
             </p>
           </div>
           <input type="hidden" name="agente_24h" value={vinteQuatro ? "sim" : "nao"} />

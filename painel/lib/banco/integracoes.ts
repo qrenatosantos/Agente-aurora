@@ -1,9 +1,9 @@
 /**
  * INTEGRAÇÕES (o que NÃO é segredo) e SEGREDOS (cifrados pelo painel com a CHAVE_MESTRA, que não está no banco).
- * Só o gestor vê e altera. O texto cifrado nunca vai para o navegador nem para o registro.
+ * Tudo por cliente (cliente_id). Só o gestor do cliente vê e altera. O texto cifrado nunca vai para o navegador nem para o registro.
  * Exceção: o simulador (qualquer pessoa ativa) usa a chave da OpenAI e a do CRM, só no servidor.
  */
-import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirGestor, registrar, traduzirErro } from "./base.ts";
+import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirCliente, exigirGestor, registrar, traduzirErro } from "./base.ts";
 
 export const NOMES_SEGREDOS = ["crm_chave", "crm_segredo_avisos", "openai_chave", "whatsapp_token", "whatsapp_app_secret", "whatsapp_verify_token"] as const;
 export type NomeSegredo = (typeof NOMES_SEGREDOS)[number];
@@ -25,26 +25,47 @@ export type SituacaoSegredo = { nome: NomeSegredo; final: string | null; atualiz
 
 const CAMPOS = ["crm_url", "whatsapp_phone_number_id", "whatsapp_waba_id", "whatsapp_numero", "whatsapp_graph_versao"] as const;
 
-export async function lerIntegracoesInterno(db: Banco): Promise<Integracoes> {
-  const r = await db.prepare("select * from integracoes where id = 1").first();
+export async function lerIntegracoesInterno(db: Banco, cliente: string): Promise<Integracoes> {
+  exigirCliente(cliente);
+  const r = await db.prepare("select * from integracoes where cliente_id = ?").bind(cliente).first();
+  if (!r) throw new Error(`Integrações do cliente ${cliente} não encontradas.`);
   return converter<Integracoes>(r, [], ["teste_crm", "teste_openai", "teste_whatsapp"])!;
+}
+
+/** De quem é este número do WhatsApp (o motor descobre o cliente pela mensagem que chega). Só clientes ativos ou pausados. */
+export async function clienteDoWhatsAppInterno(db: Banco, phoneNumberId: string): Promise<string | null> {
+  if (!/^\d{5,30}$/.test(phoneNumberId)) return null;
+  const r = await db
+    .prepare("select i.cliente_id from integracoes i join clientes c on c.id = i.cliente_id where i.whatsapp_phone_number_id = ? and c.situacao <> 'encerrado'")
+    .bind(phoneNumberId)
+    .first<{ cliente_id: string }>();
+  return r?.cliente_id ?? null;
+}
+
+/** Clientes que têm uma chave cadastrada (ex.: quem tem segredo dos avisos do CRM). Uso do motor. */
+export async function clientesComSegredoInterno(db: Banco, nome: NomeSegredo): Promise<string[]> {
+  const r = await db
+    .prepare("select s.cliente_id from segredos s join clientes c on c.id = s.cliente_id where s.nome = ? and c.situacao <> 'encerrado' order by s.cliente_id")
+    .bind(nome)
+    .all<{ cliente_id: string }>();
+  return r.results.map((x) => x.cliente_id);
 }
 
 export async function lerIntegracoes(db: Banco, ator: Ator) {
   exigirGestor(ator, "Só o gestor vê as integrações.");
-  return lerIntegracoesInterno(db);
+  return lerIntegracoesInterno(db, ator.cliente);
 }
 
 export async function salvarIntegracoes(db: Banco, ator: Ator, d: Partial<Pick<Integracoes, (typeof CAMPOS)[number]>>) {
   exigirGestor(ator, "Só o gestor altera as integrações.");
-  const antes = await lerIntegracoesInterno(db);
+  const antes = await lerIntegracoesInterno(db, ator.cliente);
   const mudou = CAMPOS.filter((k) => d[k] !== undefined && d[k] !== antes[k]);
   if (!mudou.length) return;
   const antesR = Object.fromEntries(mudou.map((k) => [k, antes[k]]));
   const depoisR = Object.fromEntries(mudou.map((k) => [k, d[k]]));
   try {
     await db.batch([
-      db.prepare(`update integracoes set ${mudou.map((k) => `${k} = ?`).join(", ")}, updated_at = ? where id = 1`).bind(...mudou.map((k) => d[k]), agora()),
+      db.prepare(`update integracoes set ${mudou.map((k) => `${k} = ?`).join(", ")}, updated_at = ? where cliente_id = ?`).bind(...mudou.map((k) => d[k]), agora(), ator.cliente),
       registrar(db, ator, "integracoes.alterou", "Integrações", { antes: antesR, depois: depoisR }),
     ]);
   } catch (e) {
@@ -64,10 +85,10 @@ export async function salvarSegredo(db: Banco, ator: Ator, nome: string, cifrado
   await db.batch([
     db
       .prepare(
-        `insert into segredos (nome, cifrado, final, atualizado_em, atualizado_por) values (?, ?, ?, ?, ?)
-         on conflict (nome) do update set cifrado = excluded.cifrado, final = excluded.final, atualizado_em = excluded.atualizado_em, atualizado_por = excluded.atualizado_por`,
+        `insert into segredos (cliente_id, nome, cifrado, final, atualizado_em, atualizado_por) values (?, ?, ?, ?, ?, ?)
+         on conflict (cliente_id, nome) do update set cifrado = excluded.cifrado, final = excluded.final, atualizado_em = excluded.atualizado_em, atualizado_por = excluded.atualizado_por`,
       )
-      .bind(nome, cifrado, fim, agora(), ator.nome),
+      .bind(ator.cliente, nome, cifrado, fim, agora(), ator.nome),
     // o registro diz QUAL chave mudou, nunca o valor
     registrar(db, ator, "segredo.alterou", nome, { final: fim }),
   ]);
@@ -76,13 +97,13 @@ export async function salvarSegredo(db: Banco, ator: Ator, nome: string, cifrado
 export async function apagarSegredo(db: Banco, ator: Ator, nome: string) {
   exigirGestor(ator, "Só o gestor altera as chaves das integrações.");
   conferirNome(nome);
-  const r = await db.prepare("delete from segredos where nome = ?").bind(nome).run();
+  const r = await db.prepare("delete from segredos where cliente_id = ? and nome = ?").bind(ator.cliente, nome).run();
   if (r.meta.changes) await registrar(db, ator, "segredo.apagou", nome, {}).run();
 }
 
 export async function situacaoSegredos(db: Banco, ator: Ator): Promise<SituacaoSegredo[]> {
   exigirGestor(ator, "Só o gestor vê as chaves.");
-  const r = await db.prepare("select nome, final, atualizado_em, atualizado_por from segredos order by nome").all<SituacaoSegredo>();
+  const r = await db.prepare("select nome, final, atualizado_em, atualizado_por from segredos where cliente_id = ? order by nome").bind(ator.cliente).all<SituacaoSegredo>();
   return r.results;
 }
 
@@ -91,19 +112,20 @@ export async function segredoCifrado(db: Banco, ator: Ator, nome: string): Promi
   exigirAtivo(ator);
   conferirNome(nome);
   if (ator.papel !== "gestor" && !DO_SIMULADOR.includes(nome)) throw new ErroRegra("Sem permissão.");
-  return segredoCifradoInterno(db, nome);
+  return segredoCifradoInterno(db, ator.cliente, nome);
 }
 
-/** Sem conferir quem é: só para o motor (WhatsApp), que roda sem pessoa logada. */
-export async function segredoCifradoInterno(db: Banco, nome: NomeSegredo): Promise<string | null> {
-  const r = await db.prepare("select cifrado from segredos where nome = ?").bind(nome).first<{ cifrado: string }>();
+/** Sem conferir quem é: só para o motor (WhatsApp), que roda sem pessoa logada. Sempre de UM cliente. */
+export async function segredoCifradoInterno(db: Banco, cliente: string, nome: NomeSegredo): Promise<string | null> {
+  exigirCliente(cliente);
+  const r = await db.prepare("select cifrado from segredos where cliente_id = ? and nome = ?").bind(cliente, nome).first<{ cifrado: string }>();
   return r?.cifrado ?? null;
 }
 
 /** Endereço do CRM para quem usa o simulador. */
 export async function enderecoCrm(db: Banco, ator: Ator): Promise<string | null> {
   exigirAtivo(ator);
-  return (await lerIntegracoesInterno(db)).crm_url;
+  return (await lerIntegracoesInterno(db, ator.cliente)).crm_url;
 }
 
 export async function gravarTesteIntegracao(db: Banco, ator: Ator, servico: "crm" | "openai" | "whatsapp", resultado: ResultadoTeste) {
@@ -111,7 +133,7 @@ export async function gravarTesteIntegracao(db: Banco, ator: Ator, servico: "crm
   if (!["crm", "openai", "whatsapp"].includes(servico)) throw new ErroRegra("Serviço desconhecido.");
   const valor = { em: agora(), ...resultado };
   await db.batch([
-    db.prepare(`update integracoes set teste_${servico} = ? where id = 1`).bind(JSON.stringify(valor)),
+    db.prepare(`update integracoes set teste_${servico} = ? where cliente_id = ?`).bind(JSON.stringify(valor), ator.cliente),
     registrar(db, ator, "integracoes.testou", servico, { ok: Boolean(resultado.ok), mensagem: (resultado.mensagem ?? "").slice(0, 300) }),
   ]);
 }

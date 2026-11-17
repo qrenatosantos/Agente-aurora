@@ -4,7 +4,7 @@
  * ganha ALERTAS, para o gestor revisar. Todos leem; só o gestor altera. Excluir guarda o texto no registro.
  */
 import { alertasTexto } from "../texto.ts";
-import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirGestor, novoId, registrar, traduzirErro } from "./base.ts";
+import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirCliente, exigirGestor, novoId, registrar, traduzirErro } from "./base.ts";
 
 export type TipoConhecimento = "pergunta" | "texto" | "arquivo" | "site";
 export type Conhecimento = {
@@ -28,13 +28,17 @@ const linha = (r: Record<string, unknown> | null) => converter<Conhecimento>(r, 
 
 export async function listarConhecimento(db: Banco, ator: Ator): Promise<Conhecimento[]> {
   exigirAtivo(ator);
-  const r = await db.prepare("select * from conhecimento order by tipo, titulo").all();
+  const r = await db.prepare("select * from conhecimento where cliente_id = ? order by tipo, titulo").bind(ator.cliente).all();
   return r.results.map((x) => linha(x)!);
 }
 
 /** Só os itens ativos, no formato do agente (uso interno: motor e simulador). */
-export async function conhecimentoDoAgente(db: Banco) {
-  const r = await db.prepare("select titulo, pergunta, conteudo from conhecimento where ativo = 1 order by tipo, titulo").all<{ titulo: string; pergunta: string | null; conteudo: string }>();
+export async function conhecimentoDoAgente(db: Banco, cliente: string) {
+  exigirCliente(cliente);
+  const r = await db
+    .prepare("select titulo, pergunta, conteudo from conhecimento where cliente_id = ? and ativo = 1 order by tipo, titulo")
+    .bind(cliente)
+    .all<{ titulo: string; pergunta: string | null; conteudo: string }>();
   return r.results;
 }
 
@@ -58,8 +62,8 @@ export async function incluirConhecimento(db: Banco, ator: Ator, d: Dados) {
   try {
     await db.batch([
       db
-        .prepare("insert into conhecimento (id, tipo, titulo, pergunta, conteudo, fonte, ativo, alertas, criado_por) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(id, d.tipo, p.titulo, p.pergunta, p.conteudo, p.fonte, d.ativo === false ? 0 : 1, JSON.stringify(p.alertas), ator.id),
+        .prepare("insert into conhecimento (id, cliente_id, tipo, titulo, pergunta, conteudo, fonte, ativo, alertas, criado_por) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, ator.cliente, d.tipo, p.titulo, p.pergunta, p.conteudo, p.fonte, d.ativo === false ? 0 : 1, JSON.stringify(p.alertas), ator.id),
       registrar(db, ator, "conhecimento.incluiu", p.titulo, { id, tipo: d.tipo, alertas: p.alertas }),
     ]);
   } catch (e) {
@@ -70,7 +74,7 @@ export async function incluirConhecimento(db: Banco, ator: Ator, d: Dados) {
 
 export async function alterarConhecimento(db: Banco, ator: Ator, id: string, d: Partial<Dados>) {
   exigirGestor(ator, "Só o gestor altera o conhecimento.");
-  const antes = linha(await db.prepare("select * from conhecimento where id = ?").bind(id).first());
+  const antes = linha(await db.prepare("select * from conhecimento where id = ? and cliente_id = ?").bind(id, ator.cliente).first());
   if (!antes) throw new ErroRegra("Item não encontrado.");
   const novo = { tipo: antes.tipo, titulo: d.titulo ?? antes.titulo, pergunta: d.pergunta !== undefined ? d.pergunta : antes.pergunta, conteudo: d.conteudo ?? antes.conteudo, fonte: d.fonte !== undefined ? d.fonte : antes.fonte, ativo: d.ativo ?? antes.ativo };
   const p = preparar(novo);
@@ -81,8 +85,8 @@ export async function alterarConhecimento(db: Banco, ator: Ator, id: string, d: 
   try {
     await db.batch([
       db
-        .prepare("update conhecimento set titulo = ?, pergunta = ?, conteudo = ?, fonte = ?, ativo = ?, alertas = ?, updated_at = ? where id = ?")
-        .bind(p.titulo, p.pergunta, p.conteudo, p.fonte, novo.ativo ? 1 : 0, JSON.stringify(p.alertas), agora(), id),
+        .prepare("update conhecimento set titulo = ?, pergunta = ?, conteudo = ?, fonte = ?, ativo = ?, alertas = ?, updated_at = ? where id = ? and cliente_id = ?")
+        .bind(p.titulo, p.pergunta, p.conteudo, p.fonte, novo.ativo ? 1 : 0, JSON.stringify(p.alertas), agora(), id, ator.cliente),
       registrar(db, ator, acao, p.titulo, { id, antes: { titulo: antes.titulo, pergunta: antes.pergunta, conteudo: antes.conteudo } }),
     ]);
   } catch (e) {
@@ -93,10 +97,10 @@ export async function alterarConhecimento(db: Banco, ator: Ator, id: string, d: 
 
 export async function excluirConhecimento(db: Banco, ator: Ator, id: string) {
   exigirGestor(ator, "Só o gestor altera o conhecimento.");
-  const antes = linha(await db.prepare("select * from conhecimento where id = ?").bind(id).first());
+  const antes = linha(await db.prepare("select * from conhecimento where id = ? and cliente_id = ?").bind(id, ator.cliente).first());
   if (!antes) return;
   await db.batch([
-    db.prepare("delete from conhecimento where id = ?").bind(id),
+    db.prepare("delete from conhecimento where id = ? and cliente_id = ?").bind(id, ator.cliente),
     registrar(db, ator, "conhecimento.excluiu", antes.titulo, {
       id,
       tipo: antes.tipo,

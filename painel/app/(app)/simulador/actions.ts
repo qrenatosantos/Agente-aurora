@@ -189,11 +189,11 @@ export async function apagarSimulacao(id: string): Promise<EstadoAcao> {
 export async function zerarConversaWhatsApp(conversa: string): Promise<EstadoAcao> {
   const g = await exigirGestor();
   if ("erro" in g) return falha("Só o gestor zera conversas do WhatsApp.");
-  if (!/^wa-\d{8,15}$/.test(conversa)) return falha("Conversa inválida.");
   try {
+    // 1º o banco: confere que a conversa é DESTE cliente (o nome leva o cliente) antes de apagar a memória no motor
+    await op2.zerarConversaWhatsApp(await banco(), await atorAtual(), conversa);
     const r = await chamarMotor("apagar", { conversa });
     if (r === null) return falha("O motor do agente não está ligado a este painel.");
-    await op2.zerarConversaWhatsApp(await banco(), await atorAtual(), conversa);
   } catch (e) {
     unstable_rethrow(e);
     return falha(mensagemDeErro(e));

@@ -14,10 +14,10 @@ import type { Ator, Banco } from "@/lib/banco/base.ts";
 import { ErroRegra } from "@/lib/banco/base.ts";
 import { atorDaSessao, DURACAO_SESSAO_DIAS, meuCadastro } from "@/lib/banco/pessoas.ts";
 
-import { COOKIE_SESSAO } from "@/lib/sessao-cookie";
+import { COOKIE_CLIENTE, COOKIE_SESSAO } from "@/lib/sessao-cookie";
 export { COOKIE_SESSAO };
 
-type EnvPainel = { DB?: Banco; MOTOR?: { fetch: typeof fetch }; CODIGO_INSTALACAO?: string; SEGREDO_INTERNO?: string };
+type EnvPainel = { DB?: Banco; MOTOR?: { fetch: typeof fetch }; CODIGO_INSTALACAO?: string; SEGREDO_INTERNO?: string; CHAVE_MESTRA?: string };
 
 export async function envPainel(): Promise<EnvPainel> {
   const { env } = await getCloudflareContext({ async: true });
@@ -48,8 +48,21 @@ export async function apagarCookieSessao() {
   (await cookies()).delete(COOKIE_SESSAO);
 }
 
-/** A pessoa logada nesta requisição (null = ninguém ou sessão vencida). */
-export const atorAtual = cache(async (): Promise<Ator> => atorDaSessao(await banco(), await lerCookieSessao()));
+/** Cliente escolhido no topo (só uma preferência: lib/banco confere se a pessoa tem acesso a ele). */
+export async function lerCookieCliente() {
+  return (await cookies()).get(COOKIE_CLIENTE)?.value ?? null;
+}
+
+export async function gravarCookieCliente(cliente: string) {
+  // não é httpOnly: a guarda do navegador (components/shell/guarda-cliente.tsx) compara com o cliente da página aberta
+  (await cookies()).set(COOKIE_CLIENTE, cliente, { secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 365 * 24 * 3600 });
+}
+
+/**
+ * A pessoa logada nesta requisição, trabalhando no cliente escolhido no topo (null = ninguém ou sessão vencida).
+ * Toda leitura e gravação de lib/banco usa o cliente deste ator: nunca um cliente vindo de formulário.
+ */
+export const atorAtual = cache(async (): Promise<Ator> => atorDaSessao(await banco(), await lerCookieSessao(), await lerCookieCliente()));
 
 /** Cadastro completo (com e-mail) da pessoa logada. */
 export const cadastroAtual = cache(async () => {

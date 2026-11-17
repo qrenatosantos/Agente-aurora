@@ -17,7 +17,7 @@ import { type ResumoCopia, gerarCopia, nomeDaCopia } from "./copia.ts";
 import { type Achado, avaliarSaude } from "./saude.ts";
 import type { Banco } from "../../painel/lib/banco/base.ts";
 
-type ItemSaude = { item: string; ok: boolean; detalhe: string };
+type ItemSaude = { item: string; ok: boolean; detalhe: string; exigivel?: boolean };
 
 export type Env = {
   DB: Banco;

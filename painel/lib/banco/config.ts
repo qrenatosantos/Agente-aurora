@@ -1,9 +1,9 @@
 /**
- * CONFIGURAÇÃO DO AGENTE (linha única) COM VERSÕES.
+ * CONFIGURAÇÃO DO AGENTE (uma linha por cliente, tabela agentes) COM VERSÕES (agente_versoes, numeradas por cliente).
  * Toda alteração de verdade vira uma versão nova, com a lista do que mudou. Salvar igual não cria versão.
  * Todos leem; só o gestor altera, vê o histórico e volta a uma versão.
  */
-import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirGestor, registrar, traduzirErro } from "./base.ts";
+import { agora, type Ator, type Banco, converter, ErroRegra, exigirAtivo, exigirCliente, exigirGestor, registrar, traduzirErro } from "./base.ts";
 
 /** Campos que fazem parte da versão (tudo menos controle interno). */
 export const CAMPOS_CONFIG = {
@@ -62,15 +62,17 @@ export type Config = {
 
 export type Versao = { numero: number; dados: Partial<Config>; campos: string[]; descricao: string | null; autor_nome: string; created_at: string };
 
-/** Leitura sem conferir quem é (uso interno do servidor: motor e simulador). */
-export async function lerConfigInterno(db: Banco): Promise<Config> {
-  const r = await db.prepare("select * from agente_config where id = 1").first();
+/** Leitura sem conferir quem é (uso interno do servidor: motor e simulador), de UM cliente. */
+export async function lerConfigInterno(db: Banco, cliente: string): Promise<Config> {
+  exigirCliente(cliente);
+  const r = await db.prepare("select * from agentes where cliente_id = ?").bind(cliente).first();
+  if (!r) throw new Error(`Agente do cliente ${cliente} não encontrado.`);
   return converter<Config>(r, BOOLEANOS, JSONS)!;
 }
 
 export async function lerConfig(db: Banco, ator: Ator): Promise<Config> {
   exigirAtivo(ator);
-  return lerConfigInterno(db);
+  return lerConfigInterno(db, ator.cliente);
 }
 
 function dadosVersao(c: Config) {
@@ -82,7 +84,7 @@ function dadosVersao(c: Config) {
 /** Altera campos da configuração. Devolve o número da versão (nova, ou a mesma se nada mudou). */
 export async function salvarConfig(db: Banco, ator: Ator, mudancas: Partial<Omit<Config, "versao" | "updated_at">>, descricao: string | null = null): Promise<number> {
   exigirGestor(ator, "Só o gestor altera a configuração do agente.");
-  const atual = await lerConfigInterno(db);
+  const atual = await lerConfigInterno(db, ator.cliente);
   const novo = { ...atual };
   const campos: string[] = [];
   for (const [k, v] of Object.entries(mudancas)) {
@@ -95,7 +97,7 @@ export async function salvarConfig(db: Banco, ator: Ator, mudancas: Partial<Omit
   campos.sort();
   if (!campos.length) return atual.versao;
 
-  const ultima = await db.prepare("select coalesce(max(numero), 0) as n from config_versoes").first<{ n: number }>();
+  const ultima = await db.prepare("select coalesce(max(numero), 0) as n from agente_versoes where cliente_id = ?").bind(ator.cliente).first<{ n: number }>();
   const versao = (ultima?.n ?? 0) + 1;
   const sets = campos.map((k) => `${k} = ?`).join(", ");
   const valores = campos.map((k) => {
@@ -105,10 +107,10 @@ export async function salvarConfig(db: Banco, ator: Ator, mudancas: Partial<Omit
   });
   try {
     await db.batch([
-      db.prepare(`update agente_config set ${sets}, versao = ?, updated_at = ? where id = 1`).bind(...valores, versao, agora()),
+      db.prepare(`update agentes set ${sets}, versao = ?, updated_at = ? where cliente_id = ?`).bind(...valores, versao, agora(), ator.cliente),
       db
-        .prepare("insert into config_versoes (numero, dados, campos, descricao, autor_id, autor_nome) values (?, ?, ?, ?, ?, ?)")
-        .bind(versao, JSON.stringify(dadosVersao(novo)), JSON.stringify(campos), descricao, ator.id, ator.nome),
+        .prepare("insert into agente_versoes (cliente_id, numero, dados, campos, descricao, autor_id, autor_nome) values (?, ?, ?, ?, ?, ?, ?)")
+        .bind(ator.cliente, versao, JSON.stringify(dadosVersao(novo)), JSON.stringify(campos), descricao, ator.id, ator.nome),
       registrar(db, ator, "config.alterou", `Versão ${versao}`, { versao, campos, descricao }),
     ]);
   } catch (e) {
@@ -119,14 +121,14 @@ export async function salvarConfig(db: Banco, ator: Ator, mudancas: Partial<Omit
 
 export async function listarVersoes(db: Banco, ator: Ator, limite = 50): Promise<Versao[]> {
   exigirGestor(ator, "Só o gestor vê o histórico de versões.");
-  const r = await db.prepare("select * from config_versoes order by numero desc limit ?").bind(limite).all();
+  const r = await db.prepare("select * from agente_versoes where cliente_id = ? order by numero desc limit ?").bind(ator.cliente, limite).all();
   return r.results.map((l) => converter<Versao>(l, [], ["dados", "campos"])!);
 }
 
 /** Volta para uma versão anterior: gera uma versão NOVA igual à escolhida. */
 export async function restaurarVersao(db: Banco, ator: Ator, numero: number): Promise<number> {
   exigirGestor(ator, "Só o gestor pode voltar a uma versão anterior.");
-  const v = await db.prepare("select dados from config_versoes where numero = ?").bind(numero).first<{ dados: string }>();
+  const v = await db.prepare("select dados from agente_versoes where cliente_id = ? and numero = ?").bind(ator.cliente, numero).first<{ dados: string }>();
   if (!v) throw new ErroRegra(`Versão ${numero} não encontrada.`);
   return salvarConfig(db, ator, JSON.parse(v.dados), `Voltou para a versão ${numero}`);
 }

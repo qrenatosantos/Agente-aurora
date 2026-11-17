@@ -3,7 +3,8 @@
  *
  * Só o VIGIA chama (vigia/, a cada 5 minutos), por uma ligação interna da Cloudflare ("entrypoint" Saude):
  * não existe endereço na internet para isto. Confere, sem mandar mensagem a ninguém:
- *  - banco D1 (lê a configuração);
+ *  - banco D1 (lê a lista de clientes ativos);
+ * e, para CADA cliente ativo:
  *  - OpenAI (lista os modelos com a chave do painel: não gasta crédito);
  *  - WhatsApp (lê o número na Meta com o token do painel: token vencido ou número desligado aparecem aqui);
  *  - CRM (uma busca que não acha nada: confere se o CRM está no ar e se a chave vale).
@@ -13,7 +14,7 @@ import { ClienteCrm } from "../../painel/lib/nucleo/crm.ts";
 import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
 
-export type ItemSaude = { item: string; ok: boolean; detalhe: string };
+export type ItemSaude = { item: string; ok: boolean; detalhe: string; exigivel?: boolean };
 
 const TEMPO_MS = 8000;
 
@@ -34,15 +35,33 @@ export function lerStatus(servico: string, status: number): string {
   return `HTTP ${status}`;
 }
 
+/**
+ * Um item por serviço e por cliente ativo (o detalhe começa com "[cliente]"). "exigivel" = o cliente já está no ar
+ * (tem número de WhatsApp cadastrado): só nele algo "não cadastrado" pode virar alerta. Cliente recém-criado, ainda
+ * sendo configurado, não dispara alerta por falta de chave.
+ */
 export async function conferirSaude(env: Env): Promise<ItemSaude[]> {
+  let clientes: { id: string; whatsapp: string | null }[] = [];
   const banco = await medir("banco", async () => {
-    const r = await env.DB.prepare("select count(*) as n from agente_config").first<{ n: number }>();
-    if (!r || Number(r.n) < 1) throw new Error("configuração do agente não encontrada");
-    return "configuração lida";
+    const r = await env.DB.prepare(
+      "select c.id, i.whatsapp_phone_number_id as whatsapp from clientes c join agentes a on a.cliente_id = c.id left join integracoes i on i.cliente_id = c.id where c.situacao = 'ativo' order by c.id",
+    ).all<{ id: string; whatsapp: string | null }>();
+    clientes = r.results;
+    return `configuração lida (${clientes.length} cliente(s) ativo(s))`;
   });
   if (!banco.ok) return [banco];
+  const porCliente = await Promise.all(clientes.map((c) => conferirCliente(env, c.id, Boolean(c.whatsapp))));
+  return [banco, ...porCliente.flat()];
+}
 
-  const amb = await carregarAmbiente(env);
+async function conferirCliente(env: Env, cliente: string, noAr: boolean): Promise<ItemSaude[]> {
+  const comCliente = (i: ItemSaude): ItemSaude => ({ ...i, detalhe: `[${cliente}] ${i.detalhe}`, exigivel: noAr });
+  let amb: Awaited<ReturnType<typeof carregarAmbiente>>;
+  try {
+    amb = await carregarAmbiente(env, cliente);
+  } catch (e) {
+    return [comCliente({ item: "banco", ok: false, detalhe: `não leu o ambiente: ${e instanceof Error ? e.message : String(e)}` })];
+  }
   const itens = await Promise.all([
     medir("openai", async () => {
       if (!amb.chaveIA) throw new Error("chave da OpenAI não cadastrada no painel");
@@ -70,5 +89,5 @@ export async function conferirSaude(env: Env): Promise<ItemSaude[]> {
       return lerStatus("CRM", r.status === 404 ? 200 : r.status);
     }),
   ]);
-  return [banco, ...itens];
+  return itens.map(comCliente);
 }

@@ -93,14 +93,15 @@ export type Marca = {
   temaPadrao: TemaPadrao;
 };
 
+/** Marca da PLATAFORMA (login e telas sem cliente). Cada cliente tem a sua (clientes.marca). */
 export const MARCA_PADRAO: Marca = {
   nome: NOME_APP,
   subtitulo: null,
   logoUrl: null,
-  corPrimaria: PALETAS[0].principal,
-  corDestaque: PALETAS[0].destaque,
-  fonte: "aurora",
-  raio: "reto",
+  corPrimaria: "#1D4E89",
+  corDestaque: "#F4A259",
+  fonte: "moderna",
+  raio: "medio",
   temaPadrao: "claro",
 };
 
@@ -119,9 +120,10 @@ function daLista<T extends string>(valor: unknown, lista: readonly { id: T }[], 
   return lista.some((i) => i.id === valor) ? (valor as T) : padrao;
 }
 
-/** Só URLs http(s) (nada de javascript:). */
+/** Só URLs http(s) ou caminhos do próprio painel ("/cliente/logo.svg"). Nada de javascript:. */
 export function urlSegura(url: unknown): string | null {
   if (typeof url !== "string" || url.length > 500) return null;
+  if (/^\/[a-zA-Z0-9/_.-]{1,200}$/.test(url) && !url.startsWith("//")) return url;
   try {
     const u = new URL(url);
     return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;

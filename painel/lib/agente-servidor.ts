@@ -32,7 +32,7 @@ export async function carregarAmbienteAgente(): Promise<{ ok: true; amb: Ambient
   try {
     dados = await Promise.all([
       lerConfig(db, ator),
-      conhecimentoDoAgente(db),
+      ator?.cliente ? conhecimentoDoAgente(db, ator.cliente) : Promise.reject(new Error("sem cliente")),
       lerOperacao(db, ator),
       enderecoCrm(db, ator),
       segredoCifrado(db, ator, "openai_chave"),

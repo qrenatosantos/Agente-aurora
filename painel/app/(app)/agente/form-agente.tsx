@@ -30,7 +30,7 @@ export function FormAgente({ config, podeEditar }: { config: AgenteConfig; podeE
             rotulo="Apresentação"
             nome="apresentacao"
             erro={erros.apresentacao}
-            ajuda="Quem é a Aurora e o que o agente faz. Usado para ele entender o próprio papel."
+            ajuda="Quem é a empresa e o que o agente faz. Usado para ele entender o próprio papel."
           >
             {(p) => <AreaTexto {...p} defaultValue={config.apresentacao} maxLength={1000} rows={4} />}
           </Campo>

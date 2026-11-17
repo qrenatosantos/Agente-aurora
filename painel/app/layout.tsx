@@ -14,8 +14,8 @@ import { obterMarca } from "@/lib/marca-servidor";
  */
 export async function generateMetadata(): Promise<Metadata> {
   const marca = await obterMarca();
-  // Sem logo enviada na Personalização: usa o ícone da Aurora (public/aurora).
-  const icone = marca.logoUrl ?? "/aurora/favicon.svg";
+  // Sem logo: as iniciais do nome sobre a cor da marca (rota /icone).
+  const icone = marca.logoUrl ?? "/icone";
   return {
     title: { default: marca.nome, template: `%s · ${marca.nome}` },
     description: marca.subtitulo ?? SUBTITULO_PADRAO_LOGIN,

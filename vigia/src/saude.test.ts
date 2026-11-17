@@ -16,3 +16,11 @@ test("saúde: não configurado só é alerta quando exigido (produção exige tu
   assert.equal(avaliarSaude([item], ["banco", "openai", "whatsapp", "crm"])[0].alerta, true);
   assert.equal(avaliarSaude([item], ["banco"])[0].alerta, false);
 });
+
+test("saúde (multi-cliente): cliente ainda sendo configurado não gera alerta por falta de chave; falha de verdade sim", () => {
+  const exigir = ["banco", "openai", "whatsapp", "crm"];
+  const semChave = { item: "openai", ok: false, detalhe: "[novo] chave da OpenAI não cadastrada no painel", exigivel: false };
+  assert.equal(avaliarSaude([semChave], exigir)[0].alerta, false);
+  assert.equal(avaliarSaude([{ ...semChave, exigivel: true }], exigir)[0].alerta, true);
+  assert.equal(avaliarSaude([{ item: "crm", ok: false, detalhe: "[novo] CRM recusou a chave (HTTP 401)", exigivel: false }], exigir)[0].alerta, true);
+});

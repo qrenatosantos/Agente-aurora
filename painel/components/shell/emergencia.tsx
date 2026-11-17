@@ -89,7 +89,17 @@ export function BotaoEmergencia({ pausado, gestor }: { pausado: boolean; gestor:
   );
 }
 
-export function FaixaPausado({ operacao, gestor }: { operacao: OperacaoLinha; gestor: boolean }) {
+export function FaixaPausado({ operacao, gestor }: { operacao: OperacaoLinha & { cliente_pausado?: boolean }; gestor: boolean }) {
+  if (operacao.cliente_pausado) {
+    return (
+      <div role="alert" className="border-b border-perigo/30 bg-perigo-suave px-4 py-3 text-sm text-perigo sm:px-6">
+        <p className="font-semibold">
+          <OctagonPause className="mr-1 inline size-4 align-[-3px]" aria-hidden /> Cliente PAUSADO no Estúdio: o agente não responde ninguém.
+        </p>
+        <p className="mt-0.5">Só o dono da plataforma reativa (Estúdio ▸ Clientes).</p>
+      </div>
+    );
+  }
   return (
     <div role="alert" className="border-b border-perigo/30 bg-perigo-suave px-4 py-3 text-sm text-perigo sm:px-6">
       <p className="font-semibold">

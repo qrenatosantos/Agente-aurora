@@ -5,7 +5,7 @@
  *   const marca = await obterMarca();            // de "@/lib/marca-servidor"
  *   <LogoNegocio nome={marca.nome} logoUrl={marca.logoUrl} tamanho="lg" />
  *
- * Sem logo enviada na Personalização, mostra o ícone da Aurora (public/aurora/favicon.svg).
+ * Sem logo: mostra as iniciais do nome sobre a cor da marca (rota /icone).
  * Funciona em Server e Client Components (não usa hooks).
  */
 import { cn } from "@/lib/utils";
@@ -46,9 +46,9 @@ export function LogoNegocio({
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- SVG local (public/aurora), sem otimização
+    // eslint-disable-next-line @next/next/no-img-element -- ícone gerado (iniciais), sem otimização
     <img
-      src="/aurora/favicon.svg"
+      src="/icone"
       alt={decorativa ? "" : `Logo de ${nome}`}
       className={cn(classes, "object-contain [print-color-adjust:exact]")}
       data-logo-negocio=""

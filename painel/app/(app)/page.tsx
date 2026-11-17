@@ -12,6 +12,8 @@ import { lerIntegracoes } from "@/lib/banco/integracoes.ts";
 import { gastoMes } from "@/lib/banco/operacao.ts";
 import { listarEquipe } from "@/lib/banco/pessoas.ts";
 import { atorAtual, banco } from "@/lib/servidor";
+import { obterMarca } from "@/lib/marca-servidor";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Visão geral" };
 
@@ -21,6 +23,9 @@ export default async function PaginaInicio() {
   const { perfil } = await obterPerfil();
   const db = await banco();
   const ator = await atorAtual();
+  // dono da plataforma ainda sem nenhum cliente: começa pela tela Clientes
+  if (ator?.dono && !ator.cliente) redirect("/clientes");
+  const marca = await obterMarca();
   // leituras só do gestor (versões, integrações, equipe) voltam vazias para a atendente
   const [{ config }, operacao, conhecimento, versoes, t, pessoas, gasto] = await Promise.all([
     obterConfigAgente(),
@@ -43,7 +48,7 @@ export default async function PaginaInicio() {
     {
       feito: versoesHumanas > 0,
       titulo: "Revisar as instruções do agente",
-      detalhe: "A versão inicial foi escrita a partir do site e das regras combinadas. O André deve ler e ajustar.",
+      detalhe: "Ler a versão inicial e ajustar ao jeito da empresa.",
       href: "/agente",
     },
     {
@@ -73,7 +78,7 @@ export default async function PaginaInicio() {
 
   return (
     <>
-      <CabecalhoPagina titulo={`Olá${perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""}!`} descricao="Painel do atendimento automático da Aurora Bartenders." />
+      <CabecalhoPagina titulo={`Olá${perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""}!`} descricao={`Painel do atendimento automático${marca.nome ? ` de ${marca.nome}` : ""}.`} />
 
       <Cartao className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>

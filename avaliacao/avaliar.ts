@@ -33,7 +33,7 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function configInicial(): Promise<{ cfg: ConfigAgente; conhecimento: ItemConhecimento[] }> {
   const pasta = join(raiz, "painel/banco/migracoes");
   const db = bancoDeTeste([...readdirSync(pasta).filter((f) => f.endsWith(".sql")).sort().map((f) => join(pasta, f)), join(raiz, "clientes/aurora/dados-iniciais.sql")]);
-  const c = await lerConfigInterno(db);
+  const c = await lerConfigInterno(db, "aurora");
   const cfg: ConfigAgente = {
     nome_agente: c.nome_agente,
     apresentacao: c.apresentacao,
@@ -49,7 +49,7 @@ async function configInicial(): Promise<{ cfg: ConfigAgente; conhecimento: ItemC
     mensagens: c.mensagens,
     modelo: c.modelo,
   };
-  return { cfg, conhecimento: await conhecimentoDoAgente(db) };
+  return { cfg, conhecimento: await conhecimentoDoAgente(db, "aurora") };
 }
 
 // ------------------------------------------------------------ situações e conferências

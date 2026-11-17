@@ -7,6 +7,7 @@
  */
 import {
   BookOpen,
+  Building2,
   Bot,
   FlaskConical,
   History,
@@ -24,6 +25,8 @@ export type ItemNavegacao = {
   icone: LucideIcon;
   celular?: boolean;
   gestor?: boolean;
+  /** só o dono da plataforma (Estúdio) */
+  dono?: boolean;
   grupo?: string;
 };
 
@@ -36,6 +39,7 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { titulo: "Integrações", href: "/integracoes", icone: PlugZap, gestor: true, grupo: "Administração" },
   { titulo: "Equipe", href: "/equipe", icone: UsersRound, gestor: true },
   { titulo: "Registro e versões", href: "/registro", icone: History, gestor: true },
+  { titulo: "Clientes", href: "/clientes", icone: Building2, dono: true, grupo: "Estúdio" },
 ];
 
 /** Telas das próximas fases (mostradas na Visão geral para o André saber o que vem). */
@@ -45,12 +49,13 @@ export const PROXIMAS_TELAS: { titulo: string; icone: LucideIcon; fase: number; 
   { titulo: "Retomadas e modelos", icone: PhoneForwarded, fase: 5, descricao: "Mensagens de retomada com modelos aprovados pela Meta." },
 ];
 
-export function menuPara(gestor: boolean) {
-  return NAVEGACAO.filter((i) => gestor || !i.gestor);
+export function menuPara(gestor: boolean, dono = false) {
+  return NAVEGACAO.filter((i) => (gestor || !i.gestor) && (dono || !i.dono));
 }
 
-export const NOME_APP = "Aurora Bartenders";
-export const DESCRICAO_APP = "Painel do atendimento automático";
+/** Nome da PLATAFORMA (login e Estúdio). Dentro de um cliente, o topo mostra o nome e a marca do cliente. */
+export const NOME_APP = "Estúdio de agentes";
+export const DESCRICAO_APP = "Agentes de atendimento";
 export const SUBTITULO_MENU = "Agente de atendimento";
 
 /** Item ativo: "/" só quando exato; demais por prefixo. */
