@@ -52,6 +52,14 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
+- **A FAZER (pedido do André, 20/11): "modo secretária".** Quando quem escreve é o André (número cadastrado como equipe no
+  painel), a Cecília vira secretária dele: o André dita ("veio um cliente, monte a proposta assim…") e ela cadastra o
+  cliente e o pedido no CRM (com o telefone do CLIENTE, não o do André) e prepara a proposta, sem o roteiro de vendas.
+  Hoje o número do André é usado como cliente de teste (ex.: "Giúlia"); ao ligar o modo, os testes precisam de outro
+  número. É possível: identificar pelo número (lista no painel), instruções e ferramentas próprias para esse modo,
+  mesmas travas (preço só do CRM, proposta passa pela aprovação). Precisa de treino e avaliação próprios.
+- **A FAZER: modelo de mensagem na Meta** ("Sua proposta está pronta"), para a Cecília mandar o link depois de 24 h.
+  Renato quer; antes, passo a passo e custo por mensagem com fonte oficial.
 - **Proposta aprovada com o cliente calado há mais de 24 h:** a Meta não deixa a Cecília mandar mensagem livre. Hoje ela passa
   para a equipe com o link (tarefa no CRM). Para ela mesma mandar, falta um **modelo de mensagem aprovado pela Meta** ("Sua
   proposta está pronta"), que é cobrado por mensagem: decisão do Renato (Fase 4).
