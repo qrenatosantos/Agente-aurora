@@ -58,6 +58,11 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
   Hoje o número do André é usado como cliente de teste (ex.: "Giúlia"); ao ligar o modo, os testes precisam de outro
   número. É possível: identificar pelo número (lista no painel), instruções e ferramentas próprias para esse modo,
   mesmas travas (preço só do CRM, proposta passa pela aprovação). Precisa de treino e avaliação próprios.
+  Como ela conversa com o André (pedido do Renato, 20/11):
+  - confirma o que entendeu e, ao terminar: "Proposta feita, André. Acesse o CRM para aprovar" (com o número/link);
+  - aceita texto e áudio; se faltar algo para a proposta, avisa e pergunta só o que falta, nomeando o item
+    ("André, você não falou quantas pessoas", "...a data", "...o nome da cliente", telefone, cidade, pacote/drinks);
+  - não faz roteiro de venda com ele (sem recomendação de pacote, sem objeção de preço); fala curto, como secretária.
 - **A FAZER: modelo de mensagem na Meta** ("Sua proposta está pronta"), para a Cecília mandar o link depois de 24 h.
   Renato quer; antes, passo a passo e custo por mensagem com fonte oficial.
 - **Proposta aprovada com o cliente calado há mais de 24 h:** a Meta não deixa a Cecília mandar mensagem livre. Hoje ela passa
