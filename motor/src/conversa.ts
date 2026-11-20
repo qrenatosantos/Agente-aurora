@@ -23,7 +23,7 @@ import { ligarConversaInterno } from "../../painel/lib/banco/avisos.ts";
 import { registrarUsoAgente } from "../../painel/lib/banco/operacao.ts";
 import { carregarAmbiente } from "./ambiente.ts";
 import type { Env } from "./env.ts";
-import { quandoMandar } from "./lembretes.ts";
+import { JANELA_HORAS, quandoMandar, recadoForaDaJanela } from "./lembretes.ts";
 import { ClienteWhatsApp, type MensagemRecebida, transcrever } from "./whatsapp.ts";
 
 /** O que chega para cada turno (do WhatsApp ou do simulador do painel). */
@@ -405,7 +405,7 @@ export class Conversa extends Think<Env> {
     const canal = this.sql<{ telefone: string; ultima_em: string }>`select telefone, ultima_em from aurora_canal where id = 1`[0];
     if (!canal) return "conversa sem telefone";
     const horas = (Date.now() - new Date(canal.ultima_em).getTime()) / 3600_000;
-    if (horas > 23.5) return `fora da janela de 24 h (última mensagem do cliente há ${Math.round(horas)} h): a equipe envia`;
+    if (horas > JANELA_HORAS) return this.avisarEquipeForaDaJanela(d, estado, horas);
     // Reserva a proposta ANTES de qualquer espera: os avisos "aprovada" e "enviada" chegam quase juntos e, sem isso,
     // os dois passavam pela conferência e o cliente recebia o link duas vezes.
     if (this.sql`select 1 from aurora_propostas where proposta_id = ${d.propostaId}`.length) return "link já enviado antes por esta conversa";
@@ -445,6 +445,32 @@ export class Conversa extends Think<Env> {
     this.sql`update aurora_propostas set enviada_em = ${new Date().toISOString()} where proposta_id = ${d.propostaId}`;
     await this.schedule(amb.lembretes.naoAbertaMin * 60, "lembreteProposta", { propostaId: d.propostaId, tipo: "nao_aberta" });
     return `link enviado ao cliente (${r.dados.numero ?? "proposta"}); lembrete em ${amb.lembretes.naoAbertaMin} min se não abrir`;
+  }
+
+  /**
+   * Proposta aprovada fora da janela de 24 h: a Cecília não pode mandar o link (a Meta só deixa com modelo aprovado).
+   * Antes ela só anotava e ficava calada; agora passa a conversa para a equipe com o link no motivo (o CRM cria a
+   * tarefa para o gestor). Uma vez por proposta (os avisos "aprovada" e "enviada" chegam juntos).
+   */
+  private async avisarEquipeForaDaJanela(d: { propostaId: string; negocioId: string }, estado: EstadoConversa, horas: number): Promise<string> {
+    const marca = `fora:${d.propostaId}`;
+    if (this.sql`select 1 from aurora_propostas where proposta_id = ${marca}`.length) return "fora da janela de 24 h: equipe já avisada";
+    this.sql`insert into aurora_propostas (proposta_id, enviada_em) values (${marca}, ${new Date().toISOString()})`;
+    try {
+      const amb = await carregarAmbiente(this.env);
+      if (!amb.crm) throw new Error("CRM não configurado");
+      const crm = new ClienteCrm(amb.crm.endereco, amb.crm.chave);
+      const lida = await crm.get<{ link?: string | null; numero?: string }>(`/propostas/${d.propostaId}`);
+      const link = lida.dados?.link ? (lida.dados.link.startsWith("/") ? `${amb.crm.endereco.replace(/\/+$/, "")}${lida.dados.link}` : lida.dados.link) : null;
+      const motivo = recadoForaDaJanela({ numero: lida.dados?.numero, link, horas });
+      const t = await crm.post(`/negocios/${d.negocioId}/transferir-humano`, { motivo });
+      if (!t.dados) throw new Error(t.erro?.mensagem ?? "o CRM recusou a transferência");
+      this.gravarEstado({ ...estado, atendimento: "humano", transferido_motivo: motivo });
+      return `fora da janela de 24 h (há ${Math.round(horas)} h): passou para a equipe com o link`;
+    } catch (e) {
+      this.sql`delete from aurora_propostas where proposta_id = ${marca}`;
+      return `fora da janela de 24 h e NÃO conseguiu avisar a equipe: ${e instanceof Error ? e.message : String(e)}`;
+    }
   }
 
   /** Aviso do CRM: o cliente ABRIU a proposta. Agenda o "o que achou?" (se ele não falar nada até lá). */

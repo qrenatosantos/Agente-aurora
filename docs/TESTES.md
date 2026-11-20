@@ -432,3 +432,9 @@ Config no ar v13 (gpt-6-luna:low), exportada na hora; `qualidade.ts --so drinks-
 - "Reserve sem gin tônica" NÃO é erro da Cecília: no catálogo do CRM o Reserve está cadastrado sem gin tônica
   (Essencial e Signature têm; Exclusive tem). Confirmar com o André (pendência).
 - núcleo 49/49, banco 39/39, motor 14/14; tsc, lint, build OK.
+
+## 20/11/2026 — Proposta aprovada fora da janela de 24 h (caso Giúlia, PROP-2026-0004 v2)
+- O que houve: avisos 41/42 (aprovada/enviada) às 14:40 de 20/11; a cliente não falava havia 26 h. O motor só anotou
+  "fora da janela de 24 h: a equipe envia" e ninguém foi avisado: o link não chegou.
+- Correção: nesse caso o motor passa a conversa para a equipe com o link no motivo (o CRM cria a tarefa para o gestor).
+- Testes: motor 15/15 (novo: recado fora da janela), núcleo 49/49, banco 39/39; tsc OK.

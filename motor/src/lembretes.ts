@@ -25,3 +25,15 @@ export function quandoMandar(agora: Date, ultimaDoCliente: Date): { acao: "manda
   if (quando.getTime() > limite) return { acao: "desistir", motivo: "fora da janela de 24 h (a Meta cobraria)" };
   return quando.getTime() === agora.getTime() ? { acao: "mandar" } : { acao: "reagendar", em: quando };
 }
+
+/**
+ * Proposta aprovada, mas o cliente não fala há mais de 24 h: a Meta não deixa a Cecília mandar mensagem livre.
+ * O recado vai para a equipe (tarefa no CRM), com o link, para alguém mandar pelo WhatsApp da empresa.
+ */
+export function recadoForaDaJanela(d: { numero?: string | null; link?: string | null; horas: number }): string {
+  const prop = d.numero ? `A proposta ${d.numero}` : "A proposta";
+  const envio = d.link
+    ? `Mande este link ao cliente pelo WhatsApp da empresa: ${d.link}`
+    : "Abra a proposta no CRM, use \"Enviar\" e mande o link ao cliente pelo WhatsApp da empresa.";
+  return `${prop} foi aprovada, mas o cliente não fala com a Cecília há ${Math.round(d.horas)} h e o WhatsApp só deixa ela mandar mensagem até 24 h depois da última mensagem do cliente. ${envio}`;
+}

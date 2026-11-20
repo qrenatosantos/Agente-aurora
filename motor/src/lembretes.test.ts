@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { proximoHorarioPermitido, quandoMandar } from "./lembretes.ts";
+import { proximoHorarioPermitido, quandoMandar, recadoForaDaJanela } from "./lembretes.ts";
 
 // horários em UTC: Brasília = UTC-3 (14:00Z = 11h em Brasília)
 describe("lembretes da proposta: quando mandar", () => {
@@ -23,5 +23,15 @@ describe("lembretes da proposta: quando mandar", () => {
     assert.equal(r.acao, "desistir");
     const ok = quandoMandar(agora, new Date("2026-11-16T22:00:00Z"));
     assert.deepEqual(ok, { acao: "reagendar", em: new Date("2026-11-17T11:00:00.000Z") });
+  });
+});
+
+describe("proposta aprovada fora da janela de 24 h", () => {
+  test("o recado para a equipe traz a proposta, as horas e o link (ou como pegar o link)", () => {
+    const r = recadoForaDaJanela({ numero: "PROP-2026-0004", link: "https://x.test/proposta/abc", horas: 26.2 });
+    assert.match(r, /PROP-2026-0004 foi aprovada/);
+    assert.match(r, /há 26 h/);
+    assert.match(r, /https:\/\/x\.test\/proposta\/abc/);
+    assert.match(recadoForaDaJanela({ horas: 30 }), /use "Enviar"/);
   });
 });

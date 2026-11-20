@@ -52,6 +52,9 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
+- **Proposta aprovada com o cliente calado há mais de 24 h:** a Meta não deixa a Cecília mandar mensagem livre. Hoje ela passa
+  para a equipe com o link (tarefa no CRM). Para ela mesma mandar, falta um **modelo de mensagem aprovado pela Meta** ("Sua
+  proposta está pronta"), que é cobrado por mensagem: decisão do Renato (Fase 4).
 - **Catálogo do CRM (André):** o pacote *Reserve* está cadastrado SEM gin tônica (Essencial, Signature e Exclusive têm).
   Se os pacotes são cumulativos, falta a gin tônica no Reserve (CRM ▸ Catálogo). A Cecília repete o que está cadastrado.
 - **Cecília (fotografia de 17/11, refeita):** a nota 4,18 da 1ª rodada NÃO valia (o avaliador rodava a Luna sem
