@@ -77,7 +77,7 @@ recebe (prompt ou resposta de ferramenta), sem garantia; **ajuste** = o código 
 | Regra | Tipo | Onde | Teste | Data · commit |
 |---|---|---|---|---|
 | Proposta aprovada → a Cecília manda o link (só dentro das 24 h); o link não sai duas vezes | trava | `enviarPropostaAprovada` (reserva em `aurora_propostas` antes de enviar) | — (motor; conferido na conversa real) | 16/11 · a57f1c6; duplicado 17/11 · 0fa17c4 |
-| Proposta aprovada fora da janela de 24 h (cliente calado): a Cecília não manda (Meta não deixa) e passa para a equipe com o link no motivo (tarefa no CRM); uma vez por proposta | trava | `avisarEquipeForaDaJanela` + `recadoForaDaJanela` (lembretes.ts) | motor: "proposta aprovada fora da janela de 24 h" | 20/11 · 1916cdd |
+| Proposta aprovada fora da janela de 24 h (cliente calado): a Cecília não manda (Meta não deixa) e passa para a equipe com o link no motivo (tarefa no CRM); uma vez por proposta | trava | `avisarEquipeForaDaJanela` + `recadoForaDaJanela` (lembretes.ts) | motor: "proposta aprovada fora da janela de 24 h" | 20/11 · cbcca75 |
 | Mensagens prontas não usam nome genérico ("Cliente", "Lead", "Contato") | ajuste | `nomeParaMensagem` | — | 16/11 · c7a2a06; 17/11 · 0fa17c4 |
 | Lembretes da proposta: uma vez cada, só 8h–21h e dentro das 24 h, e não se o cliente já respondeu | trava | `lembreteProposta`, `quandoMandar` | `npm run test:motor` | 16/11 · c7a2a06 |
 | Equipe devolveu a conversa → a Cecília responde as mensagens que ficaram sem resposta (dentro das 24 h) | trava | `retomarAtendimento` | — | 17/11 · 4e6649c |
