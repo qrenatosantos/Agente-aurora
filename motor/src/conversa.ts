@@ -381,6 +381,15 @@ export class Conversa extends Think<Env> {
         break;
       }
     }
+    // Proposta já aprovada/enviada que esta conversa ainda não mandou (ex.: aprovada quando a janela de 24 h estava
+    // fechada): agora que o cliente escreveu, a janela abriu: manda o link na hora.
+    const prop = r.estado.proposta;
+    if (r.estado.atendimento === "agente" && r.estado.negocio_id && prop?.id && !prop.simulada && ["aprovada", "enviada"].includes(prop.status)) {
+      if (!this.sql`select 1 from aurora_propostas where proposta_id = ${prop.id}`.length) {
+        const res = await this.enviarPropostaAprovada({ propostaId: prop.id, negocioId: r.estado.negocio_id }).catch((e) => `erro: ${e instanceof Error ? e.message : String(e)}`);
+        console.log(`[link pendente] ${res}`);
+      }
+    }
     // guarda qual conversa atende este pedido (para os avisos do CRM, como "proposta aprovada")
     if (r.estado.negocio_id) {
       await ligarConversaInterno(this.env.DB, { negocioId: r.estado.negocio_id, conversa: this.name, telefone: canal.telefone, ultimaDoCliente: canal.ultima_em }).catch((e) =>

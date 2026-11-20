@@ -131,7 +131,7 @@ Equipe: ${aberto ? "atendendo agora" : `fora do horário${prox ? `; volta ${prox
 Pedido: ${estado.codigo ? `código ${estado.codigo}${opcoes.etapa ? `, etapa "${opcoes.etapa}"` : ""}` : "ainda não registrado (será criado ao gravar o primeiro dado)"}.
 Cliente: ${estado.contato.nome ?? "nome ainda não informado"}.
 Festa já registrada: ${Object.keys(evento).length ? JSON.stringify(evento) : "nada ainda"}.
-Proposta: ${estado.proposta ? `${estado.proposta.numero ?? ""} — situação "${estado.proposta.status}"` : "nenhuma ainda"}.
+Proposta: ${estado.proposta ? `${estado.proposta.numero ?? ""} — situação "${estado.proposta.status}"` : "nenhuma ainda"}.${estado.proposta && ["aprovada", "enviada"].includes(estado.proposta.status) ? "\nA proposta JÁ FOI APROVADA: o sistema manda o link nesta conversa sozinho (logo depois da sua resposta, se ainda não mandou). Nunca diga que ela ainda está em aprovação; se o cliente pedir o link, diga que está mandando." : ""}
 
 Pacotes do catálogo (lista oficial):
 ${pacotes.map(linhaPacote).join("\n") || "(catálogo indisponível: não fale de pacotes; transfira)"}

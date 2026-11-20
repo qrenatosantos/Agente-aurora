@@ -467,6 +467,14 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.equal(r.estado.atendimento, "humano");
   });
 
+  test("proposta já aprovada/enviada: a IA sabe que o link vai sozinho e não diz que está em aprovação", async () => {
+    const ia = iaFalsa([texto("Claro, Giúlia! Te mando o link agora.")]);
+    const prop = { id: "pr9", numero: "P9", status: "enviada", simulada: false, total: 2290, preco_pendente: false };
+    await processarTurno(entrada(["Enviar o link da proposta por favor"], { estado: estadoInicial({ proposta: prop }), chamar: ia.fn }));
+    const op = ia.recebido[0] as { mensagens: { content: string }[] };
+    assert.match(op.mensagens[1].content, /JÁ FOI APROVADA/);
+  });
+
   test("pedido de outra condição de pagamento: transfere na hora, mesmo com proposta enviada", async () => {
     const ev = { tipo: "casamento", data: "2027-01-31", cidade: "Araxá", convidados: 50, pacote: "Essencial" };
     const ia = iaFalsa([ferramenta("transferir_para_pessoa", { motivo: "Cliente quer mudar a entrada para 30% e parcelar o saldo" })]);

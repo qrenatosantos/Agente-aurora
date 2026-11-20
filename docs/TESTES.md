@@ -438,3 +438,6 @@ Config no ar v13 (gpt-6-luna:low), exportada na hora; `qualidade.ts --so drinks-
   "fora da janela de 24 h: a equipe envia" e ninguém foi avisado: o link não chegou.
 - Correção: nesse caso o motor passa a conversa para a equipe com o link no motivo (o CRM cria a tarefa para o gestor).
 - Testes: motor 15/15 (novo: recado fora da janela), núcleo 49/49, banco 39/39; tsc OK.
+- Mesmo caso, depois: a Giúlia escreveu de novo (janela aberta) e a Cecília respondeu "ainda está em aprovação" / "não tenho
+  o link". Link mandado reprocessando o aviso 41. Correção: quando o cliente escreve e há proposta aprovada/enviada que a
+  conversa não mandou, o motor manda o link logo depois da resposta; a IA recebe "a proposta JÁ FOI APROVADA". Núcleo 50/50.
