@@ -139,12 +139,17 @@ export const DEFINICOES = [
           sem_vidraria: { type: "boolean", description: "true = o cliente escolheu copos descartáveis no lugar da vidraria." },
           dias: {
             type: "array",
-            description: "SÓ para festa em MAIS DE UM DIA (mesma proposta): cada dia com a data e as pessoas daquele dia. O sistema soma os convidados, confere a agenda de todos os dias e escreve Dia 1, Dia 2… na proposta.",
+            description: "SÓ para festa em MAIS DE UM DIA (mesma proposta): cada dia com a data e as pessoas daquele dia. O sistema soma os convidados E as horas de serviço de todos os dias, confere a agenda de cada dia e escreve Dia 1, Dia 2… na proposta.",
             items: {
               type: "object",
               additionalProperties: false,
               required: ["data", "convidados"],
-              properties: { data: { type: "string", description: "AAAA-MM-DD" }, convidados: { type: "integer" }, hora_inicio: { type: "string", description: "HH:MM, se for diferente do horário da festa" } },
+              properties: {
+                data: { type: "string", description: "AAAA-MM-DD" },
+                convidados: { type: "integer" },
+                hora_inicio: { type: "string", description: "HH:MM, se for diferente do horário da festa" },
+                duracao_horas: { type: "number", description: "Horas de serviço NESTE dia, se o cliente disse. Sem isso, vale a duração padrão por dia." },
+              },
             },
           },
         },
@@ -280,10 +285,17 @@ function consultaAgenda(ctx: ContextoFerramentas, data: unknown, hora?: unknown,
 
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
-/** Festa em mais de um dia: lista em ordem, total de convidados e os textos "Dia 1 (18/12): 120 pessoas · Dia 2…". */
-export function festaEmDias(bruto: unknown, hoje: string): { lista: { data: string; convidados: number; hora_inicio?: string }[]; total: number; texto: string; recado: string } | { erro: string } | null {
+type DiaFesta = { data: string; convidados: number; hora_inicio?: string; duracao_horas?: number };
+
+/** Festa em mais de um dia: confere cada dia e devolve a lista em ordem e o total de convidados. */
+export function festaEmDias(bruto: unknown, hoje: string): { lista: DiaFesta[]; total: number } | { erro: string } | null {
   if (!Array.isArray(bruto) || bruto.length < 2) return null;
-  const lista = bruto.map((d) => ({ data: String(d?.data ?? ""), convidados: Number(d?.convidados), hora_inicio: d?.hora_inicio ? String(d.hora_inicio) : undefined }));
+  const lista: DiaFesta[] = bruto.map((d) => ({
+    data: String(d?.data ?? ""),
+    convidados: Number(d?.convidados),
+    hora_inicio: d?.hora_inicio ? String(d.hora_inicio) : undefined,
+    duracao_horas: Number(d?.duracao_horas) > 0 ? Number(d.duracao_horas) : undefined,
+  }));
   for (const d of lista) {
     const erro = dataValida(d.data, hoje);
     if (erro) return { erro: `Dia ${d.data}: ${erro}` };
@@ -291,10 +303,26 @@ export function festaEmDias(bruto: unknown, hoje: string): { lista: { data: stri
   }
   lista.sort((a, b) => a.data.localeCompare(b.data));
   if (new Set(lista.map((d) => d.data)).size !== lista.length) return { erro: "Há dias repetidos. Confirme as datas com o cliente." };
+  return { lista, total: lista.reduce((t, d) => t + d.convidados, 0) };
+}
+
+/** Horas entre o início e o fim que a agenda devolve ("19:00" → "01:00" = 6). */
+export function horasEntre(inicio?: string | null, fim?: string | null): number | undefined {
+  if (!inicio || !fim) return undefined;
+  const m = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const h = (((m(fim) - m(inicio)) % 1440) + 1440) % 1440 / 60;
+  return h > 0 ? h : undefined;
+}
+
+/** Textos da proposta de vários dias: "Dia 1 (18/12): 120 pessoas, 4 h · Dia 2…", com o total de pessoas E de horas. */
+export function textosDias(lista: DiaFesta[]) {
   const total = lista.reduce((t, d) => t + d.convidados, 0);
-  const texto = lista.map((d, i) => `Dia ${i + 1} (${ddmm(d.data)}${d.hora_inicio ? `, ${d.hora_inicio}` : ""}): ${d.convidados} pessoas`).join(" · ");
-  const recado = `FESTA EM ${lista.length} DIAS, uma proposta só. ${texto}. Total: ${total} pessoas (o preço saiu calculado com o total: confira).`;
-  return { lista, total, texto, recado };
+  const horas = lista.every((d) => d.duracao_horas) ? lista.reduce((t, d) => t + d.duracao_horas!, 0) : undefined;
+  const texto = lista
+    .map((d, i) => `Dia ${i + 1} (${ddmm(d.data)}${d.hora_inicio ? `, ${d.hora_inicio}` : ""}): ${d.convidados} pessoas${d.duracao_horas ? `, ${d.duracao_horas} h` : ""}`)
+    .join(" · ");
+  const recado = `FESTA EM ${lista.length} DIAS, uma proposta só. ${texto}. Total: ${total} pessoas${horas ? ` e ${horas} h de serviço` : ""} (o preço saiu calculado com esses totais: confira).`;
+  return { texto, recado, total, horas };
 }
 
 /** Quais dados mínimos faltam para montar a proposta. */
@@ -423,18 +451,28 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         // Festa em mais de um dia (uma proposta só): soma os convidados, 1º dia = data do pedido, agenda de cada dia
         const dias = festaEmDias(args.dias, ctx.hoje);
         if (dias && "erro" in dias) return fim({ erro: dias.erro }, "nenhum");
+        let textos: ReturnType<typeof textosDias> | null = null;
         if (dias) {
-          Object.assign(ctx.estado.evento, { data: dias.lista[0].data, convidados: dias.total });
+          const ev0 = ctx.estado.evento;
           for (const d of dias.lista) {
-            const ag = orientarAgenda((await consultaAgenda(ctx, d.data, d.hora_inicio ?? ctx.estado.evento.hora_inicio, ctx.estado.evento.duracao_horas)).dados, ctx.estado) as { situacao?: string; orientacao?: string } | undefined;
+            // horas de cada dia: as que o cliente disse; senão as da festa; senão a duração padrão (a agenda devolve o fim)
+            // (as horas já gravadas só valem por dia ANTES da 1ª proposta: depois, o pedido guarda a soma dos dias)
+            d.duracao_horas ??= !anterior && Number(ev0.duracao_horas) > 0 ? Number(ev0.duracao_horas) : undefined;
+            const resp = (await consultaAgenda(ctx, d.data, d.hora_inicio ?? ev0.hora_inicio, d.duracao_horas)).dados;
+            d.duracao_horas ??= horasEntre(resp?.hora_inicio, resp?.hora_fim);
+            const ag = orientarAgenda(resp, ctx.estado) as { situacao?: string; orientacao?: string } | undefined;
             if (ag?.situacao === "indisponivel" || ag?.situacao === "depende_do_horario") return fim({ ok: false, dia: d.data, agenda: ag, orientacao: `Não prepare a proposta ainda: o dia ${d.data} não está livre. ${ag.orientacao}` }, "leitura");
           }
+          textos = textosDias(dias.lista);
+          // o pedido guarda o 1º dia e os TOTAIS (pessoas e horas de todos os dias), para o preço sair com os dois dias
+          const gravar: Record<string, unknown> = { data: dias.lista[0].data, convidados: textos.total, ...(textos.horas ? { duracao_horas: textos.horas } : {}) };
+          Object.assign(ctx.estado.evento, gravar);
           if (!sim && ctx.estado.negocio_id) {
-            const r = await ctx.crm.put(`/negocios/${ctx.estado.negocio_id}/evento`, { data: dias.lista[0].data, convidados: dias.total });
-            ctx.rastro.push({ tipo: "ferramenta", nome: "gravar 1º dia e total de convidados (festa em vários dias)", efeito: "gravacao", resultado: r.dados ? { ok: true } : r.erro });
+            const r = await ctx.crm.put(`/negocios/${ctx.estado.negocio_id}/evento`, gravar);
+            ctx.rastro.push({ tipo: "ferramenta", nome: "gravar 1º dia e totais de pessoas e horas (festa em vários dias)", efeito: "gravacao", resultado: r.dados ? { ok: true } : r.erro });
           }
         }
-        const recado = [dias ? dias.recado : "", String(args.recado_para_equipe ?? "")].filter(Boolean).join(" ");
+        const recado = [textos ? textos.recado : "", String(args.recado_para_equipe ?? "")].filter(Boolean).join(" ");
         const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato, Boolean(escolhidos));
         if (faltam.length) return fim({ ok: false, faltam, orientacao: "Pergunte ao cliente o que falta antes de preparar a proposta." }, "nenhum");
         const ev = ctx.estado.evento;
@@ -479,7 +517,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         const criada = await ctx.crm.post<{ id: string; numero: string; total: number; preco_pendente: boolean }>(`/negocios/${id}/propostas`, {
           nota: escolhidos ? `PROPOSTA PERSONALIZADA (drinks escolhidos: ${escolhidos.nomes.join(", ")}). ${recado}` : recado,
           capa_titulo: args.titulo_capa,
-          ...(dias ? { capa_subtitulo: dias.texto } : {}),
+          ...(textos ? { capa_subtitulo: textos.texto } : {}),
           ...(escolhidos ? { drinks: escolhidos.ids } : {}),
         });
         if (!criada.dados) return fim({ erro: criada.erro?.mensagem }, "gravacao");

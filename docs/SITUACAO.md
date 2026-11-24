@@ -49,7 +49,7 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Modelo `gpt-6-luna:low` ("pensar antes", raciocínio baixo): ":esforço" no nome do modelo liga o raciocínio.
 - Simulador ▸ "Testes no WhatsApp" (só gestor): botão Zerar apaga a memória da Cecília com um número (o CRM não muda:
   marque o pedido antigo como perdido antes). Link da proposta não sai mais duplicado (avisos aprovada+enviada juntos).
-- Festa em mais de um dia (24/11): uma proposta só; soma os convidados, confere a agenda de cada dia, "Dia 1 / Dia 2" no
+- Festa em mais de um dia (24/11): uma proposta só; soma os convidados E as horas de serviço, confere a agenda de cada dia, "Dia 1 / Dia 2" no
   subtítulo da capa e aviso ao André para conferir o preço (pedido C6 ao CRM para o jeito definitivo).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 

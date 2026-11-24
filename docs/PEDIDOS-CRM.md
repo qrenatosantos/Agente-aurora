@@ -102,7 +102,7 @@ com `drinks`, `sem_vidraria` e `nota`), que volta para a aprovação do gestor e
 
 ## C6 — Festa em mais de um dia (24/11/2026)
 Hoje o pedido tem UMA data e UM número de convidados. Festa de 2 dias (ex.: 18 e 19, 120 e 80 pessoas) vira uma
-proposta só: o agente grava a data do 1º dia e o TOTAL de pessoas, confere a agenda de cada dia, escreve
+proposta só: o agente grava a data do 1º dia e os TOTAIS de pessoas e de horas, confere a agenda de cada dia, escreve
 "Dia 1 (18/12): 120 pessoas · Dia 2 (19/12): 80 pessoas" no subtítulo da capa e avisa o gestor na nota (o preço sai
 calculado com o total, como se fosse um dia). Pedido: o evento aceitar vários dias (data, horário e convidados de cada
 um), para a agenda reservar todos os dias e a calculadora cobrar cada dia.

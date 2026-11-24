@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import { processarTurno, prometeuTransferir, referenciaDoSite, type EntradaTurno } from "./agente.ts";
 import { ClienteCrm, variantesTelefone } from "./crm.ts";
-import { faltamParaProposta, festaEmDias, orientarAgenda } from "./ferramentas.ts";
+import { faltamParaProposta, festaEmDias, horasEntre, orientarAgenda, textosDias } from "./ferramentas.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd, separarModelo } from "./openai.ts";
@@ -439,28 +439,52 @@ describe("ferramentas no modo simulação e no modo real", () => {
     assert.deepEqual((chamadasCrm.find((c) => c.caminho === "/negocios/n1/propostas")?.corpo as { drinks: string[] }).drinks, ["d1", "d5"]);
   });
 
-  test("festa em dois dias: uma proposta só, convidados somados, Dia 1 e Dia 2 escritos, agenda de cada dia", async () => {
-    const f = festaEmDias([{ data: "2027-12-19", convidados: 80 }, { data: "2027-12-18", convidados: 120 }], "2026-11-24");
+  test("festa em dois dias: uma proposta só, convidados E horas somados, Dia 1 e Dia 2 escritos, agenda de cada dia", async () => {
+    const f = festaEmDias([{ data: "2027-12-19", convidados: 80, duracao_horas: 4 }, { data: "2027-12-18", convidados: 120, duracao_horas: 4 }], "2026-11-24");
     assert.ok(f && !("erro" in f));
     assert.equal(f.total, 200);
-    assert.equal(f.texto, "Dia 1 (18/12): 120 pessoas · Dia 2 (19/12): 80 pessoas");
+    const t = textosDias(f.lista);
+    assert.equal(t.texto, "Dia 1 (18/12): 120 pessoas, 4 h · Dia 2 (19/12): 80 pessoas, 4 h");
+    assert.equal(t.horas, 8);
+    assert.match(t.recado, /Total: 200 pessoas e 8 h de serviço/);
+    assert.equal(horasEntre("19:00", "01:00"), 6);
+    assert.equal(horasEntre("12:00", "16:00"), 4);
     assert.equal(festaEmDias([{ data: "2027-12-18", convidados: 120 }], "2026-11-24"), null); // um dia só: nada muda
     assert.match((festaEmDias([{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19" }], "2026-11-24") as { erro: string }).erro, /Falta o número de pessoas do dia 2027-12-19/);
 
-    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "casamento", cidade: "Araxá", pacote: "Essencial", hora_inicio: "19:00" }, contato: { id: "c1", nome: "Ana" } };
+    // cliente disse "4 horas por dia" (gravado na festa) e a IA não repetiu as horas em cada dia: vale 4 por dia → 8 h
+    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "casamento", cidade: "Araxá", pacote: "Essencial", hora_inicio: "19:00", duracao_horas: 4 }, contato: { id: "c1", nome: "Ana" } };
     const ia = iaFalsa([
       ferramenta("preparar_proposta", { recado_para_equipe: "Cliente quer os dois dias.", dias: [{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19", convidados: 80 }] }),
       texto("Proposta dos dois dias preparada!"),
     ]);
     const r = await processarTurno(entrada(["Sim, pode montar"], { modo: "real", estado: estadoInicial({ negocio_id: "n1", contato: { nome: "Ana" } }), chamar: ia.fn }));
     assert.equal(r.estado.evento.convidados, 200);
+    assert.equal(r.estado.evento.duracao_horas, 8);
     assert.equal(r.estado.evento.data, "2027-12-18");
-    const agendas = chamadasCrm.filter((c) => c.caminho.startsWith("/agenda/disponibilidade")).map((c) => new URLSearchParams(c.caminho.split("?")[1]).get("data"));
-    assert.ok(agendas.includes("2027-12-18") && agendas.includes("2027-12-19"));
+    const agendas = chamadasCrm.filter((c) => c.caminho.startsWith("/agenda/disponibilidade")).map((c) => new URLSearchParams(c.caminho.split("?")[1]));
+    assert.ok(agendas.some((q) => q.get("data") === "2027-12-18" && q.get("duracao_horas") === "4"));
+    assert.ok(agendas.some((q) => q.get("data") === "2027-12-19" && q.get("duracao_horas") === "4"));
     const corpo = chamadasCrm.find((c) => c.caminho === "/negocios/n1/propostas")?.corpo as { capa_subtitulo: string; nota: string };
-    assert.equal(corpo.capa_subtitulo, "Dia 1 (18/12): 120 pessoas · Dia 2 (19/12): 80 pessoas");
-    assert.match(corpo.nota, /FESTA EM 2 DIAS.*Total: 200 pessoas/);
-    assert.deepEqual(chamadasCrm.find((c) => c.metodo === "PUT" && c.caminho === "/negocios/n1/evento")?.corpo, { data: "2027-12-18", convidados: 200 });
+    assert.equal(corpo.capa_subtitulo, "Dia 1 (18/12): 120 pessoas, 4 h · Dia 2 (19/12): 80 pessoas, 4 h");
+    assert.match(corpo.nota, /FESTA EM 2 DIAS.*Total: 200 pessoas e 8 h de serviço/);
+    assert.deepEqual(chamadasCrm.find((c) => c.metodo === "PUT" && c.caminho === "/negocios/n1/evento")?.corpo, { data: "2027-12-18", convidados: 200, duracao_horas: 8 });
+  });
+
+  test("festa em dois dias sem horas ditas: cada dia vale a duração padrão (lida da agenda) e as horas somam", async () => {
+    const fetchOriginal = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      if (String(url).includes("/agenda/disponibilidade")) {
+        const q = new URL(String(url)).searchParams;
+        return new Response(JSON.stringify({ dados: { data: q.get("data"), hora_inicio: q.get("hora_inicio"), hora_fim: "01:00", situacao: "livre" } }), { status: 200 });
+      }
+      return fetchOriginal(url, init);
+    }) as typeof fetch;
+    const ev = { tipo: "casamento", cidade: "Araxá", pacote: "Essencial", hora_inicio: "19:00" };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "ok", dias: [{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19", convidados: 80 }] }), texto("Pronto!")]);
+    const r = await processarTurno(entrada(["Sim"], { estado: estadoInicial({ evento: ev, contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.evento.duracao_horas, 12);
+    assert.equal(r.estado.evento.convidados, 200);
   });
 
   test("cliente repete o 'sim' depois da proposta pronta: a IA é orientada a não transferir", async () => {

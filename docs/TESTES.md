@@ -449,3 +449,7 @@ Config no ar v13 (gpt-6-luna:low), exportada na hora; `qualidade.ts --so drinks-
   → agenda dos dois dias, resumo "120 no dia 18 e 80 no dia 19 (200 no total)", proposta com dias, convidados 200.
 - Achado no mesmo teste: cliente repetiu "Sim, pode preparar" com a proposta já pronta → ela TRANSFERIU. Corrigido
   (a ferramenta diz que já está pronta e para não transferir); conferido de novo: respondeu "já está preparada".
+- 24/11, correção (pedido do Renato): festa em vários dias soma também as HORAS (2 dias × 4 h = 8 h de serviço no pedido).
+  Horas de cada dia: as que o cliente disse; senão as da festa (antes da 1ª proposta); senão a duração padrão, lida da
+  agenda (fim − início). Núcleo 54/54. Conversa de verdade "18 e 19/09/2027, 4 h por dia, 120 e 80 pessoas": pedido com
+  200 pessoas e 8 h; agenda conferida nos dois dias com 4 h.
