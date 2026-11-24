@@ -49,6 +49,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - Modelo `gpt-6-luna:low` ("pensar antes", raciocínio baixo): ":esforço" no nome do modelo liga o raciocínio.
 - Simulador ▸ "Testes no WhatsApp" (só gestor): botão Zerar apaga a memória da Cecília com um número (o CRM não muda:
   marque o pedido antigo como perdido antes). Link da proposta não sai mais duplicado (avisos aprovada+enviada juntos).
+- Festa em mais de um dia (24/11): uma proposta só; soma os convidados, confere a agenda de cada dia, "Dia 1 / Dia 2" no
+  subtítulo da capa e aviso ao André para conferir o preço (pedido C6 ao CRM para o jeito definitivo).
 - O Renato ajusta treinamento direto nas Instruções do painel. Ajuste pequeno = sem bateria com IA (economia).
 
 ## Pendências
@@ -68,8 +70,8 @@ Resumo vivo do projeto, para qualquer sessão continuar sem perder contexto. Det
 - **Proposta aprovada com o cliente calado há mais de 24 h:** a Meta não deixa a Cecília mandar mensagem livre. Hoje ela passa
   para a equipe com o link (tarefa no CRM). Para ela mesma mandar, falta um **modelo de mensagem aprovado pela Meta** ("Sua
   proposta está pronta"), que é cobrado por mensagem: decisão do Renato (Fase 4).
-- **Catálogo do CRM (André):** o pacote *Reserve* está cadastrado SEM gin tônica (Essencial, Signature e Exclusive têm).
-  Se os pacotes são cumulativos, falta a gin tônica no Reserve (CRM ▸ Catálogo). A Cecília repete o que está cadastrado.
+- Catálogo: o *Reserve* sem gin tônica é o oficial (CRM, commit 4ed9223). As instruções v12 dizem que os pacotes "vão
+  somando": ajustar essa frase na próxima versão das instruções.
 - **Cecília (fotografia de 17/11, refeita):** a nota 4,18 da 1ª rodada NÃO valia (o avaliador rodava a Luna sem
   raciocínio, juntava os balões e cobrava as horas). Corrigido o avaliador (commits 1298c65 e 252c80f); a correção do
   prazo (02ea096) já estava no ar. **Nota de referência: 4,76 · 20/24** (config v13, `gpt-6-luna:low`, commit 252c80f).

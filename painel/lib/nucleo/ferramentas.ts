@@ -137,6 +137,16 @@ export const DEFINICOES = [
             description: "SÓ para proposta personalizada que o cliente CONFIRMOU: os nomes exatos dos drinks do catálogo que ele escolheu. Vazio = usa os drinks do pacote registrado.",
           },
           sem_vidraria: { type: "boolean", description: "true = o cliente escolheu copos descartáveis no lugar da vidraria." },
+          dias: {
+            type: "array",
+            description: "SÓ para festa em MAIS DE UM DIA (mesma proposta): cada dia com a data e as pessoas daquele dia. O sistema soma os convidados, confere a agenda de todos os dias e escreve Dia 1, Dia 2… na proposta.",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["data", "convidados"],
+              properties: { data: { type: "string", description: "AAAA-MM-DD" }, convidados: { type: "integer" }, hora_inicio: { type: "string", description: "HH:MM, se for diferente do horário da festa" } },
+            },
+          },
         },
       },
     },
@@ -268,6 +278,25 @@ function consultaAgenda(ctx: ContextoFerramentas, data: unknown, hora?: unknown,
   return ctx.crm.get<Disponibilidade>(`/agenda/disponibilidade?${q}`);
 }
 
+const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/** Festa em mais de um dia: lista em ordem, total de convidados e os textos "Dia 1 (18/12): 120 pessoas · Dia 2…". */
+export function festaEmDias(bruto: unknown, hoje: string): { lista: { data: string; convidados: number; hora_inicio?: string }[]; total: number; texto: string; recado: string } | { erro: string } | null {
+  if (!Array.isArray(bruto) || bruto.length < 2) return null;
+  const lista = bruto.map((d) => ({ data: String(d?.data ?? ""), convidados: Number(d?.convidados), hora_inicio: d?.hora_inicio ? String(d.hora_inicio) : undefined }));
+  for (const d of lista) {
+    const erro = dataValida(d.data, hoje);
+    if (erro) return { erro: `Dia ${d.data}: ${erro}` };
+    if (!Number.isInteger(d.convidados) || d.convidados <= 0) return { erro: `Falta o número de pessoas do dia ${d.data}. Pergunte ao cliente.` };
+  }
+  lista.sort((a, b) => a.data.localeCompare(b.data));
+  if (new Set(lista.map((d) => d.data)).size !== lista.length) return { erro: "Há dias repetidos. Confirme as datas com o cliente." };
+  const total = lista.reduce((t, d) => t + d.convidados, 0);
+  const texto = lista.map((d, i) => `Dia ${i + 1} (${ddmm(d.data)}${d.hora_inicio ? `, ${d.hora_inicio}` : ""}): ${d.convidados} pessoas`).join(" · ");
+  const recado = `FESTA EM ${lista.length} DIAS, uma proposta só. ${texto}. Total: ${total} pessoas (o preço saiu calculado com o total: confira).`;
+  return { lista, total, texto, recado };
+}
+
 /** Quais dados mínimos faltam para montar a proposta. */
 export function faltamParaProposta(evento: Record<string, unknown>, contato: { nome?: string | null } = {}, personalizada = false) {
   const f: string[] = [];
@@ -380,12 +409,32 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
       case "preparar_proposta": {
         const anterior = ctx.estado.proposta;
         if (anterior && ["aguardando_aprovacao", "ajustes_solicitados"].includes(anterior.status)) {
-          return fim({ erro: `A proposta ${anterior.numero ?? ""} já está com a equipe para aprovar. Se o cliente quer mudar algo, pergunte o que muda, confirme e transfira com a mudança no motivo.` }, "nenhum");
+          return fim(
+            {
+              erro: `A proposta ${anterior.numero ?? ""} JÁ FOI PREPARADA e está com a equipe para aprovar. Se o cliente só confirmou de novo ou perguntou dela, diga que já está pronta e com a equipe e que você manda o link por aqui: NÃO transfira. Só se ele pedir uma MUDANÇA (drinks, data, pessoas…): pergunte o que muda, confirme e transfira com a mudança no motivo.`,
+            },
+            "nenhum",
+          );
         }
         if (anterior?.status === "aceita") return fim({ erro: "A proposta já foi aceita: mudanças agora são com a equipe. Transfira com a mudança no motivo." }, "nenhum");
         const novaVersao = Boolean(anterior && ["aprovada", "enviada", "recusada"].includes(anterior.status));
         const escolhidos = await drinksPorNome(ctx, args.drinks);
         if (escolhidos && "erro" in escolhidos) return fim({ erro: escolhidos.erro }, "nenhum");
+        // Festa em mais de um dia (uma proposta só): soma os convidados, 1º dia = data do pedido, agenda de cada dia
+        const dias = festaEmDias(args.dias, ctx.hoje);
+        if (dias && "erro" in dias) return fim({ erro: dias.erro }, "nenhum");
+        if (dias) {
+          Object.assign(ctx.estado.evento, { data: dias.lista[0].data, convidados: dias.total });
+          for (const d of dias.lista) {
+            const ag = orientarAgenda((await consultaAgenda(ctx, d.data, d.hora_inicio ?? ctx.estado.evento.hora_inicio, ctx.estado.evento.duracao_horas)).dados, ctx.estado) as { situacao?: string; orientacao?: string } | undefined;
+            if (ag?.situacao === "indisponivel" || ag?.situacao === "depende_do_horario") return fim({ ok: false, dia: d.data, agenda: ag, orientacao: `Não prepare a proposta ainda: o dia ${d.data} não está livre. ${ag.orientacao}` }, "leitura");
+          }
+          if (!sim && ctx.estado.negocio_id) {
+            const r = await ctx.crm.put(`/negocios/${ctx.estado.negocio_id}/evento`, { data: dias.lista[0].data, convidados: dias.total });
+            ctx.rastro.push({ tipo: "ferramenta", nome: "gravar 1º dia e total de convidados (festa em vários dias)", efeito: "gravacao", resultado: r.dados ? { ok: true } : r.erro });
+          }
+        }
+        const recado = [dias ? dias.recado : "", String(args.recado_para_equipe ?? "")].filter(Boolean).join(" ");
         const faltam = faltamParaProposta(ctx.estado.evento, ctx.estado.contato, Boolean(escolhidos));
         if (faltam.length) return fim({ ok: false, faltam, orientacao: "Pergunte ao cliente o que falta antes de preparar a proposta." }, "nenhum");
         const ev = ctx.estado.evento;
@@ -406,7 +455,7 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         if (novaVersao) {
           const pac = escolhidos ? null : pacotePorNome(ctx.pacotes, ev.pacote);
           const drinks = escolhidos?.ids ?? pac?.drinks.map((d) => d.id);
-          const nota = [escolhidos ? `Drinks escolhidos: ${escolhidos.nomes.join(", ")}.` : "", String(args.recado_para_equipe ?? "")].filter(Boolean).join(" ");
+          const nota = [escolhidos ? `Drinks escolhidos: ${escolhidos.nomes.join(", ")}.` : "", recado].filter(Boolean).join(" ");
           if (sim || !anterior!.id) {
             ctx.estado.proposta = { ...anterior!, status: "aguardando_aprovacao", simulada: true };
             return fim({ ok: true, nova_versao: true, numero: anterior!.numero, status: "aguardando_aprovacao", orientacao: "Avise o cliente que a nova versão foi para a equipe revisar e que você manda o link novo assim que for aprovada." }, "simulada", { avancou: true });
@@ -428,13 +477,14 @@ export async function executarFerramenta(nome: string, argsBrutos: string, ctx: 
         }
         const id = await garantirNegocio(ctx);
         const criada = await ctx.crm.post<{ id: string; numero: string; total: number; preco_pendente: boolean }>(`/negocios/${id}/propostas`, {
-          nota: escolhidos ? `PROPOSTA PERSONALIZADA (drinks escolhidos: ${escolhidos.nomes.join(", ")}). ${String(args.recado_para_equipe ?? "")}` : args.recado_para_equipe,
+          nota: escolhidos ? `PROPOSTA PERSONALIZADA (drinks escolhidos: ${escolhidos.nomes.join(", ")}). ${recado}` : recado,
           capa_titulo: args.titulo_capa,
+          ...(dias ? { capa_subtitulo: dias.texto } : {}),
           ...(escolhidos ? { drinks: escolhidos.ids } : {}),
         });
         if (!criada.dados) return fim({ erro: criada.erro?.mensagem }, "gravacao");
         if (semVidraria) await ctx.crm.patch(`/propostas/${criada.dados.id}`, { sem_vidraria: true });
-        const sub = await ctx.crm.post<{ status: string }>(`/propostas/${criada.dados.id}/submeter`, { nota: args.recado_para_equipe });
+        const sub = await ctx.crm.post<{ status: string }>(`/propostas/${criada.dados.id}/submeter`, { nota: recado });
         ctx.estado.proposta = { id: criada.dados.id, numero: criada.dados.numero, status: sub.dados?.status ?? "rascunho", simulada: false, total: criada.dados.total, preco_pendente: criada.dados.preco_pendente };
         return fim(
           { ok: Boolean(sub.dados), numero: criada.dados.numero, status: ctx.estado.proposta.status, preco_pendente: criada.dados.preco_pendente, erro: sub.erro?.mensagem, orientacao: "Avise o cliente que a equipe vai revisar e que você manda o link assim que for aprovada. Se perguntarem quanto tempo demora, responda com a regra de prazo das instruções (não transfira)." },

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import { processarTurno, prometeuTransferir, referenciaDoSite, type EntradaTurno } from "./agente.ts";
 import { ClienteCrm, variantesTelefone } from "./crm.ts";
-import { faltamParaProposta, orientarAgenda } from "./ferramentas.ts";
+import { faltamParaProposta, festaEmDias, orientarAgenda } from "./ferramentas.ts";
 import { equipeAtendendo, mensagemTransferencia, proximoHorario } from "./horario.ts";
 import type { chamarModelo, RespostaIA } from "./openai.ts";
 import { custoUsd, separarModelo } from "./openai.ts";
@@ -437,6 +437,53 @@ describe("ferramentas no modo simulação e no modo real", () => {
     const limpou = chamadasCrm.find((c) => c.metodo === "PUT" && c.caminho === "/negocios/n1/evento");
     assert.deepEqual(limpou?.corpo, { pacote: null, pacote_id: null });
     assert.deepEqual((chamadasCrm.find((c) => c.caminho === "/negocios/n1/propostas")?.corpo as { drinks: string[] }).drinks, ["d1", "d5"]);
+  });
+
+  test("festa em dois dias: uma proposta só, convidados somados, Dia 1 e Dia 2 escritos, agenda de cada dia", async () => {
+    const f = festaEmDias([{ data: "2027-12-19", convidados: 80 }, { data: "2027-12-18", convidados: 120 }], "2026-11-24");
+    assert.ok(f && !("erro" in f));
+    assert.equal(f.total, 200);
+    assert.equal(f.texto, "Dia 1 (18/12): 120 pessoas · Dia 2 (19/12): 80 pessoas");
+    assert.equal(festaEmDias([{ data: "2027-12-18", convidados: 120 }], "2026-11-24"), null); // um dia só: nada muda
+    assert.match((festaEmDias([{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19" }], "2026-11-24") as { erro: string }).erro, /Falta o número de pessoas do dia 2027-12-19/);
+
+    negocioCrm = { id: "n1", codigo: "X", status: "aberto", atendimento: "agente", etapa: { nome: "Novo lead" }, evento: { tipo: "casamento", cidade: "Araxá", pacote: "Essencial", hora_inicio: "19:00" }, contato: { id: "c1", nome: "Ana" } };
+    const ia = iaFalsa([
+      ferramenta("preparar_proposta", { recado_para_equipe: "Cliente quer os dois dias.", dias: [{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19", convidados: 80 }] }),
+      texto("Proposta dos dois dias preparada!"),
+    ]);
+    const r = await processarTurno(entrada(["Sim, pode montar"], { modo: "real", estado: estadoInicial({ negocio_id: "n1", contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.evento.convidados, 200);
+    assert.equal(r.estado.evento.data, "2027-12-18");
+    const agendas = chamadasCrm.filter((c) => c.caminho.startsWith("/agenda/disponibilidade")).map((c) => new URLSearchParams(c.caminho.split("?")[1]).get("data"));
+    assert.ok(agendas.includes("2027-12-18") && agendas.includes("2027-12-19"));
+    const corpo = chamadasCrm.find((c) => c.caminho === "/negocios/n1/propostas")?.corpo as { capa_subtitulo: string; nota: string };
+    assert.equal(corpo.capa_subtitulo, "Dia 1 (18/12): 120 pessoas · Dia 2 (19/12): 80 pessoas");
+    assert.match(corpo.nota, /FESTA EM 2 DIAS.*Total: 200 pessoas/);
+    assert.deepEqual(chamadasCrm.find((c) => c.metodo === "PUT" && c.caminho === "/negocios/n1/evento")?.corpo, { data: "2027-12-18", convidados: 200 });
+  });
+
+  test("cliente repete o 'sim' depois da proposta pronta: a IA é orientada a não transferir", async () => {
+    const prop = { id: null, numero: "(simulação)", status: "aguardando_aprovacao", simulada: true, total: null, preco_pendente: true };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "ok" }), texto("Sua proposta já está pronta e com a equipe!")]);
+    const r = await processarTurno(entrada(["Sim, pode preparar"], { estado: estadoInicial({ proposta: prop, contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.atendimento, "agente");
+    assert.match(JSON.stringify(r.rastro), /JÁ FOI PREPARADA.*NÃO transfira/);
+  });
+
+  test("festa em dois dias com o 2º dia sem vaga: a proposta não sai", async () => {
+    let n = 0;
+    disponibilidade = "livre";
+    const fetchOriginal = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      if (String(url).includes("/agenda/disponibilidade") && ++n === 2) disponibilidade = "bloqueada";
+      return fetchOriginal(url, init);
+    }) as typeof fetch;
+    const ev = { tipo: "casamento", cidade: "Araxá", pacote: "Essencial", hora_inicio: "19:00" };
+    const ia = iaFalsa([ferramenta("preparar_proposta", { recado_para_equipe: "ok", dias: [{ data: "2027-12-18", convidados: 120 }, { data: "2027-12-19", convidados: 80 }] }), texto("O dia 19 está comprometido.")]);
+    const r = await processarTurno(entrada(["Sim"], { estado: estadoInicial({ evento: ev, contato: { nome: "Ana" } }), chamar: ia.fn }));
+    assert.equal(r.estado.proposta, null);
+    assert.match(JSON.stringify(r.rastro), /o dia 2027-12-19 não está livre/);
   });
 
   test("pergunta de prazo logo depois da proposta (aguardando aprovação): NÃO transfere, responde o prazo", async () => {

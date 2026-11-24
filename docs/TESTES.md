@@ -441,3 +441,11 @@ Config no ar v13 (gpt-6-luna:low), exportada na hora; `qualidade.ts --so drinks-
 - Mesmo caso, depois: a Giúlia escreveu de novo (janela aberta) e a Cecília respondeu "ainda está em aprovação" / "não tenho
   o link". Link mandado reprocessando o aviso 41. Correção: quando o cliente escreve e há proposta aprovada/enviada que a
   conversa não mandou, o motor manda o link logo depois da resposta; a IA recebe "a proposta JÁ FOI APROVADA". Núcleo 50/50.
+
+## 24/11/2026 — Festa em dois dias (uma proposta só)
+- Núcleo 53/53 (novos: dois dias somados + Dia 1/Dia 2 + agenda de cada dia; 2º dia sem vaga não sai; "sim" repetido
+  depois da proposta pronta não transfere). Banco 39/39, motor 15/15; tsc, lint, build OK.
+- Conversa de verdade (config v13, gpt-6-luna:low, simulação contra o CRM): "18 e 19/09/2027, 120 e 80 pessoas, Reserve"
+  → agenda dos dois dias, resumo "120 no dia 18 e 80 no dia 19 (200 no total)", proposta com dias, convidados 200.
+- Achado no mesmo teste: cliente repetiu "Sim, pode preparar" com a proposta já pronta → ela TRANSFERIU. Corrigido
+  (a ferramenta diz que já está pronta e para não transferir); conferido de novo: respondeu "já está preparada".
